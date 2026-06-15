@@ -1,0 +1,2 @@
+ALTER TABLE lessons ADD COLUMN IF NOT EXISTS task_start_date DATE;
+ALTER TABLE lessons ADD COLUMN IF NOT EXISTS task_end_date DATE;

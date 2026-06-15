@@ -1,0 +1,272 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementPublished, scheduleAnnouncement } from '@/app/actions/announcements'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Plus, Pencil, Trash2, X, Check, Clock } from 'lucide-react'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
+
+type Announcement = {
+  id: string
+  title: string
+  body: string
+  is_published: boolean
+  publish_at: string | null
+  created_at: string
+}
+
+function AnnouncementForm({
+  onSubmit,
+  isPending,
+  defaultValues,
+  onCancel,
+}: {
+  onSubmit: (formData: FormData) => void
+  isPending: boolean
+  defaultValues?: { title: string; body: string; publish_at?: string | null }
+  onCancel?: () => void
+}) {
+  const [showSchedule, setShowSchedule] = useState(!!defaultValues?.publish_at)
+
+  const defaultDatetime = defaultValues?.publish_at
+    ? new Date(defaultValues.publish_at).toISOString().slice(0, 16)
+    : ''
+
+  return (
+    <form action={onSubmit} className="space-y-3">
+      <div className="space-y-1.5">
+        <Label>Título</Label>
+        <Input name="title" defaultValue={defaultValues?.title} placeholder="Título do comunicado" required />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Mensagem</Label>
+        <Textarea name="body" defaultValue={defaultValues?.body} placeholder="Escreva a mensagem..." rows={4} required />
+      </div>
+      {showSchedule && (
+        <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            Publicar em
+          </Label>
+          <Input
+            type="datetime-local"
+            name="publish_at"
+            defaultValue={defaultDatetime}
+            min={new Date().toISOString().slice(0, 16)}
+          />
+          <p className="text-xs text-muted-foreground">
+            O comunicado será exibido automaticamente na data/hora definida.
+          </p>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button type="submit" size="sm" disabled={isPending}>
+          {isPending
+            ? <><Spinner className="w-4 h-4" /> Salvando...</>
+            : defaultValues ? 'Salvar' : <><Plus className="w-4 h-4 mr-1" />Criar</>
+          }
+        </Button>
+        {!showSchedule && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setShowSchedule(true)}
+            className="gap-1.5"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            Agendar
+          </Button>
+        )}
+        {showSchedule && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowSchedule(false)}
+            className="gap-1.5 text-muted-foreground"
+          >
+            <X className="w-3.5 h-3.5" /> Remover agendamento
+          </Button>
+        )}
+        {onCancel && (
+          <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+            <X className="w-4 h-4 mr-1" /> Cancelar
+          </Button>
+        )}
+      </div>
+    </form>
+  )
+}
+
+function formatScheduledDate(isoDate: string) {
+  return new Date(isoDate).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function AnnouncementRow({ ann }: { ann: Announcement }) {
+  const [editing, setEditing] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  const isScheduled = !ann.is_published && ann.publish_at && new Date(ann.publish_at) > new Date()
+  const isAutoPublished = !ann.is_published && ann.publish_at && new Date(ann.publish_at) <= new Date()
+
+  function handleUpdate(formData: FormData) {
+    startTransition(async () => {
+      formData.set('is_published', String(ann.is_published))
+      const result = await updateAnnouncement(ann.id, formData)
+      if (result?.error) toast.error(result.error)
+      else { toast.success('Comunicado atualizado!'); setEditing(false) }
+    })
+  }
+
+  function handleToggle() {
+    startTransition(async () => {
+      const result = await toggleAnnouncementPublished(ann.id, !ann.is_published)
+      if (result?.error) toast.error(result.error)
+      else toast.success(ann.is_published ? 'Comunicado despublicado.' : 'Comunicado publicado!')
+    })
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deleteAnnouncement(ann.id)
+      if (result?.error) toast.error(result.error)
+      else toast.success('Comunicado excluído.')
+    })
+  }
+
+  if (editing) {
+    return (
+      <div className="bg-card border rounded-lg p-4">
+        <AnnouncementForm
+          onSubmit={handleUpdate}
+          isPending={isPending}
+          defaultValues={{ title: ann.title, body: ann.body, publish_at: ann.publish_at }}
+          onCancel={() => setEditing(false)}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('bg-card border rounded-lg px-5 py-4', !ann.is_published && !isAutoPublished && 'opacity-70')}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="font-medium text-foreground">{ann.title}</span>
+            {ann.is_published || isAutoPublished ? (
+              <Badge variant="default">Publicado</Badge>
+            ) : isScheduled ? (
+              <Badge variant="outline" className="text-amber-600 border-amber-400 gap-1">
+                <Clock className="w-3 h-3" />
+                Agendado · {formatScheduledDate(ann.publish_at!)}
+              </Badge>
+            ) : (
+              <Badge variant="secondary">Rascunho</Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ann.body}</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            {new Date(ann.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            title={ann.is_published ? 'Despublicar' : 'Publicar agora'}
+            disabled={isPending}
+            onClick={handleToggle}
+          >
+            <Check className={cn('w-4 h-4', ann.is_published ? 'text-green-600' : 'text-muted-foreground')} />
+          </Button>
+          <Button variant="ghost" size="icon" disabled={isPending} onClick={() => setEditing(true)}>
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" />}>
+              <Trash2 className="w-4 h-4" />
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir comunicado?</AlertDialogTitle>
+                <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function AnnouncementsManager({ announcements }: { announcements: Announcement[] }) {
+  const [showForm, setShowForm] = useState(false)
+  const [isCreating, startCreate] = useTransition()
+
+  function handleCreate(formData: FormData) {
+    startCreate(async () => {
+      const result = await createAnnouncement(formData)
+      if (result?.error) toast.error(result.error)
+      else { toast.success('Comunicado criado!'); setShowForm(false) }
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      {!showForm && (
+        <Button onClick={() => setShowForm(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Novo Comunicado
+        </Button>
+      )}
+
+      {showForm && (
+        <div className="bg-muted/40 border border-dashed rounded-lg p-4">
+          <p className="text-sm font-medium text-foreground mb-3">Novo Comunicado</p>
+          <AnnouncementForm
+            onSubmit={handleCreate}
+            isPending={isCreating}
+            onCancel={() => setShowForm(false)}
+          />
+        </div>
+      )}
+
+      {announcements.length === 0 && !showForm && (
+        <p className="text-muted-foreground text-center py-12">
+          Nenhum comunicado criado ainda.
+        </p>
+      )}
+
+      {announcements.map((ann) => (
+        <AnnouncementRow key={ann.id} ann={ann} />
+      ))}
+    </div>
+  )
+}

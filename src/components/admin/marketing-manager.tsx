@@ -1,0 +1,513 @@
+'use client'
+
+import { useState, useTransition, useRef } from 'react'
+import { ImageIcon, Link2, Mail, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X } from 'lucide-react'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import {
+  createMarketingItem,
+  updateMarketingItem,
+  deleteMarketingItem,
+  uploadMarketingFile,
+} from '@/app/actions/marketing'
+import type { MarketingCategory } from '@/app/actions/marketing'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+
+export type SectionType = 'visual' | 'link' | 'text'
+export type MarketingSection = { key: string; label: string; type: SectionType }
+
+type MarketingItem = {
+  id: string
+  category: string
+  title: string
+  description: string
+  content: string
+  url: string
+  created_at: string
+}
+
+type SubmitData = { title: string; description: string; content: string; url: string }
+
+type CatDef = {
+  key: string
+  label: string
+  type: SectionType
+  Icon: React.ElementType
+  hasUrl: boolean
+  hasFile: boolean
+  hasContent: boolean
+  urlLabel: string
+  urlPlaceholder: string
+  contentLabel: string
+  contentPlaceholder: string
+  deleteLabel: string
+}
+
+function sectionToCatDef(sec: MarketingSection): CatDef {
+  if (sec.type === 'visual') return {
+    key: sec.key, label: sec.label, type: 'visual', Icon: ImageIcon,
+    hasUrl: true, hasFile: true, hasContent: false,
+    urlLabel: 'URL da imagem / arquivo', urlPlaceholder: 'https://...',
+    contentLabel: '', contentPlaceholder: '', deleteLabel: 'material',
+  }
+  if (sec.type === 'link') return {
+    key: sec.key, label: sec.label, type: 'link', Icon: Link2,
+    hasUrl: true, hasFile: false, hasContent: false,
+    urlLabel: 'URL', urlPlaceholder: 'https://...',
+    contentLabel: '', contentPlaceholder: '', deleteLabel: 'link',
+  }
+  return {
+    key: sec.key, label: sec.label, type: 'text', Icon: FileText,
+    hasUrl: false, hasFile: false, hasContent: true,
+    urlLabel: '', urlPlaceholder: '',
+    contentLabel: 'Conteúdo', contentPlaceholder: 'Escreva aqui...',
+    deleteLabel: 'item',
+  }
+}
+
+function ItemForm({
+  cat,
+  defaultValues,
+  onSubmit,
+  isPending,
+  onCancel,
+}: {
+  cat: CatDef
+  defaultValues?: Partial<MarketingItem>
+  onSubmit: (data: SubmitData) => void
+  isPending: boolean
+  onCancel: () => void
+}) {
+  const [url, setUrl] = useState(defaultValues?.url ?? '')
+  const [isUploading, startUpload] = useTransition()
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    startUpload(async () => {
+      const r = await uploadMarketingFile(file)
+      if (r?.error) toast.error(r.error)
+      else if (r.url) { setUrl(r.url); toast.success('Arquivo enviado!') }
+    })
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    onSubmit({
+      title: (fd.get('title') as string) ?? '',
+      description: (fd.get('description') as string) ?? '',
+      content: (fd.get('content') as string) ?? '',
+      url,
+    })
+  }
+
+  const isImage = url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="space-y-1.5">
+        <Label>Título</Label>
+        <Input name="title" defaultValue={defaultValues?.title} placeholder="Nome do item" required />
+      </div>
+
+      {cat.hasUrl && (
+        <div className="space-y-1.5">
+          <Label>{cat.urlLabel}</Label>
+          <div className="flex gap-2">
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={cat.urlPlaceholder}
+              className="flex-1"
+            />
+            {cat.hasFile && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={isUploading}
+                  title="Fazer upload"
+                >
+                  {isUploading ? <Spinner className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*,application/pdf,.zip,.ai,.psd"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </>
+            )}
+          </div>
+          {isImage && url && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={url} alt="preview" className="h-28 rounded-lg object-cover border mt-1" />
+          )}
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <Label>Descrição</Label>
+        <Input name="description" defaultValue={defaultValues?.description} placeholder="Breve descrição (opcional)" />
+      </div>
+
+      {cat.hasContent && (
+        <div className="space-y-1.5">
+          <Label>{cat.contentLabel}</Label>
+          <Textarea
+            name="content"
+            defaultValue={defaultValues?.content}
+            placeholder={cat.contentPlaceholder}
+            rows={8}
+            className="font-mono text-sm"
+          />
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" size="sm" disabled={isPending || isUploading}>
+          {isPending
+            ? <><Spinner className="w-4 h-4" /> Salvando...</>
+            : defaultValues?.id
+              ? 'Salvar'
+              : <><Plus className="w-4 h-4 mr-1" /> Adicionar</>}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+          <X className="w-4 h-4 mr-1" /> Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function DeleteConfirm({ label, onConfirm }: { label: string; onConfirm: () => void }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" />}>
+        <Trash2 className="w-4 h-4" />
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remover {label}?</AlertDialogTitle>
+          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Remover</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+function VisualCard({ item, cat }: { item: MarketingItem; cat: CatDef }) {
+  const [editing, setEditing] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
+
+  function handleUpdate(data: SubmitData) {
+    startTransition(async () => {
+      const r = await updateMarketingItem(item.id, data)
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Atualizado!'); setEditing(false) }
+    })
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const r = await deleteMarketingItem(item.id)
+      if (r?.error) toast.error(r.error)
+      else toast.success('Removido!')
+    })
+  }
+
+  if (editing) {
+    return (
+      <div className="bg-card border rounded-lg p-4 col-span-full">
+        <ItemForm cat={cat} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-card border rounded-lg overflow-hidden group">
+      {isImage ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src={item.url} alt={item.title} className="w-full h-40 object-cover" />
+      ) : (
+        <div className="w-full h-40 bg-muted flex items-center justify-center">
+          <ImageIcon className="w-8 h-8 text-muted-foreground" />
+        </div>
+      )}
+      <div className="px-3 py-2.5 flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
+          {item.description && <p className="text-xs text-muted-foreground truncate">{item.description}</p>}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {item.url && (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abrir / baixar"
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LinkRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
+  const [editing, setEditing] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  function handleUpdate(data: SubmitData) {
+    startTransition(async () => {
+      const r = await updateMarketingItem(item.id, data)
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Atualizado!'); setEditing(false) }
+    })
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const r = await deleteMarketingItem(item.id)
+      if (r?.error) toast.error(r.error)
+      else toast.success('Removido!')
+    })
+  }
+
+  if (editing) {
+    return (
+      <div className="bg-card border rounded-lg p-4">
+        <ItemForm cat={cat} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-card border rounded-lg px-4 py-3 flex items-center gap-3 group">
+      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <Link2 className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm text-foreground">{item.title}</p>
+        {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+        {item.url && <p className="text-xs text-primary/80 truncate">{item.url}</p>}
+      </div>
+      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost" size="icon" title="Copiar link"
+          onClick={() => { navigator.clipboard.writeText(item.url); toast.success('Link copiado!') }}
+        >
+          <Copy className="w-4 h-4" />
+        </Button>
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Abrir"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+        >
+          <ExternalLink className="w-4 h-4" />
+        </a>
+        <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
+          <Pencil className="w-4 h-4" />
+        </Button>
+        <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+      </div>
+    </div>
+  )
+}
+
+function TextRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
+  const [editing, setEditing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  function handleUpdate(data: SubmitData) {
+    startTransition(async () => {
+      const r = await updateMarketingItem(item.id, data)
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Atualizado!'); setEditing(false) }
+    })
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const r = await deleteMarketingItem(item.id)
+      if (r?.error) toast.error(r.error)
+      else toast.success('Removido!')
+    })
+  }
+
+  if (editing) {
+    return (
+      <div className="bg-card border rounded-lg p-4">
+        <ItemForm cat={cat} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-card border rounded-lg overflow-hidden">
+      <div className="px-4 py-3 flex items-start gap-3">
+        <button
+          type="button"
+          className="flex-1 min-w-0 text-left"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          <p className="font-medium text-sm text-foreground hover:text-primary transition-colors">{item.title}</p>
+          {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+          {!expanded && item.content && (
+            <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">{item.content}</p>
+          )}
+        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button
+            variant="ghost" size="icon" title="Copiar conteúdo"
+            onClick={() => { navigator.clipboard.writeText(item.content); toast.success('Copiado!') }}
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+        </div>
+      </div>
+      {expanded && item.content && (
+        <div className="border-t bg-muted/30 px-4 py-3">
+          <pre className="text-xs text-foreground whitespace-pre-wrap font-sans leading-relaxed">{item.content}</pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CategorySection({ cat, items }: { cat: CatDef; items: MarketingItem[] }) {
+  const [showForm, setShowForm] = useState(false)
+  const [isCreating, startCreate] = useTransition()
+
+  function handleCreate(data: SubmitData) {
+    startCreate(async () => {
+      const r = await createMarketingItem({ category: cat.key as MarketingCategory, ...data })
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Adicionado!'); setShowForm(false) }
+    })
+  }
+
+  return (
+    <div className="space-y-3">
+      {!showForm && (
+        <Button onClick={() => setShowForm(true)} size="sm" className="gap-2">
+          <Plus className="w-4 h-4" />
+          Adicionar
+        </Button>
+      )}
+
+      {showForm && (
+        <div className="bg-muted/40 border border-dashed rounded-lg p-4">
+          <p className="text-sm font-medium text-foreground mb-3">Novo item</p>
+          <ItemForm cat={cat} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
+        </div>
+      )}
+
+      {items.length === 0 && !showForm && (
+        <p className="text-sm text-muted-foreground text-center py-12">
+          Nenhum item adicionado ainda.
+        </p>
+      )}
+
+      {cat.key === 'visual' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} />)}
+        </div>
+      ) : cat.key === 'link' ? (
+        <div className="space-y-2">
+          {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} />)}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => <TextRow key={item.id} item={item} cat={cat} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const DEFAULT_SECTIONS: MarketingSection[] = [
+  { key: 'visual', label: 'Materiais Visuais', type: 'visual' },
+  { key: 'link',   label: 'Links Úteis',        type: 'link'   },
+  { key: 'email',  label: 'Templates de Email', type: 'text'   },
+  { key: 'script', label: 'Scripts e Roteiros', type: 'text'   },
+]
+
+export function MarketingManager({ items, sections }: { items: MarketingItem[]; sections?: MarketingSection[] }) {
+  const cats = (sections && sections.length > 0 ? sections : DEFAULT_SECTIONS).map(sectionToCatDef)
+  const [activeTab, setActiveTab] = useState(cats[0]?.key ?? 'visual')
+
+  const cat = cats.find((c) => c.key === activeTab) ?? cats[0]
+  const tabItems = items.filter((i) => i.category === activeTab)
+
+  if (cats.length === 0) return (
+    <p className="text-sm text-muted-foreground text-center py-16">
+      Nenhuma seção configurada. Adicione seções em Configurações → Marketing.
+    </p>
+  )
+
+  return (
+    <div>
+      <div className="flex gap-0 mb-6 border-b border-border overflow-x-auto">
+        {cats.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+              activeTab === key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {cat && <CategorySection key={activeTab} cat={cat} items={tabItems} />}
+    </div>
+  )
+}
