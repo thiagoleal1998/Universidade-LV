@@ -9,6 +9,7 @@ import {
   ChevronRight, BookOpen, PlayCircle, ArrowRight,
   Megaphone, Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
+  TrendingUp, CheckCircle2, Trophy, Star,
 } from 'lucide-react'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
@@ -367,86 +368,107 @@ export default async function DashboardPage() {
   const hasSidebar = (sidebarTrainingActive && featuredTraining) || sidebarMagazine || Object.values(sidebarSocials).some(Boolean)
 
   return (
-    <div className="p-4 md:p-8">
-      <div className={`flex flex-col gap-6 md:gap-8 items-start ${hasSidebar ? 'lg:grid lg:grid-cols-[1fr_272px]' : ''}`}>
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <div className={`flex flex-col gap-6 items-start ${hasSidebar ? 'xl:grid xl:grid-cols-[1fr_288px]' : ''}`}>
 
         {/* ── Coluna principal ── */}
-        <div className="min-w-0 w-full space-y-6 md:space-y-8">
+        <div className="min-w-0 w-full space-y-6">
 
-          {/* Hero */}
-          <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-transparent border border-primary/20 px-7 py-8">
-            <div className="relative z-10">
+          {/* ── Greeting ── */}
+          <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-xs font-medium text-primary/80 uppercase tracking-wide">Bem-vindo de volta</span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-full px-3 py-1">
+                  <Sparkles className="w-3 h-3" /> Bem-vindo de volta
+                </span>
               </div>
-              <h1 className="text-2xl font-bold text-foreground mb-1">Olá, {firstName}!</h1>
-              <p className="text-sm text-muted-foreground mb-6 max-w-md">{heroTagline}</p>
-              <div className="flex flex-wrap gap-5">
-                <div className="flex flex-col">
-                  <span className="text-2xl font-bold text-foreground">{totalDone}</span>
-                  <span className="text-xs text-muted-foreground">aulas concluídas</span>
-                </div>
-                <div className="w-px bg-border self-stretch" />
-                <div className="flex flex-col">
-                  <span className="text-2xl font-bold text-foreground">{overallPct}%</span>
-                  <span className="text-xs text-muted-foreground">progresso geral</span>
-                </div>
-                <div className="w-px bg-border self-stretch" />
-                <div className="flex flex-col">
-                  <span className="text-2xl font-bold text-foreground">{courses.length}</span>
-                  <span className="text-xs text-muted-foreground">{courses.length === 1 ? 'curso ativo' : 'cursos ativos'}</span>
-                </div>
-                {streak > 0 && (
-                  <>
-                    <div className="w-px bg-border self-stretch" />
-                    <div className="flex flex-col">
-                      <span className="text-2xl font-bold text-orange-500 flex items-center gap-1">
-                        <Flame className="w-5 h-5" />{streak}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{streak === 1 ? 'dia seguido' : 'dias seguidos'}</span>
-                    </div>
-                  </>
-                )}
-                {estimatedMinutes > 0 && (
-                  <>
-                    <div className="w-px bg-border self-stretch" />
-                    <div className="flex flex-col">
-                      <span className="text-2xl font-bold text-foreground flex items-center gap-1">
-                        <Clock className="w-5 h-5 text-primary" />{hoursLabel}
-                      </span>
-                      <span className="text-xs text-muted-foreground">de estudo est.</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              {badgeModules.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-5">
-                  {badgeModules.slice(0, 4).map((mod) => (
-                    <span key={mod.id} className="inline-flex items-center gap-1 text-xs bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20 rounded-full px-2.5 py-0.5 font-medium">
-                      🏅 {mod.title}
-                    </span>
-                  ))}
-                  {badgeModules.length > 4 && (
-                    <span className="inline-flex items-center text-xs bg-muted text-muted-foreground rounded-full px-2.5 py-0.5">
-                      +{badgeModules.length - 4} módulos
-                    </span>
-                  )}
-                </div>
-              )}
+              <h1 className="text-3xl font-bold text-foreground tracking-tight">Olá, {firstName}! 👋</h1>
+              <p className="text-muted-foreground mt-1 text-sm max-w-lg">{heroTagline}</p>
             </div>
-            <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+            {badgeModules.length > 0 && (
+              <div className="flex items-center gap-2 shrink-0">
+                <Trophy className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm font-semibold text-foreground">{badgeModules.length} {badgeModules.length === 1 ? 'módulo concluído' : 'módulos concluídos'}</span>
+              </div>
+            )}
           </section>
 
-          {/* Destaque do Dia */}
+          {/* ── Stats grid ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            {/* Aulas concluídas */}
+            <div className="relative overflow-hidden rounded-2xl bg-primary/10 border border-primary/15 p-5">
+              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center mb-3">
+                <CheckCircle2 className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-3xl font-bold text-foreground">{totalDone}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 font-medium">aulas concluídas</p>
+              <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-primary/10 blur-xl pointer-events-none" />
+            </div>
+
+            {/* Progresso geral */}
+            <div className="relative overflow-hidden rounded-2xl bg-violet-500/10 border border-violet-500/15 p-5">
+              <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center mb-3">
+                <TrendingUp className="w-5 h-5 text-violet-500" />
+              </div>
+              <p className="text-3xl font-bold text-foreground">{overallPct}<span className="text-xl font-semibold text-muted-foreground">%</span></p>
+              <p className="text-xs text-muted-foreground mt-0.5 font-medium">progresso geral</p>
+              {totalLessons > 0 && (
+                <div className="mt-2.5 h-1.5 bg-violet-500/15 rounded-full overflow-hidden">
+                  <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${overallPct}%` }} />
+                </div>
+              )}
+              <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-violet-500/10 blur-xl pointer-events-none" />
+            </div>
+
+            {/* Cursos ativos */}
+            <div className="relative overflow-hidden rounded-2xl bg-sky-500/10 border border-sky-500/15 p-5">
+              <div className="w-9 h-9 rounded-xl bg-sky-500/15 flex items-center justify-center mb-3">
+                <BookOpen className="w-5 h-5 text-sky-500" />
+              </div>
+              <p className="text-3xl font-bold text-foreground">{courses.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 font-medium">{courses.length === 1 ? 'curso ativo' : 'cursos ativos'}</p>
+              <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-sky-500/10 blur-xl pointer-events-none" />
+            </div>
+
+            {/* Streak ou horas */}
+            {streak > 0 ? (
+              <div className="relative overflow-hidden rounded-2xl bg-orange-500/10 border border-orange-500/15 p-5">
+                <div className="w-9 h-9 rounded-xl bg-orange-500/15 flex items-center justify-center mb-3">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                </div>
+                <p className="text-3xl font-bold text-foreground">{streak}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 font-medium">{streak === 1 ? 'dia seguido' : 'dias seguidos'}</p>
+                <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-orange-500/10 blur-xl pointer-events-none" />
+              </div>
+            ) : estimatedMinutes > 0 ? (
+              <div className="relative overflow-hidden rounded-2xl bg-emerald-500/10 border border-emerald-500/15 p-5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-3">
+                  <Clock className="w-5 h-5 text-emerald-500" />
+                </div>
+                <p className="text-3xl font-bold text-foreground">{hoursLabel}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 font-medium">de estudo estimado</p>
+                <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
+              </div>
+            ) : (
+              <div className="relative overflow-hidden rounded-2xl bg-muted/60 border border-border p-5">
+                <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center mb-3">
+                  <Star className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-3xl font-bold text-foreground">0</p>
+                <p className="text-xs text-muted-foreground mt-0.5 font-medium">dias seguidos</p>
+              </div>
+            )}
+          </div>
+
+          {/* ── Destaque do Dia ── */}
           {destaque && (
             <section>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Destaque do Dia</h2>
+                <h2 className="text-base font-semibold text-foreground">Destaque do Dia</h2>
               </div>
               {destaqueEmbed ? (
-                <div className="rounded-2xl border border-primary/20 overflow-hidden bg-black">
+                <div className="rounded-2xl border border-border overflow-hidden bg-black shadow-sm">
                   <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                     <iframe
                       src={destaqueEmbed}
@@ -480,99 +502,128 @@ export default async function DashboardPage() {
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{destaque.description}</p>
                     )}
                   </div>
-                  <div className="shrink-0">
-                    <span className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-4 py-2 rounded-lg group-hover:bg-primary/90 transition-colors">
-                      {destaque.button_text || 'Acessar'}
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </span>
-                  </div>
+                  <span className="shrink-0 inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-4 py-2 rounded-xl group-hover:bg-primary/90 transition-colors">
+                    {destaque.button_text || 'Acessar'}
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </Link>
               )}
             </section>
           )}
 
-          {/* Avisos */}
+          {/* ── Avisos ── */}
           {announcements.length > 0 && (
             <DismissibleAnnouncements announcements={announcements} />
           )}
 
-          {/* Acesso rápido */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Link
-              href="/dashboard/cursos"
-              className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-6 hover:shadow-md transition-all hover:border-primary/40"
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                </div>
-                <ArrowRight className="w-4 h-4 text-primary/50 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <p className="font-semibold text-foreground">Meus Cursos</p>
-              {courses.length > 0 ? (
-                <>
-                  <p className="text-sm text-muted-foreground mt-0.5">{courses.length} {courses.length === 1 ? 'curso disponível' : 'cursos disponíveis'}</p>
-                  <div className="flex items-center gap-2 mt-3">
-                    <div className="h-1.5 bg-primary/20 rounded-full flex-1 overflow-hidden">
-                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${overallPct}%` }} />
-                    </div>
-                    <span className="text-xs text-primary font-medium">{overallPct}%</span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground mt-0.5">Nenhum curso liberado ainda</p>
-              )}
-            </Link>
-
-            <Link
-              href="/dashboard/marketing"
-              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 hover:shadow-md transition-all hover:border-primary/30"
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-4">
-                  <Megaphone className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:translate-x-1 group-hover:text-primary transition-all" />
-              </div>
-              <p className="font-semibold text-foreground">Marketing</p>
-              <p className="text-sm text-muted-foreground mt-0.5">Materiais, links e scripts prontos para usar</p>
-            </Link>
-          </div>
-
-          {/* Continuar estudando */}
+          {/* ── Continuar estudando ── */}
           {continueItems.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-3">
+            <section>
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <PlayCircle className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-foreground">Continuar estudando</h2>
+                  <h2 className="text-base font-semibold text-foreground">Continuar estudando</h2>
                 </div>
-                <Link href="/dashboard/cursos" className="text-sm text-primary hover:underline">Ver todos</Link>
+                <Link href="/dashboard/cursos" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                  Ver todos <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
-              <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {continueItems.map((item) => (
-                  <div key={item.courseId} className="bg-card border rounded-xl px-5 py-4 flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">{item.courseName}</p>
-                      <p className="font-medium text-foreground text-sm mt-0.5 truncate">{item.lessonTitle}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden flex-1 max-w-32">
-                          <div className="h-full bg-primary rounded-full" style={{ width: `${item.pct}%` }} />
-                        </div>
-                        <span className="text-xs text-muted-foreground">{item.pct}%</span>
+                  <div key={item.courseId} className="group bg-card border border-border rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all flex flex-col gap-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-primary/70 uppercase tracking-wider truncate">{item.courseName}</p>
+                        <p className="font-semibold text-foreground text-sm mt-0.5 line-clamp-2 leading-snug">{item.lessonTitle}</p>
+                      </div>
+                      {item.pct === 100 && (
+                        <span className="shrink-0 w-6 h-6 rounded-full bg-emerald-500/15 flex items-center justify-center">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        </span>
+                      )}
+                    </div>
+                    {/* Progress */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Progresso do curso</span>
+                        <span className="text-xs font-semibold text-foreground">{item.pct}%</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${item.pct}%`,
+                            background: item.pct === 100
+                              ? 'rgb(16 185 129)' // emerald
+                              : 'hsl(var(--primary))',
+                          }}
+                        />
                       </div>
                     </div>
-                    <Link href={`/dashboard/aulas/${item.lessonId}`} className={buttonVariants({ size: 'sm' })}>
-                      {item.pct === 100 ? 'Revisitar' : 'Continuar'}
-                      <ChevronRight className="w-4 h-4 ml-1" />
+                    {/* CTA */}
+                    <Link
+                      href={`/dashboard/aulas/${item.lessonId}`}
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-primary hover:gap-3 transition-all mt-auto"
+                    >
+                      {item.pct === 100 ? 'Revisitar aula' : 'Continuar de onde parei'}
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* TamoJuntoLV */}
+          {/* ── Acesso rápido ── */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-base font-semibold text-foreground">Acesso rápido</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link
+                href="/dashboard/cursos"
+                className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 hover:shadow-md hover:border-primary/40 transition-all"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-primary/40 group-hover:translate-x-1 group-hover:text-primary transition-all" />
+                </div>
+                <p className="font-semibold text-foreground">Meus Cursos</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {courses.length > 0
+                    ? `${courses.length} ${courses.length === 1 ? 'curso disponível' : 'cursos disponíveis'}`
+                    : 'Nenhum curso liberado ainda'}
+                </p>
+                {courses.length > 0 && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="h-1.5 bg-primary/15 rounded-full flex-1 overflow-hidden">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${overallPct}%` }} />
+                    </div>
+                    <span className="text-xs text-primary font-semibold">{overallPct}%</span>
+                  </div>
+                )}
+              </Link>
+
+              <Link
+                href="/dashboard/marketing"
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 hover:shadow-md hover:border-primary/25 transition-all"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <Megaphone className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:translate-x-1 group-hover:text-primary transition-all" />
+                </div>
+                <p className="font-semibold text-foreground">Marketing</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Materiais, links e scripts prontos</p>
+              </Link>
+            </div>
+          </section>
+
+          {/* ── TamoJuntoLV ── */}
           {tamojunto && (
             <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
               {tamojunto.image_url && (
@@ -607,20 +658,22 @@ export default async function DashboardPage() {
           )}
 
           {courses.length === 0 && (
-            <div className="text-center py-16 bg-card border rounded-xl">
-              <BookOpen className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground font-medium">Nenhum conteúdo disponível ainda.</p>
+            <div className="text-center py-16 bg-card border rounded-2xl">
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-7 h-7 text-muted-foreground/40" />
+              </div>
+              <p className="text-foreground font-semibold">Nenhum conteúdo disponível ainda.</p>
               <p className="text-sm text-muted-foreground mt-1">Entre em contato com o administrador para liberar acesso.</p>
             </div>
           )}
-          <div className="h-4" />
+
+          <div className="h-2" />
         </div>
 
         {/* ── Sidebar direita ── */}
         {hasSidebar && (
-          <aside className="w-full lg:w-[272px] shrink-0 space-y-4 lg:sticky lg:top-6">
+          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-6">
 
-            {/* Próximo treinamento */}
             {sidebarTrainingActive && featuredTraining && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">
@@ -630,7 +683,6 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            {/* Magazine */}
             {sidebarMagazine && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">{sidebarMagazineLabel}</p>
@@ -638,7 +690,6 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            {/* Redes sociais */}
             <SidebarSocialsBlock socials={sidebarSocials} label={sidebarSocialLabel} />
 
           </aside>
