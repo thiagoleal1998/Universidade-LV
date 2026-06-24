@@ -83,48 +83,58 @@ function SidebarContent({
     <div className="flex flex-col h-full">
 
       {/* ── Brand ── */}
-      <div className="border-b border-border bg-primary/5 shrink-0 flex items-center px-3 py-4 gap-2.5 min-h-[64px]">
-        <Link
-          href="/dashboard"
-          onClick={onClose}
-          title={collapsed ? siteName : undefined}
-          className="flex items-center gap-2.5 shrink-0"
-        >
-          {logoUrl ? (
-            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border shadow-sm">
-              <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full" />
-            </div>
-          ) : (
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-sm">
-              <GraduationCap className="w-4 h-4 text-primary-foreground" />
-            </div>
-          )}
-        </Link>
+      <div className="border-b border-border bg-primary/5 shrink-0 min-h-[64px] flex items-center">
+        {/* Collapsed: only the expand button, centered */}
+        {collapsed && !onClose && onToggleCollapse ? (
+          <div className="flex-1 flex justify-center">
+            <button
+              onClick={onToggleCollapse}
+              title="Expandir menu"
+              className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 px-3 py-4 w-full">
+            <Link
+              href="/dashboard"
+              onClick={onClose}
+              className="flex items-center gap-2.5 shrink-0"
+            >
+              {logoUrl ? (
+                <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border shadow-sm">
+                  <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                  <GraduationCap className="w-4 h-4 text-primary-foreground" />
+                </div>
+              )}
+            </Link>
 
-        {/* Site name + subtitle — slides out on collapse */}
-        <div className="flex-1 min-w-0" style={slideText(collapsed, 160)}>
-          <p className="text-sm font-semibold text-foreground truncate leading-tight">{siteName}</p>
-          <p className="text-xs text-primary/70 font-medium">{areaSubtitle}</p>
-        </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate leading-tight">{siteName}</p>
+              <p className="text-xs text-primary/70 font-medium">{areaSubtitle}</p>
+            </div>
 
-        {/* Mobile close / Desktop toggle */}
-        {onClose ? (
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        ) : onToggleCollapse && (
-          <button
-            onClick={onToggleCollapse}
-            title={collapsed ? 'Expandir menu' : 'Minimizar menu'}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            {collapsed
-              ? <PanelLeftOpen className="w-4 h-4" />
-              : <PanelLeftClose className="w-4 h-4" />}
-          </button>
+            {onClose ? (
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            ) : onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                title="Minimizar menu"
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
