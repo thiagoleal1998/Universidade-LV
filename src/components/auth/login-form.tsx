@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { login } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -9,11 +9,13 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
+import { Eye, EyeOff } from 'lucide-react'
 
 type LoginState = { error?: string; redirectTo?: string } | undefined
 
 export function LoginForm({ settings, messages }: { settings: Settings; messages: string[] }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(login, undefined)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (state?.redirectTo) window.location.href = state.redirectTo
@@ -42,7 +44,17 @@ export function LoginForm({ settings, messages }: { settings: Settings; messages
                 Esqueci minha senha
               </Link>
             </div>
-            <Input id="password" name="password" type="password" placeholder="••••••••" required autoComplete="current-password" />
+            <div className="relative">
+              <Input id="password" name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" required autoComplete="current-password" className="pr-10" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {state?.error && (

@@ -52,6 +52,21 @@ export function NotificationBell({
 
   return (
     <div ref={ref} className="relative">
+      {/* Animação: toca o movimento nos primeiros 20% do ciclo, fica parado nos outros 80% */}
+      <style>{`
+        @keyframes bell-ring {
+          0%,100% { transform: rotate(0deg);  }
+          4%       { transform: rotate(14deg); }
+          8%       { transform: rotate(-10deg);}
+          12%      { transform: rotate(8deg);  }
+          16%      { transform: rotate(-5deg); }
+          20%      { transform: rotate(0deg);  }
+        }
+        .bell-ringing {
+          animation: bell-ring 3s ease-in-out infinite;
+          transform-origin: top center;
+        }
+      `}</style>
       <button
         onClick={handleToggle}
         className={cn(
@@ -60,7 +75,7 @@ export function NotificationBell({
         )}
         title="Notificações"
       >
-        <Bell className="w-4 h-4" />
+        <Bell className={cn('w-4 h-4', count > 0 && !open && 'bell-ringing')} />
         {count > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
             {count > 9 ? '9+' : count}

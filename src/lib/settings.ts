@@ -45,6 +45,7 @@ export type Settings = {
   landing_hero_subtitle: string
   landing_hero_image_url: string
   landing_hero_cta_text: string
+  landing_about_active: string
   landing_about_title: string
   landing_about_text: string
   landing_about_image_url: string
@@ -69,6 +70,8 @@ export type Settings = {
   landing_faq_section_title: string
   landing_about_checklist: string
   landing_nav_labels: string
+  landing_nav_order: string
+  landing_nav_custom_items: string
   landing_partners: string
   landing_partners_section_title: string
   landing_seals: string
@@ -90,6 +93,8 @@ export type Settings = {
   landing_lgpd_active: string
   landing_lgpd_text: string
   landing_lgpd_button_text: string
+  landing_lgpd_link_text: string
+  landing_lgpd_link_url: string
   // Treinamentos
   training_hero_title: string
   training_hero_description: string
@@ -159,6 +164,7 @@ const DEFAULTS = {
   landing_hero_subtitle: 'Treinamentos ao vivo, cursos completos, comunidade e certificados — tudo que você precisa para se destacar no mercado.',
   landing_hero_image_url: '',
   landing_hero_cta_text: 'Acessar minha conta',
+  landing_about_active: 'true',
   landing_about_title: 'Sobre a Litoral Verde Operadora',
   landing_about_text: 'A Litoral Verde Operadora de Viagens e Turismo é uma empresa especializada no desenvolvimento e capacitação de agentes de viagem em todo o Brasil. Nossa missão é colocar nas mãos dos profissionais do setor as melhores ferramentas, treinamentos práticos e materiais exclusivos para que possam se destacar no mercado e entregar experiências inesquecíveis aos seus clientes.\n\nCom a Universidade LV, levamos esse propósito a um novo nível: uma plataforma completa de aprendizado, criada por especialistas em turismo, para quem vive e respira viagens.',
   landing_about_image_url: '',
@@ -199,6 +205,8 @@ const DEFAULTS = {
   landing_faq_section_title: 'Perguntas frequentes',
   landing_about_checklist: 'Empresa especializada no mercado de turismo e viagens\nTreinamentos conduzidos por especialistas do setor\nCertificados reconhecidos no mercado\nComunidade exclusiva para agentes de viagem',
   landing_nav_labels: JSON.stringify({ benefits: 'O que oferecemos', steps: 'Como funciona', about: 'Sobre', testimonials: 'Depoimentos', faq: 'FAQ' }),
+  landing_nav_order: JSON.stringify(['benefits', 'steps', 'about', 'testimonials', 'faq', 'leads']),
+  landing_nav_custom_items: JSON.stringify([]),
   landing_partners: JSON.stringify([]),
   landing_partners_section_title: 'Parceiros e companhias',
   landing_seals: JSON.stringify([]),
@@ -228,6 +236,8 @@ const DEFAULTS = {
   landing_lgpd_active: 'true',
   landing_lgpd_text: 'Este site utiliza cookies para melhorar sua experiência. Ao continuar navegando, você concorda com nossa Política de Privacidade e com o uso de cookies essenciais.',
   landing_lgpd_button_text: 'Aceitar e continuar',
+  landing_lgpd_link_text: '',
+  landing_lgpd_link_url: '',
   training_hero_title: 'Treinamentos',
   training_hero_description: 'Acesse conteúdos exclusivos, participe das sessões ao vivo com nossa equipe e assista quando quiser nos replays. Tudo pensado para acelerar o seu desenvolvimento.',
   training_hero_color: 'primary',
@@ -310,8 +320,9 @@ export async function getSettings(): Promise<Settings> {
       landing_hero_subtitle: map.landing_hero_subtitle ?? DEFAULTS.landing_hero_subtitle,
       landing_hero_image_url: map.landing_hero_image_url ?? DEFAULTS.landing_hero_image_url,
       landing_hero_cta_text: map.landing_hero_cta_text ?? DEFAULTS.landing_hero_cta_text,
-      landing_about_title: map.landing_about_title ?? DEFAULTS.landing_about_title,
-      landing_about_text: map.landing_about_text ?? DEFAULTS.landing_about_text,
+      landing_about_active: map.landing_about_active ?? DEFAULTS.landing_about_active,
+      landing_about_title: map.landing_about_title || DEFAULTS.landing_about_title,
+      landing_about_text: map.landing_about_text || DEFAULTS.landing_about_text,
       landing_about_image_url: map.landing_about_image_url ?? DEFAULTS.landing_about_image_url,
       landing_benefits: map.landing_benefits ?? DEFAULTS.landing_benefits,
       landing_cta_title: map.landing_cta_title ?? DEFAULTS.landing_cta_title,
@@ -333,6 +344,8 @@ export async function getSettings(): Promise<Settings> {
       landing_faq_section_title: map.landing_faq_section_title ?? DEFAULTS.landing_faq_section_title,
       landing_about_checklist: map.landing_about_checklist ?? DEFAULTS.landing_about_checklist,
       landing_nav_labels: map.landing_nav_labels ?? DEFAULTS.landing_nav_labels,
+      landing_nav_order: map.landing_nav_order ?? DEFAULTS.landing_nav_order,
+      landing_nav_custom_items: map.landing_nav_custom_items ?? DEFAULTS.landing_nav_custom_items,
       landing_partners: map.landing_partners ?? DEFAULTS.landing_partners,
       landing_partners_section_title: map.landing_partners_section_title ?? DEFAULTS.landing_partners_section_title,
       landing_seals: map.landing_seals ?? DEFAULTS.landing_seals,
@@ -351,6 +364,8 @@ export async function getSettings(): Promise<Settings> {
       landing_lgpd_active: map.landing_lgpd_active ?? DEFAULTS.landing_lgpd_active,
       landing_lgpd_text: map.landing_lgpd_text ?? DEFAULTS.landing_lgpd_text,
       landing_lgpd_button_text: map.landing_lgpd_button_text ?? DEFAULTS.landing_lgpd_button_text,
+      landing_lgpd_link_text: map.landing_lgpd_link_text ?? DEFAULTS.landing_lgpd_link_text,
+      landing_lgpd_link_url: map.landing_lgpd_link_url ?? DEFAULTS.landing_lgpd_link_url,
       training_hero_title: map.training_hero_title ?? DEFAULTS.training_hero_title,
       training_hero_description: map.training_hero_description ?? DEFAULTS.training_hero_description,
       training_hero_color: map.training_hero_color ?? DEFAULTS.training_hero_color,

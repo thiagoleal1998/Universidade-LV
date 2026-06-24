@@ -4,6 +4,71 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
+function formatLiveAt(iso: string | null): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+export type NotifyResult = { notified: number } | { error: string; memberCount: number }
+
+async function notifyMembers(payload: {
+  id: string
+  title: string
+  notifType: 'new_training' | 'training_replay'
+  notifTitle: string
+  body: string
+}): Promise<NotifyResult> {
+  const adminClient = createAdminClient()
+
+  const { data: members, error: membersErr } = await adminClient
+    .from('profiles')
+    .select('id')
+    .eq('role', 'member')
+    .eq('active', true)
+
+  if (membersErr) return { error: membersErr.message, memberCount: 0 }
+  if (!members?.length) return { error: 'no_members', memberCount: 0 }
+
+  const { error: insertErr } = await adminClient.from('notifications').insert(
+    members.map((m) => ({
+      user_id: m.id,
+      type: payload.notifType,
+      title: payload.notifTitle,
+      body: payload.body,
+      link: `/dashboard/treinamentos/${payload.id}`,
+    }))
+  )
+
+  if (insertErr) return { error: insertErr.message, memberCount: members.length }
+  return { notified: members.length }
+}
+
+async function notifyNewTraining(item: { id: string; title: string; type: string; live_at: string | null }): Promise<NotifyResult> {
+  const isLive = item.type === 'live'
+  const date = isLive ? formatLiveAt(item.live_at) : null
+  return notifyMembers({
+    id: item.id,
+    title: item.title,
+    notifType: 'new_training',
+    notifTitle: isLive ? 'Novo treinamento ao vivo agendado' : 'Novo treinamento disponivel',
+    body: date ? `${item.title} - ${date}` : item.title,
+  })
+}
+
+async function notifyTrainingReplay(item: { id: string; title: string }): Promise<NotifyResult> {
+  return notifyMembers({
+    id: item.id,
+    title: item.title,
+    notifType: 'training_replay',
+    notifTitle: 'Treinamento disponivel como replay',
+    body: item.title,
+  })
+}
+
 export type TrainingMaterial = {
   id: string
   training_id: string
@@ -72,22 +137,35 @@ export async function createTrainingItem(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
+  const isActive = formData.get('is_active') === 'true'
+  const type = (formData.get('type') as string) || 'link'
+  const liveAt = parseLiveAt(formData.get('live_at') as string | null)
+
   const adminClient = createAdminClient()
-  const { error } = await adminClient.from('training_items').insert({
-    title: (formData.get('title') as string).trim(),
+  const title = (formData.get('title') as string).trim()
+
+  const { data: inserted, error } = await adminClient.from('training_items').insert({
+    title,
     description: (formData.get('description') as string)?.trim() || null,
     url: (formData.get('url') as string).trim(),
     cover_url: (formData.get('cover_url') as string)?.trim() || null,
     order_index: Number(formData.get('order_index') ?? 0),
-    is_active: formData.get('is_active') === 'true',
-    type: (formData.get('type') as string) || 'link',
-    live_at: parseLiveAt(formData.get('live_at') as string | null),
-  })
+    is_active: isActive,
+    type,
+    live_at: liveAt,
+  }).select('id, title, type, live_at').single()
 
   if (error) return { error: error.message }
+
+  let notifyResult: NotifyResult | null = null
+  if (isActive && inserted) {
+    notifyResult = await notifyNewTraining(inserted)
+    revalidatePath('/dashboard', 'layout')
+  }
+
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
-  return { success: true }
+  return { success: true, notify: notifyResult }
 }
 
 export async function updateTrainingItem(id: string, formData: FormData) {
@@ -96,30 +174,71 @@ export async function updateTrainingItem(id: string, formData: FormData) {
   if (!user) return { error: 'Não autenticado' }
 
   const adminClient = createAdminClient()
+
+  const { data: prev } = await adminClient
+    .from('training_items')
+    .select('type, is_active, title')
+    .eq('id', id)
+    .single()
+
+  const newType = (formData.get('type') as string) || 'link'
+  const newActive = formData.get('is_active') === 'true'
+
   const { error } = await adminClient.from('training_items').update({
     title: (formData.get('title') as string).trim(),
     description: (formData.get('description') as string)?.trim() || null,
     url: (formData.get('url') as string).trim(),
     cover_url: (formData.get('cover_url') as string)?.trim() || null,
     order_index: Number(formData.get('order_index') ?? 0),
-    is_active: formData.get('is_active') === 'true',  // null when unchecked → false
-    type: (formData.get('type') as string) || 'link',
+    is_active: newActive,
+    type: newType,
     live_at: parseLiveAt(formData.get('live_at') as string | null),
   }).eq('id', id)
 
   if (error) return { error: error.message }
+
+  let notifyResult: NotifyResult | null = null
+  const becameActive = !prev?.is_active && newActive
+  const becameReplay = prev?.type !== 'replay' && newType === 'replay'
+  const becameLive = prev?.type !== 'live' && newType === 'live' && newActive
+
+  if (newActive && becameReplay) {
+    const title = (formData.get('title') as string).trim() || prev?.title || ''
+    notifyResult = await notifyTrainingReplay({ id, title })
+    revalidatePath('/dashboard', 'layout')
+  } else if (becameActive || becameLive) {
+    const title = (formData.get('title') as string).trim() || prev?.title || ''
+    const liveAt = parseLiveAt(formData.get('live_at') as string | null)
+    notifyResult = await notifyNewTraining({ id, title, type: newType, live_at: liveAt })
+    revalidatePath('/dashboard', 'layout')
+  }
+
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
-  return { success: true }
+  return { success: true, notify: notifyResult }
 }
 
 export async function toggleTrainingActive(id: string, is_active: boolean) {
   const adminClient = createAdminClient()
   const { error } = await adminClient.from('training_items').update({ is_active }).eq('id', id)
   if (error) return { error: error.message }
+
+  let notifyResult: NotifyResult | null = null
+  if (is_active) {
+    const { data } = await adminClient
+      .from('training_items')
+      .select('id, title, type, live_at')
+      .eq('id', id)
+      .single()
+    if (data) {
+      notifyResult = await notifyNewTraining(data)
+      revalidatePath('/dashboard', 'layout')
+    }
+  }
+
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
-  return { success: true }
+  return { success: true, notify: notifyResult }
 }
 
 export async function deleteTrainingItem(id: string) {

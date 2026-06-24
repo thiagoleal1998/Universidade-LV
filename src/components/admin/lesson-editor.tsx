@@ -7,6 +7,7 @@ import type { Lesson, LessonAttachment } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Separator } from '@/components/ui/separator'
 import {
   AlertDialog,
@@ -576,13 +577,12 @@ export function LessonEditor({
               <Clock className="w-3.5 h-3.5" />
               Publicar em
             </Label>
-            <Input
-              type="datetime-local"
+            <DateTimePicker
               name="publish_at"
               form="lesson-form"
               defaultValue={defaultScheduleDatetime}
               min={new Date().toISOString().slice(0, 16)}
-              className="w-auto"
+              placeholder="Selecionar data de publicação"
             />
             <button
               type="button"

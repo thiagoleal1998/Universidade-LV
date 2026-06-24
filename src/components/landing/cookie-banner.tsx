@@ -2,7 +2,17 @@
 
 import { useEffect, useState } from 'react'
 
-export function CookieBanner({ text, buttonText = 'Aceitar e continuar' }: { text: string; buttonText?: string }) {
+export function CookieBanner({
+  text,
+  buttonText = 'Aceitar e continuar',
+  linkText,
+  linkUrl,
+}: {
+  text: string
+  buttonText?: string
+  linkText?: string
+  linkUrl?: string
+}) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -18,11 +28,42 @@ export function CookieBanner({ text, buttonText = 'Aceitar e continuar' }: { tex
 
   if (!visible) return null
 
+  const hasPlaceholder = linkText && linkUrl && text.includes('{link}')
+  const hasAppended = linkText && linkUrl && !text.includes('{link}')
+  const parts = hasPlaceholder ? text.split('{link}') : null
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/97 backdrop-blur-md px-4 py-3 shadow-lg">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center gap-3">
         <p className="flex-1 text-xs text-muted-foreground text-center sm:text-left leading-relaxed">
-          {text}
+          {parts ? (
+            <>
+              {parts[0]}
+              <a
+                href={linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                {linkText}
+              </a>
+              {parts[1]}
+            </>
+          ) : hasAppended ? (
+            <>
+              {text}{' '}
+              <a
+                href={linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                {linkText}
+              </a>
+            </>
+          ) : (
+            text
+          )}
         </p>
         <button
           onClick={accept}

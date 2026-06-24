@@ -15,6 +15,7 @@ import { LandingHeader } from '@/components/landing/landing-header'
 import { CountdownBar } from '@/components/landing/countdown-bar'
 import { CookieBanner } from '@/components/landing/cookie-banner'
 import { LeadForm } from '@/components/landing/lead-form'
+import { PartnersCarousel } from '@/components/landing/partners-carousel'
 
 type BenefitCard = { icon: string; title: string; description: string }
 type Stat        = { number: string; label: string }
@@ -130,6 +131,7 @@ export default async function LandingPage() {
   const seals        = parse<Seal>(s.landing_seals, []).filter(sl => sl.image_url)
   const partnersSectionTitle = s.landing_partners_section_title || 'Parceiros e companhias'
 
+  const aboutActive    = s.landing_about_active !== 'false'
   const aboutTitle     = s.landing_about_title     || 'Sobre a Litoral Verde Operadora'
   const aboutText      = s.landing_about_text      || 'A Litoral Verde Operadora de Viagens e Turismo é uma empresa especializada no desenvolvimento e capacitação de agentes de viagem em todo o Brasil. Nossa missão é colocar nas mãos dos profissionais do setor as melhores ferramentas, treinamentos práticos e materiais exclusivos para que possam se destacar no mercado e entregar experiências inesquecíveis aos seus clientes.\n\nCom a Universidade LV, levamos esse propósito a um novo nível: uma plataforma completa de aprendizado, criada por especialistas em turismo, para quem vive e respira viagens.'
   const aboutImage     = s.landing_about_image_url || ''
@@ -159,6 +161,8 @@ export default async function LandingPage() {
   const lgpdActive     = s.landing_lgpd_active      === 'true'
   const lgpdText       = s.landing_lgpd_text        || 'Este site utiliza cookies para melhorar sua experiência. Ao continuar navegando, você concorda com nossa Política de Privacidade e com o uso de cookies essenciais.'
   const lgpdButtonText = s.landing_lgpd_button_text || 'Aceitar e continuar'
+  const lgpdLinkText   = s.landing_lgpd_link_text   || ''
+  const lgpdLinkUrl    = s.landing_lgpd_link_url    || ''
 
   const embedUrl    = getVideoEmbedUrl(heroVideoUrl)
   const directVideo = heroVideoUrl && isDirectVideo(heroVideoUrl)
@@ -166,26 +170,47 @@ export default async function LandingPage() {
 
   const sectionOrder = parseSectionOrder(s.landing_section_order)
 
-  let navLabels = { benefits: 'O que oferecemos', steps: 'Como funciona', about: 'Sobre', testimonials: 'Depoimentos', faq: 'FAQ' }
+  const navLabelDefaults: Record<string, string> = { benefits: 'O que oferecemos', steps: 'Como funciona', about: 'Sobre', testimonials: 'Depoimentos', faq: 'FAQ', leads: 'Cadastre-se' }
+  let navLabels = { ...navLabelDefaults }
   try { navLabels = { ...navLabels, ...JSON.parse(s.landing_nav_labels) } } catch {}
 
-  let navLabelsLeads = 'Cadastre-se'
-  try { navLabelsLeads = JSON.parse(s.landing_nav_labels)?.leads ?? 'Cadastre-se' } catch {}
+  let navCustomItems: Array<{ id: string; label: string; href: string }> = []
+  try {
+    const parsed = JSON.parse(s.landing_nav_custom_items)
+    if (Array.isArray(parsed)) navCustomItems = parsed
+  } catch {}
 
-  const navItems = [
-    ...(benefits.length > 0     ? [{ label: navLabels.benefits,     href: '#beneficios'    }] : []),
-    ...(steps.length > 0        ? [{ label: navLabels.steps,        href: '#como-funciona' }] : []),
-    ...(aboutText               ? [{ label: navLabels.about,        href: '#sobre'         }] : []),
-    ...(testimonials.length > 0 ? [{ label: navLabels.testimonials, href: '#depoimentos'   }] : []),
-    ...(faq.length > 0          ? [{ label: navLabels.faq,          href: '#faq'           }] : []),
-    ...(leadFormActive          ? [{ label: navLabelsLeads,          href: '#contato'       }] : []),
-  ]
+  const navConditions: Record<string, { href: string; show: boolean }> = {
+    benefits:     { href: '#beneficios',    show: benefits.length > 0 },
+    steps:        { href: '#como-funciona', show: steps.length > 0 },
+    about:        { href: '#sobre',         show: aboutActive && !!aboutText },
+    testimonials: { href: '#depoimentos',   show: testimonials.length > 0 },
+    faq:          { href: '#faq',           show: faq.length > 0 },
+    leads:        { href: '#contato',       show: leadFormActive },
+  }
+
+  const defaultNavOrder = ['benefits', 'steps', 'about', 'testimonials', 'faq', 'leads']
+  let navOrder = defaultNavOrder
+  try {
+    const parsed = JSON.parse(s.landing_nav_order)
+    if (Array.isArray(parsed) && parsed.length > 0) navOrder = parsed
+  } catch {}
+
+  const navItems = navOrder.flatMap(key => {
+    if (navConditions[key]) {
+      if (!navConditions[key].show) return []
+      return [{ label: navLabels[key] ?? key, href: navConditions[key].href }]
+    }
+    const custom = navCustomItems.find(c => c.id === key)
+    if (!custom?.label || !custom?.href) return []
+    return [{ label: custom.label, href: custom.href }]
+  })
 
   /* ── Mapa de seções ── */
   const sectionMap: Record<SectionKey, React.ReactNode> = {
 
     stats: stats.length > 0 ? (
-      <section key="stats" className="bg-green-700 text-white">
+      <section key="stats" id="numeros" className="bg-green-700 text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           <StatsCounter stats={stats} />
         </div>
@@ -193,22 +218,8 @@ export default async function LandingPage() {
     ) : null,
 
     partners: partners.length > 0 ? (
-      <section key="partners" className="py-10 px-4 sm:px-6 border-b border-border">
-        <div className="max-w-6xl mx-auto">
-          {partnersSectionTitle && (
-            <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-7">
-              {partnersSectionTitle}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-            {partners.map((p, i) => (
-              <FadeIn key={i} delay={i * 60}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.logo_url} alt={p.name} className="h-8 md:h-10 w-auto object-contain grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all duration-300" />
-              </FadeIn>
-            ))}
-          </div>
-        </div>
+      <section key="partners" id="parceiros" className="py-10 px-4 sm:px-6 border-b border-border">
+        <PartnersCarousel partners={partners} title={partnersSectionTitle} />
       </section>
     ) : null,
 
@@ -241,7 +252,7 @@ export default async function LandingPage() {
     ) : null,
 
     perks: perks.length > 0 ? (
-      <section key="perks" className="py-12 md:py-16 px-4 sm:px-6 bg-green-700 text-white">
+      <section key="perks" id="diferenciais" className="py-12 md:py-16 px-4 sm:px-6 bg-green-700 text-white">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-7 md:mb-10">
             <h2 className="text-2xl md:text-3xl font-bold">{perksSectionTitle}</h2>
@@ -303,7 +314,7 @@ export default async function LandingPage() {
       </section>
     ) : null,
 
-    about: aboutText ? (
+    about: aboutActive && aboutText ? (
       <section key="about" id="sobre" className="py-12 md:py-16 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <div className={`flex flex-col gap-10 ${aboutImage ? 'lg:flex-row lg:items-center' : 'max-w-2xl mx-auto'}`}>
@@ -506,7 +517,7 @@ export default async function LandingPage() {
             {seals.map((sl, i) => (
               <FadeIn key={i} delay={i * 70}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={sl.image_url} alt={sl.alt || ''} className="h-14 md:h-16 w-auto object-contain" />
+                <img src={sl.image_url} alt={sl.alt || ''} className="h-14 md:h-16 w-auto object-contain dark:brightness-0 dark:invert" />
               </FadeIn>
             ))}
           </div>
@@ -514,7 +525,7 @@ export default async function LandingPage() {
       )}
 
       {/* ══ LGPD Cookie Banner ══ */}
-      {lgpdActive && <CookieBanner text={lgpdText} buttonText={lgpdButtonText} />}
+      {lgpdActive && <CookieBanner text={lgpdText} buttonText={lgpdButtonText} linkText={lgpdLinkText} linkUrl={lgpdLinkUrl} />}
 
       {/* ══ Footer ══ */}
       <footer className="border-t border-border py-6 px-4 sm:px-6">

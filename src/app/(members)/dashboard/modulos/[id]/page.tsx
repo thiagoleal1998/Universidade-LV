@@ -163,7 +163,7 @@ export default async function ModulePreviewPage({ params }: { params: Promise<{ 
                     ) : (
                       <div className="w-4 h-4 rounded-full border-2 border-border shrink-0" />
                     )}
-                    <span className={`text-sm ${isLessonDraft ? 'text-muted-foreground' : 'text-foreground'}`}>
+                    <span className={`text-sm ${isLessonDraft ? 'text-muted-foreground' : 'text-green-600'}`}>
                       {lesson.title}
                     </span>
                     {isAdmin && isLessonDraft && (

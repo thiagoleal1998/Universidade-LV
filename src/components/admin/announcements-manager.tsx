@@ -5,6 +5,7 @@ import { createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnou
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
@@ -65,11 +66,11 @@ function AnnouncementForm({
             <Clock className="w-3.5 h-3.5" />
             Publicar em
           </Label>
-          <Input
-            type="datetime-local"
+          <DateTimePicker
             name="publish_at"
             defaultValue={defaultDatetime}
             min={new Date().toISOString().slice(0, 16)}
+            placeholder="Selecionar data de publicação"
           />
           <p className="text-xs text-muted-foreground">
             O comunicado será exibido automaticamente na data/hora definida.

@@ -8,12 +8,19 @@ import type { Settings } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { ImagePlus, Sun, Moon, Settings2, LogIn, Presentation, Plus, Trash2, Menu, ChevronUp, ChevronDown, GraduationCap, MessageCircle, Layers, Globe, Home, Radio, BookOpen, Award, Star, Users, Zap, Shield, Megaphone, FileText, Gift, Plane, Ticket, Trophy } from 'lucide-react'
+import type { LucideProps } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
+
+const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
+  Radio, BookOpen, GraduationCap, MessageCircle, Award, Star,
+  Users, Zap, Globe, Shield, Megaphone, FileText, Gift, Plane, Ticket, Trophy,
+}
 
 /* ── Logo upload field reutilizável ── */
 function LogoField({
@@ -256,6 +263,16 @@ const MEMBER_SUBTABS = [
 
 type MemberSubTabId = typeof MEMBER_SUBTABS[number]['id']
 
+const LANDING_SUBTABS = [
+  { id: 'hero',      label: 'Hero'          },
+  { id: 'conteudo',  label: 'Conteúdo'      },
+  { id: 'social',    label: 'Prova Social'  },
+  { id: 'conversao', label: 'Conversão'     },
+  { id: 'config',    label: 'Configurações' },
+] as const
+
+type LandingSubTabId = typeof LANDING_SUBTABS[number]['id']
+
 type SidebarMagazine = { active: boolean; title: string; description: string; url: string; image_url: string; button_text: string }
 type SidebarSocials = { instagram: string; facebook: string; youtube: string; whatsapp: string; twitter: string; linkedin: string }
 
@@ -311,6 +328,7 @@ function parseOnboardingSteps(json: string): OnboardingStep[] {
 export function SettingsForm({ settings }: { settings: Settings }) {
   const [activeTab, setActiveTab] = useState<TabId>('geral')
   const [memberSubTab, setMemberSubTab] = useState<MemberSubTabId>('menu')
+  const [landingSubTab, setLandingSubTab] = useState<LandingSubTabId>('hero')
   const [isPending, startTransition] = useTransition()
   const [isUploading, startUpload] = useTransition()
   const [isUploadingLogin, startUploadLogin] = useTransition()
@@ -344,6 +362,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [landingHeroSubtitle, setLandingHeroSubtitle] = useState(settings.landing_hero_subtitle || '')
   const [landingHeroImageUrl, setLandingHeroImageUrl] = useState(settings.landing_hero_image_url || '')
   const [landingHeroCtaText, setLandingHeroCtaText] = useState(settings.landing_hero_cta_text || 'Acessar minha conta')
+  const [landingAboutActive, setLandingAboutActive] = useState(settings.landing_about_active !== 'false')
   const [landingAboutTitle, setLandingAboutTitle] = useState(settings.landing_about_title || '')
   const [landingAboutText, setLandingAboutText] = useState(settings.landing_about_text || '')
   const [landingAboutImageUrl, setLandingAboutImageUrl] = useState(settings.landing_about_image_url || '')
@@ -369,6 +388,31 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [landingNavLabels, setLandingNavLabels] = useState(() => {
     try { return { benefits: 'O que oferecemos', steps: 'Como funciona', about: 'Sobre', testimonials: 'Depoimentos', faq: 'FAQ', leads: 'Cadastre-se', ...JSON.parse(settings.landing_nav_labels) } }
     catch { return { benefits: 'O que oferecemos', steps: 'Como funciona', about: 'Sobre', testimonials: 'Depoimentos', faq: 'FAQ', leads: 'Cadastre-se' } }
+  })
+  const [landingNavCustomItems, setLandingNavCustomItems] = useState<{ id: string; label: string; href: string }[]>(() => {
+    try {
+      const parsed = JSON.parse(settings.landing_nav_custom_items)
+      if (Array.isArray(parsed)) return parsed
+    } catch {}
+    return []
+  })
+  const [landingNavOrder, setLandingNavOrder] = useState<string[]>(() => {
+    const builtIn = ['benefits', 'steps', 'about', 'testimonials', 'faq', 'leads']
+    let customIds: string[] = []
+    try {
+      const parsed = JSON.parse(settings.landing_nav_custom_items)
+      if (Array.isArray(parsed)) customIds = parsed.map((c: { id: string }) => c.id)
+    } catch {}
+    const validKeys = new Set([...builtIn, ...customIds])
+    try {
+      const parsed = JSON.parse(settings.landing_nav_order)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = parsed.filter((k: string) => validKeys.has(k))
+        const missing = [...builtIn, ...customIds].filter(k => !valid.includes(k))
+        return [...valid, ...missing]
+      }
+    } catch {}
+    return [...builtIn, ...customIds]
   })
   const [landingPerks, setLandingPerks] = useState<LandingPerk[]>(() => parseLandingPerks(settings.landing_perks))
   const [landingPerksSectionTitle, setLandingPerksSectionTitle] = useState(settings.landing_perks_section_title || '')
@@ -399,6 +443,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [lgpdActive, setLgpdActive] = useState(settings.landing_lgpd_active === 'true')
   const [lgpdText, setLgpdText] = useState(settings.landing_lgpd_text || '')
   const [lgpdButtonText, setLgpdButtonText] = useState(settings.landing_lgpd_button_text || 'Aceitar e continuar')
+  const [lgpdLinkText, setLgpdLinkText] = useState(settings.landing_lgpd_link_text || '')
+  const [lgpdLinkUrl, setLgpdLinkUrl] = useState(settings.landing_lgpd_link_url || '')
   const [trainingHeroTitle, setTrainingHeroTitle] = useState(settings.training_hero_title)
   const [trainingHeroDescription, setTrainingHeroDescription] = useState(settings.training_hero_description)
   const [trainingHeroColor, setTrainingHeroColor] = useState(settings.training_hero_color || 'primary')
@@ -441,6 +487,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     formData.set('landing_hero_subtitle', landingHeroSubtitle)
     formData.set('landing_hero_image_url', landingHeroImageUrl)
     formData.set('landing_hero_cta_text', landingHeroCtaText)
+    formData.set('landing_about_active', landingAboutActive ? 'true' : 'false')
     formData.set('landing_about_title', landingAboutTitle)
     formData.set('landing_about_text', landingAboutText)
     formData.set('landing_about_image_url', landingAboutImageUrl)
@@ -464,6 +511,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     formData.set('landing_faq_section_title', landingFaqSectionTitle)
     formData.set('landing_about_checklist', landingAboutChecklist)
     formData.set('landing_nav_labels', JSON.stringify(landingNavLabels))
+    formData.set('landing_nav_order', JSON.stringify(landingNavOrder))
+    formData.set('landing_nav_custom_items', JSON.stringify(landingNavCustomItems))
     formData.set('landing_perks', JSON.stringify(landingPerks))
     formData.set('landing_perks_section_title', landingPerksSectionTitle)
     formData.set('landing_perks_section_subtitle', landingPerksSectionSubtitle)
@@ -482,6 +531,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     formData.set('landing_lgpd_active', lgpdActive ? 'true' : '')
     formData.set('landing_lgpd_text', lgpdText)
     formData.set('landing_lgpd_button_text', lgpdButtonText)
+    formData.set('landing_lgpd_link_text', lgpdLinkText)
+    formData.set('landing_lgpd_link_url', lgpdLinkUrl)
     formData.set('training_hero_title', trainingHeroTitle)
     formData.set('training_hero_description', trainingHeroDescription)
     formData.set('training_hero_color', trainingHeroColor)
@@ -1307,613 +1358,731 @@ export function SettingsForm({ settings }: { settings: Settings }) {
       {/* ── Aba: Página Inicial (Landing) ── */}
       <div className={cn('space-y-6', activeTab !== 'landing' && 'hidden')}>
 
-        {/* Ordem das seções */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Ordem das seções</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Use as setas para reordenar as seções da página. Hero e Selos são fixos.</p>
-          </div>
-          {(() => {
-            const SECTION_LABELS: Record<string, string> = {
-              stats:        'Números em destaque',
-              partners:     'Parceiros / Companhias',
-              benefits:     'Benefícios',
-              perks:        'Vantagens exclusivas',
-              steps:        'Como funciona',
-              about:        'Sobre',
-              testimonials: 'Depoimentos',
-              faq:          'FAQ',
-              leads:        'Formulário de contato',
-              cta:          'CTA Final',
-            }
-            return (
-              <div className="space-y-1.5">
-                {landingSectionOrder.map((key, i) => (
-                  <div key={key} className="flex items-center gap-2 bg-muted/30 border border-border rounded-lg px-3 py-2">
-                    <span className="w-5 h-5 rounded bg-muted text-muted-foreground text-xs flex items-center justify-center font-mono shrink-0">{i + 1}</span>
-                    <span className="flex-1 text-sm text-foreground font-medium">{SECTION_LABELS[key] ?? key}</span>
-                    <button
-                      type="button"
-                      disabled={i === 0}
-                      onClick={() => setLandingSectionOrder(prev => {
-                        const next = [...prev]
-                        ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
-                        return next
-                      })}
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                      title="Mover para cima"
-                    >
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={i === landingSectionOrder.length - 1}
-                      onClick={() => setLandingSectionOrder(prev => {
-                        const next = [...prev]
-                        ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
-                        return next
-                      })}
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                      title="Mover para baixo"
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+        {/* Sub-tabs */}
+        <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit flex-wrap">
+          {LANDING_SUBTABS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setLandingSubTab(id)}
+              className={cn(
+                'px-3 py-1.5 text-sm font-medium rounded-lg transition-all whitespace-nowrap',
+                landingSubTab === id
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sub-aba: Hero */}
+        <div className={cn('space-y-6', landingSubTab !== 'hero' && 'hidden')}>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Hero</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Seção principal que aparece no topo da landing page pública.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Badge / Etiqueta</Label>
+              <Input value={landingHeroBadge} onChange={(e) => setLandingHeroBadge(e.target.value)} placeholder="Plataforma exclusiva para agentes de viagem" className="mt-1.5" />
+              <p className="text-xs text-muted-foreground mt-1">Texto pequeno em destaque acima do título. Deixe vazio para ocultar.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título principal</Label>
+              <Input value={landingHeroTitle} onChange={(e) => setLandingHeroTitle(e.target.value)} placeholder="Capacitação exclusiva para agentes de viagem" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Subtítulo</Label>
+              <Textarea value={landingHeroSubtitle} onChange={(e) => setLandingHeroSubtitle(e.target.value)} placeholder="Treinamentos ao vivo, cursos completos, comunidade e certificados..." rows={2} className="mt-1.5 resize-none text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Texto do botão principal (CTA)</Label>
+              <Input value={landingHeroCtaText} onChange={(e) => setLandingHeroCtaText(e.target.value)} placeholder="Acessar minha conta" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Texto do botão secundário (opcional)</Label>
+              <Input value={landingHeroSecondaryCtaText} onChange={(e) => setLandingHeroSecondaryCtaText(e.target.value)} placeholder="Como funciona" className="mt-1.5" />
+              <p className="text-xs text-muted-foreground mt-1">Aparece ao lado do botão principal. Deixe vazio para exibir apenas um botão.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Imagem de fundo</Label>
+              <Input value={landingHeroImageUrl} onChange={(e) => setLandingHeroImageUrl(e.target.value)} placeholder="https://... (deixe vazio para usar gradiente)" className="mt-1.5" />
+              <p className="text-xs text-muted-foreground mt-1">URL de imagem. Se vazio, exibe gradiente na cor principal.</p>
+            </div>
+            <div>
+              <Label className="text-xs">URL do vídeo (opcional)</Label>
+              <Input value={landingHeroVideoUrl} onChange={(e) => setLandingHeroVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="mt-1.5" />
+              <p className="text-xs text-muted-foreground mt-1">Cole uma URL do YouTube, Vimeo ou vídeo direto (.mp4). Quando preenchido, o hero exibe o vídeo ao lado do texto.</p>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Countdown — Próximo treinamento</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Barra acima do hero com contagem regressiva. Ativa automaticamente quando a data estiver no futuro.</p>
               </div>
-            )
-          })()}
-        </section>
+              <button
+                type="button"
+                onClick={() => setCountdownActive(v => !v)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${countdownActive ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${countdownActive ? 'translate-x-4' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div>
+              <Label className="text-xs">Título da barra</Label>
+              <Input value={countdownTitle} onChange={e => setCountdownTitle(e.target.value)} placeholder="Próximo treinamento ao vivo" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Data e hora do evento</Label>
+              <DateTimePicker value={countdownDate} onChange={setCountdownDate} className="mt-1.5" placeholder="Selecionar data do evento" />
+              <p className="text-xs text-muted-foreground mt-1">Quando a data passar, a barra some automaticamente.</p>
+            </div>
+          </section>
 
-        {/* Hero */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Hero</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Seção principal que aparece no topo da landing page pública.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Badge / Etiqueta</Label>
-            <Input value={landingHeroBadge} onChange={(e) => setLandingHeroBadge(e.target.value)} placeholder="Plataforma exclusiva para agentes de viagem" className="mt-1.5" />
-            <p className="text-xs text-muted-foreground mt-1">Texto pequeno em destaque acima do título. Deixe vazio para ocultar.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título principal</Label>
-            <Input value={landingHeroTitle} onChange={(e) => setLandingHeroTitle(e.target.value)} placeholder="Capacitação exclusiva para agentes de viagem" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Subtítulo</Label>
-            <Textarea value={landingHeroSubtitle} onChange={(e) => setLandingHeroSubtitle(e.target.value)} placeholder="Treinamentos ao vivo, cursos completos, comunidade e certificados..." rows={2} className="mt-1.5 resize-none text-sm" />
-          </div>
-          <div>
-            <Label className="text-xs">Texto do botão principal (CTA)</Label>
-            <Input value={landingHeroCtaText} onChange={(e) => setLandingHeroCtaText(e.target.value)} placeholder="Acessar minha conta" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Texto do botão secundário (opcional)</Label>
-            <Input value={landingHeroSecondaryCtaText} onChange={(e) => setLandingHeroSecondaryCtaText(e.target.value)} placeholder="Como funciona" className="mt-1.5" />
-            <p className="text-xs text-muted-foreground mt-1">Aparece ao lado do botão principal. Deixe vazio para exibir apenas um botão.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Imagem de fundo</Label>
-            <Input value={landingHeroImageUrl} onChange={(e) => setLandingHeroImageUrl(e.target.value)} placeholder="https://... (deixe vazio para usar gradiente)" className="mt-1.5" />
-            <p className="text-xs text-muted-foreground mt-1">URL de imagem. Se vazio, exibe gradiente na cor principal.</p>
-          </div>
-          <div>
-            <Label className="text-xs">URL do vídeo (opcional)</Label>
-            <Input value={landingHeroVideoUrl} onChange={(e) => setLandingHeroVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="mt-1.5" />
-            <p className="text-xs text-muted-foreground mt-1">Cole uma URL do YouTube, Vimeo ou vídeo direto (.mp4). Quando preenchido, o hero exibe o vídeo ao lado do texto.</p>
-          </div>
-        </section>
+        </div>
 
-        {/* Benefícios */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Benefícios / O que você vai encontrar</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Até 4 cards destacando as funcionalidades da área de membros.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título da seção</Label>
-            <Input value={landingBenefitsSectionTitle} onChange={(e) => setLandingBenefitsSectionTitle(e.target.value)} placeholder="O que você vai encontrar" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Subtítulo da seção</Label>
-            <Input value={landingBenefitsSectionSubtitle} onChange={(e) => setLandingBenefitsSectionSubtitle(e.target.value)} placeholder="Acesso completo a tudo que um agente de viagem precisa..." className="mt-1.5" />
-          </div>
-          {landingBenefits.map((b, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Card {i + 1}</p>
+        {/* Sub-aba: Conteúdo */}
+        <div className={cn('space-y-6', landingSubTab !== 'conteudo' && 'hidden')}>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Números em destaque</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Faixa com até 4 estatísticas (ex: "200+ Treinamentos"). Aparece logo após o hero.</p>
+            </div>
+            {landingStats.map((s, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Número {i + 1}</p>
+                  <button type="button" onClick={() => setLandingStats((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Número</Label>
+                    <Input value={s.number} onChange={(e) => setLandingStats((prev) => prev.map((x, j) => j === i ? { ...x, number: e.target.value } : x))} placeholder="200+" className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Legenda</Label>
+                    <Input value={s.label} onChange={(e) => setLandingStats((prev) => prev.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} placeholder="Treinamentos realizados" className="mt-1.5" />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {landingStats.length < 4 && (
+              <button type="button" onClick={() => setLandingStats((prev) => [...prev, { number: '', label: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+                <Plus className="w-4 h-4" />Adicionar número
+              </button>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Benefícios / O que você vai encontrar</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Até 4 cards destacando as funcionalidades da área de membros.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título da seção</Label>
+              <Input value={landingBenefitsSectionTitle} onChange={(e) => setLandingBenefitsSectionTitle(e.target.value)} placeholder="O que você vai encontrar" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Subtítulo da seção</Label>
+              <Input value={landingBenefitsSectionSubtitle} onChange={(e) => setLandingBenefitsSectionSubtitle(e.target.value)} placeholder="Acesso completo a tudo que um agente de viagem precisa..." className="mt-1.5" />
+            </div>
+            {landingBenefits.map((b, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Card {i + 1}</p>
+                  <button type="button" onClick={() => setLandingBenefits((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover card">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div>
+                  <Label className="text-xs">Ícone</Label>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    {(() => { const Icon = ICON_MAP[b.icon] ?? Star; return (
+                      <div className="w-9 h-9 shrink-0 rounded-xl bg-green-500/10 flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-green-600" />
+                      </div>
+                    )})()}
+                    <select value={b.icon} onChange={(e) => setLandingBenefits((prev) => prev.map((x, j) => j === i ? { ...x, icon: e.target.value } : x))} className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm">
+                      {LANDING_ICON_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Título</Label>
+                  <Input value={b.title} onChange={(e) => setLandingBenefits((prev) => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Título do card" className="mt-1.5" />
+                </div>
+                <div>
+                  <Label className="text-xs">Descrição</Label>
+                  <Textarea value={b.description} onChange={(e) => setLandingBenefits((prev) => prev.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} placeholder="Breve descrição do benefício..." rows={2} className="mt-1.5 resize-none text-sm" />
+                </div>
+              </div>
+            ))}
+            {landingBenefits.length < 4 && (
+              <button type="button" onClick={() => setLandingBenefits((prev) => [...prev, { icon: 'Star', title: '', description: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+                <Plus className="w-4 h-4" />Adicionar card
+              </button>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Vantagens exclusivas</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Seção em destaque (fundo verde) mostrando os benefícios de participar dos treinamentos. Até 4 itens.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título da seção</Label>
+              <Input value={landingPerksSectionTitle} onChange={(e) => setLandingPerksSectionTitle(e.target.value)} placeholder="Muito além do conhecimento" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Subtítulo da seção</Label>
+              <Textarea value={landingPerksSectionSubtitle} onChange={(e) => setLandingPerksSectionSubtitle(e.target.value)} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Participar dos treinamentos é uma experiência completa..." />
+            </div>
+            {landingPerks.map((p, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Item {i + 1}</p>
+                  <button type="button" onClick={() => setLandingPerks((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div>
+                  <Label className="text-xs">Ícone</Label>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    {(() => { const Icon = ICON_MAP[p.icon] ?? Star; return (
+                      <div className="w-9 h-9 shrink-0 rounded-xl bg-green-700 flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                    )})()}
+                    <select value={p.icon} onChange={(e) => setLandingPerks((prev) => prev.map((x, j) => j === i ? { ...x, icon: e.target.value } : x))} className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm">
+                      {LANDING_ICON_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Título</Label>
+                  <Input value={p.title} onChange={(e) => setLandingPerks((prev) => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Título da vantagem" className="mt-1.5" />
+                </div>
+                <div>
+                  <Label className="text-xs">Descrição</Label>
+                  <Textarea value={p.description} onChange={(e) => setLandingPerks((prev) => prev.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Descreva a vantagem..." />
+                </div>
+              </div>
+            ))}
+            {landingPerks.length < 4 && (
+              <button type="button" onClick={() => setLandingPerks((prev) => [...prev, { icon: 'Gift', title: '', description: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+                <Plus className="w-4 h-4" />Adicionar vantagem
+              </button>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Sobre / Apresentação</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Seção de texto com imagem opcional.</p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <span className="text-xs text-muted-foreground">{landingAboutActive ? 'Visível' : 'Oculta'}</span>
                 <button
                   type="button"
-                  onClick={() => setLandingBenefits((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
-                  title="Remover card"
+                  role="switch"
+                  aria-checked={landingAboutActive}
+                  onClick={() => setLandingAboutActive(v => !v)}
+                  className={cn('relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors', landingAboutActive ? 'bg-green-600' : 'bg-muted-foreground/30')}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className={cn('pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform', landingAboutActive ? 'translate-x-4' : 'translate-x-0')} />
                 </button>
+              </label>
+            </div>
+            <div>
+              <Label className="text-xs">Título da seção</Label>
+              <Input value={landingAboutTitle} onChange={(e) => setLandingAboutTitle(e.target.value)} placeholder="Sobre a Universidade LV" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Texto</Label>
+              <Textarea value={landingAboutText} onChange={(e) => setLandingAboutText(e.target.value)} placeholder="Conte sobre a plataforma, missão, diferenciais..." rows={4} className="mt-1.5 resize-none text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Lista de diferenciais (um por linha)</Label>
+              <Textarea value={landingAboutChecklist} onChange={(e) => setLandingAboutChecklist(e.target.value)} placeholder={"Conteúdo atualizado constantemente\nInstrutores especialistas em turismo\nCertificados reconhecidos no mercado"} rows={4} className="mt-1.5 resize-none text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">Cada linha vira um item com ícone de check. Deixe vazio para ocultar.</p>
+            </div>
+            <div>
+              <Label className="text-xs">URL da imagem lateral (opcional)</Label>
+              <Input value={landingAboutImageUrl} onChange={(e) => setLandingAboutImageUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Como funciona</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Até 3 passos numerados explicando o fluxo da plataforma.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título da seção</Label>
+              <Input value={landingStepsSectionTitle} onChange={(e) => setLandingStepsSectionTitle(e.target.value)} placeholder="Como funciona" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Subtítulo da seção</Label>
+              <Input value={landingStepsSectionSubtitle} onChange={(e) => setLandingStepsSectionSubtitle(e.target.value)} placeholder="Em 3 passos você já está aprendendo e evoluindo..." className="mt-1.5" />
+            </div>
+            {landingSteps.map((s, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Passo {i + 1}</p>
+                  <button type="button" onClick={() => setLandingSteps((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div>
+                  <Label className="text-xs">Título</Label>
+                  <Input value={s.title} onChange={(e) => setLandingSteps((prev) => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Acesse a plataforma" className="mt-1.5" />
+                </div>
+                <div>
+                  <Label className="text-xs">Descrição</Label>
+                  <Textarea value={s.description} onChange={(e) => setLandingSteps((prev) => prev.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Descreva este passo..." />
+                </div>
+              </div>
+            ))}
+            {landingSteps.length < 3 && (
+              <button type="button" onClick={() => setLandingSteps((prev) => [...prev, { title: '', description: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+                <Plus className="w-4 h-4" />Adicionar passo
+              </button>
+            )}
+          </section>
+
+        </div>
+
+        {/* Sub-aba: Prova Social */}
+        <div className={cn('space-y-6', landingSubTab !== 'social' && 'hidden')}>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Depoimentos</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Carrossel com depoimentos de agentes. Só aparece se houver ao menos 1 depoimento.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título da seção</Label>
+              <Input value={landingTestimonialsSectionTitle} onChange={(e) => setLandingTestimonialsSectionTitle(e.target.value)} placeholder="Histórias reais" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Subtítulo da seção</Label>
+              <Input value={landingTestimonialsSectionSubtitle} onChange={(e) => setLandingTestimonialsSectionSubtitle(e.target.value)} placeholder="Agentes de viagem que transformaram sua carreira..." className="mt-1.5" />
+            </div>
+            {landingTestimonials.map((t, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Depoimento {i + 1}</p>
+                  <button type="button" onClick={() => setLandingTestimonials((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Nome</Label>
+                    <Input value={t.name} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Maria Silva" className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Cargo / Cidade</Label>
+                    <Input value={t.role} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} placeholder="Agente — São Paulo" className="mt-1.5" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Depoimento</Label>
+                  <Textarea value={t.text} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Escreva o depoimento..." />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">URL do avatar (opcional)</Label>
+                    <Input value={t.avatar_url} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, avatar_url: e.target.value } : x))} placeholder="https://... (iniciais se vazio)" className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Avaliação (estrelas, 1–5)</Label>
+                    <select value={t.rating ?? ''} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, rating: e.target.value ? Number(e.target.value) : undefined } : x))} className="mt-1.5 w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                      <option value="">Sem estrelas</option>
+                      {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{'★'.repeat(n)}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={() => setLandingTestimonials((prev) => [...prev, { name: '', role: '', text: '', avatar_url: '', rating: 5 }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+              <Plus className="w-4 h-4" />Adicionar depoimento
+            </button>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">FAQ</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Perguntas frequentes com accordion. Só aparece se houver ao menos 1 pergunta.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título da seção</Label>
+              <Input value={landingFaqSectionTitle} onChange={(e) => setLandingFaqSectionTitle(e.target.value)} placeholder="Perguntas frequentes" className="mt-1.5" />
+            </div>
+            {landingFaq.map((f, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pergunta {i + 1}</p>
+                  <button type="button" onClick={() => setLandingFaq((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div>
+                  <Label className="text-xs">Pergunta</Label>
+                  <Input value={f.question} onChange={(e) => setLandingFaq((prev) => prev.map((x, j) => j === i ? { ...x, question: e.target.value } : x))} placeholder="Como funciona?" className="mt-1.5" />
+                </div>
+                <div>
+                  <Label className="text-xs">Resposta</Label>
+                  <Textarea value={f.answer} onChange={(e) => setLandingFaq((prev) => prev.map((x, j) => j === i ? { ...x, answer: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Escreva a resposta..." />
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={() => setLandingFaq((prev) => [...prev, { question: '', answer: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+              <Plus className="w-4 h-4" />Adicionar pergunta
+            </button>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Parceiros / Companhias</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Faixa com logos de parceiros ou companhias aéreas. Só aparece se houver ao menos 1 logo.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título da faixa</Label>
+              <Input value={landingPartnersSectionTitle} onChange={(e) => setLandingPartnersSectionTitle(e.target.value)} placeholder="Parceiros e companhias" className="mt-1.5" />
+            </div>
+            {landingPartners.map((p, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Logo {i + 1}</p>
+                  <button type="button" onClick={() => setLandingPartners((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Nome (para acessibilidade)</Label>
+                    <Input value={p.name} onChange={(e) => setLandingPartners((prev) => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Nome da empresa" className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">URL do logo</Label>
+                    <Input value={p.logo_url} onChange={(e) => setLandingPartners((prev) => prev.map((x, j) => j === i ? { ...x, logo_url: e.target.value } : x))} placeholder="https://..." className="mt-1.5" />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={() => setLandingPartners((prev) => [...prev, { name: '', logo_url: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+              <Plus className="w-4 h-4" />Adicionar logo
+            </button>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Selos de credibilidade</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Imagens de selos exibidas acima do rodapé. Suba as imagens e cole as URLs aqui.</p>
+            </div>
+            {landingSeals.map((sl, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Selo {i + 1}</p>
+                  <button type="button" onClick={() => setLandingSeals((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">URL da imagem</Label>
+                    <Input value={sl.image_url} onChange={(e) => setLandingSeals((prev) => prev.map((x, j) => j === i ? { ...x, image_url: e.target.value } : x))} placeholder="https://..." className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Texto alternativo</Label>
+                    <Input value={sl.alt} onChange={(e) => setLandingSeals((prev) => prev.map((x, j) => j === i ? { ...x, alt: e.target.value } : x))} placeholder="Ex: ISO 9001 Certificado" className="mt-1.5" />
+                  </div>
+                </div>
+                {sl.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={sl.image_url} alt={sl.alt || 'Selo'} className="h-12 w-auto object-contain opacity-80 mt-1" />
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={() => setLandingSeals((prev) => [...prev, { image_url: '', alt: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+              <Plus className="w-4 h-4" />Adicionar selo
+            </button>
+          </section>
+
+        </div>
+
+        {/* Sub-aba: Conversão */}
+        <div className={cn('space-y-6', landingSubTab !== 'conversao' && 'hidden')}>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Formulário de contato / Captação de leads</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Seção com formulário de nome + e-mail. Os contatos ficam salvos no banco de dados.</p>
+              </div>
+              <button type="button" onClick={() => setLeadFormActive(v => !v)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${leadFormActive ? 'bg-primary' : 'bg-muted'}`}>
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${leadFormActive ? 'translate-x-4' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div>
+              <Label className="text-xs">Título da seção</Label>
+              <Input value={leadFormTitle} onChange={e => setLeadFormTitle(e.target.value)} placeholder="Fique por dentro das novidades" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Subtítulo (opcional)</Label>
+              <Textarea value={leadFormSubtitle} onChange={e => setLeadFormSubtitle(e.target.value)} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Cadastre-se e receba informações sobre treinamentos..." />
+            </div>
+            <div>
+              <Label className="text-xs">Texto do botão</Label>
+              <Input value={leadFormCtaText} onChange={e => setLeadFormCtaText(e.target.value)} placeholder="Quero receber novidades" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Mensagem de sucesso</Label>
+              <Input value={leadFormSuccessMessage} onChange={e => setLeadFormSuccessMessage(e.target.value)} placeholder="Obrigado! Em breve você receberá nossas novidades." className="mt-1.5" />
+            </div>
+            <p className="text-xs text-muted-foreground border border-border rounded-lg px-3 py-2 bg-muted/30">
+              Os leads captados ficam na tabela <code className="font-mono text-[11px]">landing_leads</code> do Supabase. Execute a migração <code className="font-mono text-[11px]">20260614000000_landing_leads.sql</code> se ainda não o fez.
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">CTA Final</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Faixa de chamada no final da página. Só aparece se o Título estiver preenchido.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Título</Label>
+              <Input value={landingCtaTitle} onChange={(e) => setLandingCtaTitle(e.target.value)} placeholder="Pronto para começar?" className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Subtítulo (opcional)</Label>
+              <Input value={landingCtaSubtitle} onChange={(e) => setLandingCtaSubtitle(e.target.value)} placeholder="Junte-se a centenas de agentes de viagem..." className="mt-1.5" />
+            </div>
+            <div>
+              <Label className="text-xs">Texto do botão</Label>
+              <Input value={landingCtaButtonText} onChange={(e) => setLandingCtaButtonText(e.target.value)} placeholder="Acessar agora" className="mt-1.5" />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Banner de cookies (LGPD)</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Banner fixo no rodapé informando sobre o uso de cookies. Desaparece após o visitante aceitar.</p>
+              </div>
+              <button type="button" onClick={() => setLgpdActive(v => !v)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lgpdActive ? 'bg-primary' : 'bg-muted'}`}>
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lgpdActive ? 'translate-x-4' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div>
+              <Label className="text-xs">Texto do banner</Label>
+              <Textarea value={lgpdText} onChange={e => setLgpdText(e.target.value)} rows={3} className="mt-1.5 resize-none text-sm" placeholder="Este site utiliza cookies para melhorar sua experiência..." />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Use <code className="bg-muted px-1 py-0.5 rounded text-[11px]">{'{link}'}</code> no texto acima para inserir um link clicável no local desejado.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+              <p className="text-xs font-semibold text-foreground">Link externo (opcional)</p>
+              <div>
+                <Label className="text-xs">Texto do link</Label>
+                <Input value={lgpdLinkText} onChange={e => setLgpdLinkText(e.target.value)} placeholder="Política de Privacidade" className="mt-1.5" />
               </div>
               <div>
-                <Label className="text-xs">Ícone</Label>
-                <select
-                  value={b.icon}
-                  onChange={(e) => setLandingBenefits((prev) => prev.map((x, j) => j === i ? { ...x, icon: e.target.value } : x))}
-                  className="mt-1.5 w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {LANDING_ICON_OPTIONS.map(({ value, label }) => (
-                    <option key={value} value={value}>{label}</option>
+                <Label className="text-xs">URL do link</Label>
+                <Input value={lgpdLinkUrl} onChange={e => setLgpdLinkUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Texto do botão de aceite</Label>
+              <Input value={lgpdButtonText} onChange={e => setLgpdButtonText(e.target.value)} placeholder="Aceitar e continuar" className="mt-1.5" />
+            </div>
+          </section>
+
+        </div>
+
+        {/* Sub-aba: Configurações */}
+        <div className={cn('space-y-6', landingSubTab !== 'config' && 'hidden')}>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Ordem das seções</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Use as setas para reordenar as seções da página. Hero e Selos são fixos.</p>
+            </div>
+            {(() => {
+              const SECTION_LABELS: Record<string, string> = {
+                stats:        'Números em destaque',
+                partners:     'Parceiros / Companhias',
+                benefits:     'Benefícios',
+                perks:        'Vantagens exclusivas',
+                steps:        'Como funciona',
+                about:        'Sobre',
+                testimonials: 'Depoimentos',
+                faq:          'FAQ',
+                leads:        'Formulário de contato',
+                cta:          'CTA Final',
+              }
+              return (
+                <div className="space-y-1.5">
+                  {landingSectionOrder.map((key, i) => (
+                    <div key={key} className="flex items-center gap-2 bg-muted/30 border border-border rounded-lg px-3 py-2">
+                      <span className="w-5 h-5 rounded bg-muted text-muted-foreground text-xs flex items-center justify-center font-mono shrink-0">{i + 1}</span>
+                      <span className="flex-1 text-sm text-foreground font-medium">{SECTION_LABELS[key] ?? key}</span>
+                      <button type="button" disabled={i === 0} onClick={() => setLandingSectionOrder(prev => { const next = [...prev]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; return next })} className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors" title="Mover para cima">
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button type="button" disabled={i === landingSectionOrder.length - 1} onClick={() => setLandingSectionOrder(prev => { const next = [...prev]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; return next })} className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors" title="Mover para baixo">
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
                   ))}
-                </select>
-              </div>
-              <div>
-                <Label className="text-xs">Título</Label>
-                <Input value={b.title} onChange={(e) => setLandingBenefits((prev) => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Título do card" className="mt-1.5" />
-              </div>
-              <div>
-                <Label className="text-xs">Descrição</Label>
-                <Textarea value={b.description} onChange={(e) => setLandingBenefits((prev) => prev.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} placeholder="Breve descrição do benefício..." rows={2} className="mt-1.5 resize-none text-sm" />
-              </div>
-            </div>
-          ))}
-          {landingBenefits.length < 4 && (
-            <button
-              type="button"
-              onClick={() => setLandingBenefits((prev) => [...prev, { icon: 'Star', title: '', description: '' }])}
-              className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Adicionar card
-            </button>
-          )}
-        </section>
-
-        {/* Vantagens */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Vantagens exclusivas</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Seção em destaque (fundo verde) mostrando os benefícios de participar dos treinamentos. Até 4 itens.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título da seção</Label>
-            <Input value={landingPerksSectionTitle} onChange={(e) => setLandingPerksSectionTitle(e.target.value)} placeholder="Muito além do conhecimento" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Subtítulo da seção</Label>
-            <Textarea value={landingPerksSectionSubtitle} onChange={(e) => setLandingPerksSectionSubtitle(e.target.value)} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Participar dos treinamentos é uma experiência completa..." />
-          </div>
-          {landingPerks.map((p, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Item {i + 1}</p>
-                <button type="button" onClick={() => setLandingPerks((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div>
-                <Label className="text-xs">Ícone</Label>
-                <select
-                  value={p.icon}
-                  onChange={(e) => setLandingPerks((prev) => prev.map((x, j) => j === i ? { ...x, icon: e.target.value } : x))}
-                  className="mt-1.5 w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {LANDING_ICON_OPTIONS.map(({ value, label }) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label className="text-xs">Título</Label>
-                <Input value={p.title} onChange={(e) => setLandingPerks((prev) => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Título da vantagem" className="mt-1.5" />
-              </div>
-              <div>
-                <Label className="text-xs">Descrição</Label>
-                <Textarea value={p.description} onChange={(e) => setLandingPerks((prev) => prev.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Descreva a vantagem..." />
-              </div>
-            </div>
-          ))}
-          {landingPerks.length < 4 && (
-            <button type="button" onClick={() => setLandingPerks((prev) => [...prev, { icon: 'Gift', title: '', description: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-              <Plus className="w-4 h-4" />Adicionar vantagem
-            </button>
-          )}
-        </section>
-
-        {/* Sobre */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Sobre / Apresentação</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Seção de texto livre com imagem. Só aparece na landing se o campo "Texto" estiver preenchido.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título da seção</Label>
-            <Input value={landingAboutTitle} onChange={(e) => setLandingAboutTitle(e.target.value)} placeholder="Sobre a Universidade LV" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Texto</Label>
-            <Textarea value={landingAboutText} onChange={(e) => setLandingAboutText(e.target.value)} placeholder="Conte sobre a plataforma, missão, diferenciais..." rows={4} className="mt-1.5 resize-none text-sm" />
-          </div>
-          <div>
-            <Label className="text-xs">Lista de diferenciais (um por linha)</Label>
-            <Textarea value={landingAboutChecklist} onChange={(e) => setLandingAboutChecklist(e.target.value)} placeholder={"Conteúdo atualizado constantemente\nInstrutores especialistas em turismo\nCertificados reconhecidos no mercado"} rows={4} className="mt-1.5 resize-none text-sm" />
-            <p className="text-xs text-muted-foreground mt-1">Cada linha vira um item com ícone de check. Deixe vazio para ocultar.</p>
-          </div>
-          <div>
-            <Label className="text-xs">URL da imagem lateral (opcional)</Label>
-            <Input value={landingAboutImageUrl} onChange={(e) => setLandingAboutImageUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
-          </div>
-        </section>
-
-        {/* Navegação */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Menu de navegação</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Textos dos links no menu do header. Cada item só aparece se a seção correspondente tiver conteúdo.</p>
-          </div>
-          {([
-            { key: 'benefits',     label: 'Benefícios / O que oferecemos' },
-            { key: 'steps',        label: 'Como funciona' },
-            { key: 'about',        label: 'Sobre' },
-            { key: 'testimonials', label: 'Depoimentos' },
-            { key: 'faq',          label: 'FAQ' },
-            { key: 'leads',        label: 'Formulário de contato' },
-          ] as const).map(({ key, label }) => (
-            <div key={key}>
-              <Label className="text-xs">{label}</Label>
-              <Input
-                value={(landingNavLabels as Record<string, string>)[key] ?? ''}
-                onChange={(e) => setLandingNavLabels((prev) => ({ ...prev, [key]: e.target.value }))}
-                placeholder={label}
-                className="mt-1.5"
-              />
-            </div>
-          ))}
-        </section>
-
-        {/* Números / Stats */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Números em destaque</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Faixa com até 4 estatísticas (ex: "200+ Treinamentos"). Aparece logo após o hero.</p>
-          </div>
-          {landingStats.map((s, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Número {i + 1}</p>
-                <button type="button" onClick={() => setLandingStats((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Número</Label>
-                  <Input value={s.number} onChange={(e) => setLandingStats((prev) => prev.map((x, j) => j === i ? { ...x, number: e.target.value } : x))} placeholder="200+" className="mt-1.5" />
                 </div>
-                <div>
-                  <Label className="text-xs">Legenda</Label>
-                  <Input value={s.label} onChange={(e) => setLandingStats((prev) => prev.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} placeholder="Treinamentos realizados" className="mt-1.5" />
-                </div>
-              </div>
-            </div>
-          ))}
-          {landingStats.length < 4 && (
-            <button type="button" onClick={() => setLandingStats((prev) => [...prev, { number: '', label: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-              <Plus className="w-4 h-4" />Adicionar número
-            </button>
-          )}
-        </section>
+              )
+            })()}
+          </section>
 
-        {/* Como funciona */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Como funciona</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Até 3 passos numerados explicando o fluxo da plataforma.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título da seção</Label>
-            <Input value={landingStepsSectionTitle} onChange={(e) => setLandingStepsSectionTitle(e.target.value)} placeholder="Como funciona" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Subtítulo da seção</Label>
-            <Input value={landingStepsSectionSubtitle} onChange={(e) => setLandingStepsSectionSubtitle(e.target.value)} placeholder="Em 3 passos você já está aprendendo e evoluindo..." className="mt-1.5" />
-          </div>
-          {landingSteps.map((s, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Passo {i + 1}</p>
-                <button type="button" onClick={() => setLandingSteps((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div>
-                <Label className="text-xs">Título</Label>
-                <Input value={s.title} onChange={(e) => setLandingSteps((prev) => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Acesse a plataforma" className="mt-1.5" />
-              </div>
-              <div>
-                <Label className="text-xs">Descrição</Label>
-                <Textarea value={s.description} onChange={(e) => setLandingSteps((prev) => prev.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Descreva este passo..." />
-              </div>
+          <section className="rounded-xl border border-border p-5 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Menu de navegação</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Defina o texto e a ordem dos links. Itens fixos só aparecem se a seção tiver conteúdo. Itens personalizados sempre aparecem.</p>
             </div>
-          ))}
-          {landingSteps.length < 3 && (
-            <button type="button" onClick={() => setLandingSteps((prev) => [...prev, { title: '', description: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-              <Plus className="w-4 h-4" />Adicionar passo
-            </button>
-          )}
-        </section>
-
-        {/* Depoimentos */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Depoimentos</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Carrossel com depoimentos de agentes. Só aparece se houver ao menos 1 depoimento.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título da seção</Label>
-            <Input value={landingTestimonialsSectionTitle} onChange={(e) => setLandingTestimonialsSectionTitle(e.target.value)} placeholder="Histórias reais" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Subtítulo da seção</Label>
-            <Input value={landingTestimonialsSectionSubtitle} onChange={(e) => setLandingTestimonialsSectionSubtitle(e.target.value)} placeholder="Agentes de viagem que transformaram sua carreira..." className="mt-1.5" />
-          </div>
-          {landingTestimonials.map((t, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Depoimento {i + 1}</p>
-                <button type="button" onClick={() => setLandingTestimonials((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Nome</Label>
-                  <Input value={t.name} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Maria Silva" className="mt-1.5" />
-                </div>
-                <div>
-                  <Label className="text-xs">Cargo / Cidade</Label>
-                  <Input value={t.role} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} placeholder="Agente — São Paulo" className="mt-1.5" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Depoimento</Label>
-                <Textarea value={t.text} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Escreva o depoimento..." />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">URL do avatar (opcional)</Label>
-                  <Input value={t.avatar_url} onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, avatar_url: e.target.value } : x))} placeholder="https://... (iniciais se vazio)" className="mt-1.5" />
-                </div>
-                <div>
-                  <Label className="text-xs">Avaliação (estrelas, 1–5)</Label>
-                  <select
-                    value={t.rating ?? ''}
-                    onChange={(e) => setLandingTestimonials((prev) => prev.map((x, j) => j === i ? { ...x, rating: e.target.value ? Number(e.target.value) : undefined } : x))}
-                    className="mt-1.5 w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+            {(() => {
+              const BUILT_IN_KEYS = new Set(['benefits', 'steps', 'about', 'testimonials', 'faq', 'leads'])
+              const NAV_PLACEHOLDERS: Record<string, string> = {
+                benefits:     'Benefícios / O que oferecemos',
+                steps:        'Como funciona',
+                about:        'Sobre',
+                testimonials: 'Depoimentos',
+                faq:          'FAQ',
+                leads:        'Formulário de contato',
+              }
+              return (
+                <>
+                  {landingNavOrder.map((key, i) => {
+                    const SECTION_HREFS = new Set(['#numeros', '#parceiros', '#beneficios', '#diferenciais', '#como-funciona', '#sobre', '#depoimentos', '#faq', '#contato'])
+                    const isBuiltIn = BUILT_IN_KEYS.has(key)
+                    const customItem = isBuiltIn ? null : landingNavCustomItems.find(c => c.id === key)
+                    return (
+                      <div key={key} className="flex items-start gap-2 bg-muted/30 border border-border rounded-lg px-3 py-2">
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          {isBuiltIn ? (
+                            <>
+                              <p className="text-[10px] text-muted-foreground">{NAV_PLACEHOLDERS[key]}</p>
+                              <Input
+                                value={(landingNavLabels as Record<string, string>)[key] ?? ''}
+                                onChange={(e) => setLandingNavLabels(prev => ({ ...prev, [key]: e.target.value }))}
+                                placeholder={NAV_PLACEHOLDERS[key]}
+                                className="h-7 text-sm"
+                              />
+                            </>
+                          ) : customItem ? (
+                            <>
+                              <Input
+                                value={customItem.label}
+                                onChange={(e) => setLandingNavCustomItems(prev => prev.map(c => c.id === key ? { ...c, label: e.target.value } : c))}
+                                placeholder="Texto do link"
+                                className="h-7 text-sm"
+                              />
+                              <select
+                                value={SECTION_HREFS.has(customItem.href) ? customItem.href : 'custom'}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  if (val !== 'custom') {
+                                    setLandingNavCustomItems(prev => prev.map(c => c.id === key ? { ...c, href: val } : c))
+                                  } else if (SECTION_HREFS.has(customItem.href)) {
+                                    setLandingNavCustomItems(prev => prev.map(c => c.id === key ? { ...c, href: '' } : c))
+                                  }
+                                }}
+                                className="h-7 rounded-md border border-input bg-background px-2 text-xs w-full"
+                              >
+                                <optgroup label="Rolar até a seção">
+                                  <option value="#numeros">Números em destaque</option>
+                                  <option value="#parceiros">Parceiros</option>
+                                  <option value="#beneficios">Benefícios</option>
+                                  <option value="#diferenciais">Diferenciais (Muito além do conhecimento)</option>
+                                  <option value="#como-funciona">Como funciona</option>
+                                  <option value="#sobre">Sobre</option>
+                                  <option value="#depoimentos">Depoimentos</option>
+                                  <option value="#faq">FAQ</option>
+                                  <option value="#contato">Formulário de contato</option>
+                                </optgroup>
+                                <option value="custom">Link externo / URL personalizada</option>
+                              </select>
+                              {!SECTION_HREFS.has(customItem.href) && (
+                                <Input
+                                  value={customItem.href}
+                                  onChange={(e) => setLandingNavCustomItems(prev => prev.map(c => c.id === key ? { ...c, href: e.target.value } : c))}
+                                  placeholder="https://... ou #ancora"
+                                  className="h-7 text-sm font-mono"
+                                />
+                              )}
+                            </>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-1 pt-1 shrink-0">
+                          {!isBuiltIn && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLandingNavCustomItems(prev => prev.filter(c => c.id !== key))
+                                setLandingNavOrder(prev => prev.filter(k => k !== key))
+                              }}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              title="Remover"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              disabled={i === 0}
+                              onClick={() => setLandingNavOrder(prev => { const next = [...prev]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; return next })}
+                              className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                              title="Mover para cima"
+                            >
+                              <ChevronUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={i === landingNavOrder.length - 1}
+                              onClick={() => setLandingNavOrder(prev => { const next = [...prev]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; return next })}
+                              className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                              title="Mover para baixo"
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = `custom_${Date.now()}`
+                      setLandingNavCustomItems(prev => [...prev, { id, label: '', href: '' }])
+                      setLandingNavOrder(prev => [...prev, id])
+                    }}
+                    className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
                   >
-                    <option value="">Sem estrelas</option>
-                    {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{'★'.repeat(n)}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-          ))}
-          <button type="button" onClick={() => setLandingTestimonials((prev) => [...prev, { name: '', role: '', text: '', avatar_url: '', rating: 5 }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-            <Plus className="w-4 h-4" />Adicionar depoimento
-          </button>
-        </section>
+                    <Plus className="w-4 h-4" />Adicionar item ao menu
+                  </button>
+                </>
+              )
+            })()}
+          </section>
 
-        {/* FAQ */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">FAQ</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Perguntas frequentes com accordion. Só aparece se houver ao menos 1 pergunta.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título da seção</Label>
-            <Input value={landingFaqSectionTitle} onChange={(e) => setLandingFaqSectionTitle(e.target.value)} placeholder="Perguntas frequentes" className="mt-1.5" />
-          </div>
-          {landingFaq.map((f, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pergunta {i + 1}</p>
-                <button type="button" onClick={() => setLandingFaq((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div>
-                <Label className="text-xs">Pergunta</Label>
-                <Input value={f.question} onChange={(e) => setLandingFaq((prev) => prev.map((x, j) => j === i ? { ...x, question: e.target.value } : x))} placeholder="Como funciona?" className="mt-1.5" />
-              </div>
-              <div>
-                <Label className="text-xs">Resposta</Label>
-                <Textarea value={f.answer} onChange={(e) => setLandingFaq((prev) => prev.map((x, j) => j === i ? { ...x, answer: e.target.value } : x))} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Escreva a resposta..." />
-              </div>
-            </div>
-          ))}
-          <button type="button" onClick={() => setLandingFaq((prev) => [...prev, { question: '', answer: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-            <Plus className="w-4 h-4" />Adicionar pergunta
-          </button>
-        </section>
-
-        {/* Parceiros */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Parceiros / Companhias</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Faixa com logos de parceiros ou companhias aéreas. Só aparece se houver ao menos 1 logo.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título da faixa</Label>
-            <Input value={landingPartnersSectionTitle} onChange={(e) => setLandingPartnersSectionTitle(e.target.value)} placeholder="Parceiros e companhias" className="mt-1.5" />
-          </div>
-          {landingPartners.map((p, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Logo {i + 1}</p>
-                <button type="button" onClick={() => setLandingPartners((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Nome (para acessibilidade)</Label>
-                  <Input value={p.name} onChange={(e) => setLandingPartners((prev) => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Nome da empresa" className="mt-1.5" />
-                </div>
-                <div>
-                  <Label className="text-xs">URL do logo</Label>
-                  <Input value={p.logo_url} onChange={(e) => setLandingPartners((prev) => prev.map((x, j) => j === i ? { ...x, logo_url: e.target.value } : x))} placeholder="https://..." className="mt-1.5" />
-                </div>
-              </div>
-            </div>
-          ))}
-          <button type="button" onClick={() => setLandingPartners((prev) => [...prev, { name: '', logo_url: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-            <Plus className="w-4 h-4" />Adicionar logo
-          </button>
-        </section>
-
-        {/* Selos */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Selos de credibilidade</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Imagens de selos exibidas acima do rodapé. Suba as imagens e cole as URLs aqui.</p>
-          </div>
-          {landingSeals.map((sl, i) => (
-            <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Selo {i + 1}</p>
-                <button type="button" onClick={() => setLandingSeals((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">URL da imagem</Label>
-                  <Input value={sl.image_url} onChange={(e) => setLandingSeals((prev) => prev.map((x, j) => j === i ? { ...x, image_url: e.target.value } : x))} placeholder="https://..." className="mt-1.5" />
-                </div>
-                <div>
-                  <Label className="text-xs">Texto alternativo</Label>
-                  <Input value={sl.alt} onChange={(e) => setLandingSeals((prev) => prev.map((x, j) => j === i ? { ...x, alt: e.target.value } : x))} placeholder="Ex: ISO 9001 Certificado" className="mt-1.5" />
-                </div>
-              </div>
-              {sl.image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={sl.image_url} alt={sl.alt || 'Selo'} className="h-12 w-auto object-contain opacity-80 mt-1" />
-              )}
-            </div>
-          ))}
-          <button type="button" onClick={() => setLandingSeals((prev) => [...prev, { image_url: '', alt: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-            <Plus className="w-4 h-4" />Adicionar selo
-          </button>
-        </section>
-
-        {/* Countdown */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Countdown — Próximo treinamento</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Barra acima do hero com contagem regressiva. Ativa automaticamente quando a data estiver no futuro.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCountdownActive(v => !v)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${countdownActive ? 'bg-primary' : 'bg-muted'}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${countdownActive ? 'translate-x-4' : 'translate-x-1'}`} />
-            </button>
-          </div>
-          <div>
-            <Label className="text-xs">Título da barra</Label>
-            <Input value={countdownTitle} onChange={e => setCountdownTitle(e.target.value)} placeholder="Próximo treinamento ao vivo" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Data e hora do evento</Label>
-            <Input
-              type="datetime-local"
-              value={countdownDate}
-              onChange={e => setCountdownDate(e.target.value)}
-              className="mt-1.5"
-            />
-            <p className="text-xs text-muted-foreground mt-1">Quando a data passar, a barra some automaticamente.</p>
-          </div>
-        </section>
-
-        {/* Formulário de leads */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Formulário de contato / Captação de leads</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Seção com formulário de nome + e-mail. Os contatos ficam salvos no banco de dados.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setLeadFormActive(v => !v)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${leadFormActive ? 'bg-primary' : 'bg-muted'}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${leadFormActive ? 'translate-x-4' : 'translate-x-1'}`} />
-            </button>
-          </div>
-          <div>
-            <Label className="text-xs">Título da seção</Label>
-            <Input value={leadFormTitle} onChange={e => setLeadFormTitle(e.target.value)} placeholder="Fique por dentro das novidades" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Subtítulo (opcional)</Label>
-            <Textarea value={leadFormSubtitle} onChange={e => setLeadFormSubtitle(e.target.value)} rows={2} className="mt-1.5 resize-none text-sm" placeholder="Cadastre-se e receba informações sobre treinamentos..." />
-          </div>
-          <div>
-            <Label className="text-xs">Texto do botão</Label>
-            <Input value={leadFormCtaText} onChange={e => setLeadFormCtaText(e.target.value)} placeholder="Quero receber novidades" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Mensagem de sucesso</Label>
-            <Input value={leadFormSuccessMessage} onChange={e => setLeadFormSuccessMessage(e.target.value)} placeholder="Obrigado! Em breve você receberá nossas novidades." className="mt-1.5" />
-          </div>
-          <p className="text-xs text-muted-foreground border border-border rounded-lg px-3 py-2 bg-muted/30">
-            Os leads captados ficam na tabela <code className="font-mono text-[11px]">landing_leads</code> do Supabase. Execute a migração <code className="font-mono text-[11px]">20260614000000_landing_leads.sql</code> se ainda não o fez.
-          </p>
-        </section>
-
-        {/* LGPD */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Banner de cookies (LGPD)</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Banner fixo no rodapé informando sobre o uso de cookies. Desaparece após o visitante aceitar.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setLgpdActive(v => !v)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lgpdActive ? 'bg-primary' : 'bg-muted'}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lgpdActive ? 'translate-x-4' : 'translate-x-1'}`} />
-            </button>
-          </div>
-          <div>
-            <Label className="text-xs">Texto do banner</Label>
-            <Textarea value={lgpdText} onChange={e => setLgpdText(e.target.value)} rows={3} className="mt-1.5 resize-none text-sm" placeholder="Este site utiliza cookies para melhorar sua experiência..." />
-          </div>
-          <div>
-            <Label className="text-xs">Texto do botão de aceite</Label>
-            <Input value={lgpdButtonText} onChange={e => setLgpdButtonText(e.target.value)} placeholder="Aceitar e continuar" className="mt-1.5" />
-          </div>
-        </section>
-
-        {/* CTA Final */}
-        <section className="rounded-xl border border-border p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">CTA Final</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Faixa de chamada no final da página. Só aparece se o Título estiver preenchido.</p>
-          </div>
-          <div>
-            <Label className="text-xs">Título</Label>
-            <Input value={landingCtaTitle} onChange={(e) => setLandingCtaTitle(e.target.value)} placeholder="Pronto para começar?" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Subtítulo (opcional)</Label>
-            <Input value={landingCtaSubtitle} onChange={(e) => setLandingCtaSubtitle(e.target.value)} placeholder="Junte-se a centenas de agentes de viagem..." className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-xs">Texto do botão</Label>
-            <Input value={landingCtaButtonText} onChange={(e) => setLandingCtaButtonText(e.target.value)} placeholder="Acessar agora" className="mt-1.5" />
-          </div>
-        </section>
+        </div>
 
       </div>
 

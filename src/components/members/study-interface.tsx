@@ -265,7 +265,7 @@ export function StudyInterface({
             {tab === 'sobre' && (
               <>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground">{lessonTitle}</h1>
+                  <h1 className="text-xl font-bold text-green-600">{lessonTitle}</h1>
                   {lessonDescription && (
                     <p className="text-muted-foreground mt-1 text-sm">{lessonDescription}</p>
                   )}

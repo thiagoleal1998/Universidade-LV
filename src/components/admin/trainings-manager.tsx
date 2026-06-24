@@ -10,6 +10,7 @@ import type { TrainingItem, TrainingMaterial } from '@/app/actions/training'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -275,6 +276,11 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
       if (result?.error) toast.error(result.error)
       else {
         toast.success(editing ? 'Treinamento atualizado!' : 'Treinamento criado!')
+        if (result?.notify) {
+          if ('notified' in result.notify) toast.success(`${result.notify.notified} membro(s) notificado(s)`)
+          else if (result.notify.error === 'no_members') toast.info('Nenhum membro ativo para notificar')
+          else toast.error(`Falha ao notificar: ${result.notify.error}`)
+        }
         resetForm()
         router.refresh()
       }
@@ -287,6 +293,11 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
       if (result?.error) toast.error(result.error)
       else {
         toast.success(item.is_active ? 'Treinamento despublicado.' : 'Treinamento publicado!')
+        if (result?.notify) {
+          if ('notified' in result.notify) toast.success(`${result.notify.notified} membro(s) notificado(s)`)
+          else if (result.notify.error === 'no_members') toast.info('Nenhum membro ativo para notificar')
+          else toast.error(`Falha ao notificar: ${result.notify.error}`)
+        }
         router.refresh()
       }
     })
@@ -365,15 +376,13 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
               {formType === 'live' && (
                 <div className="md:col-span-2">
                   <Label htmlFor="live_at">Data e hora da sessão ao vivo *</Label>
-                  <Input
-                    id="live_at"
+                  <DateTimePicker
                     name="live_at"
-                    type="datetime-local"
                     required
                     defaultValue={toLiveDateInput(editing?.live_at ?? null)}
                     className="mt-1.5"
+                    placeholder="Selecionar data e hora do ao vivo"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Horário de Brasília (UTC-3)</p>
                 </div>
               )}
 

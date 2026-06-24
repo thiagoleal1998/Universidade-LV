@@ -178,7 +178,7 @@ export function CourseModulesAccordion({
                         : <div className="w-4 h-4 rounded-full border-2 border-border shrink-0" />
                       }
                       <div className="min-w-0 flex-1">
-                        <span className="text-sm text-foreground block truncate">{lesson.title}</span>
+                        <span className="text-sm text-green-600 block truncate">{lesson.title}</span>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           {isAdmin && !lesson.is_published && (
                             <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400 py-0 shrink-0">
