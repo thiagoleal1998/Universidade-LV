@@ -2,6 +2,7 @@
   "name": "universidade-lv",
   "version": "1.12.0",
   "private": true,
+  "author": "Thiago Leal da Silva",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -17,6 +17,8 @@ git push origin main
 
 # Projeto — Universidade LV
 
+**Criador:** Thiago Leal da Silva
+
 Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 
 ## Stack
