@@ -127,11 +127,8 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
       {/* Course header */}
       <div>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-foreground mb-1">{course.name}</h1>
-            {course.description && <p className="text-muted-foreground text-sm">{course.description}</p>}
-          </div>
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <h1 className="text-2xl font-bold text-foreground">{course.name}</h1>
           {nextLesson && (
             <Link
               href={`/dashboard/aulas/${nextLesson.id}`}
@@ -142,6 +139,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             </Link>
           )}
         </div>
+        {course.description && <p className="text-muted-foreground text-sm">{course.description}</p>}
 
         {/* Progress */}
         <div className="mt-4">
