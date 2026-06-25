@@ -28,12 +28,43 @@ function stripHtml(html: string) {
 
 type TtsState = 'idle' | 'playing' | 'paused'
 
+function pickBestVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices()
+  const checks: Array<(v: SpeechSynthesisVoice) => boolean> = [
+    // Vozes neurais/naturais do Google (Chrome/Edge)
+    (v) => v.name === 'Google português do Brasil',
+    (v) => v.name.toLowerCase().includes('google') && v.lang.startsWith('pt'),
+    // Voz natural da Apple (Safari/macOS)
+    (v) => v.name === 'Luciana' && v.lang.startsWith('pt'),
+    (v) => v.name.toLowerCase().includes('luciana'),
+    // Qualquer voz pt-BR
+    (v) => v.lang === 'pt-BR',
+    (v) => v.lang.startsWith('pt'),
+  ]
+  for (const check of checks) {
+    const match = voices.find(check)
+    if (match) return match
+  }
+  return null
+}
+
 function TextToSpeechPlayer({ html }: { html: string }) {
   const [ttsState, setTtsState] = useState<TtsState>('idle')
+  const [voiceName, setVoiceName] = useState<string>('')
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
+  // Vozes podem carregar de forma assíncrona no browser
   useEffect(() => {
-    return () => { window.speechSynthesis?.cancel() }
+    function loadVoice() {
+      const v = pickBestVoice()
+      if (v) setVoiceName(v.name)
+    }
+    loadVoice()
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoice)
+    return () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', loadVoice)
+      window.speechSynthesis?.cancel()
+    }
   }, [html])
 
   function handlePlay() {
@@ -47,6 +78,8 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     utterance.lang = 'pt-BR'
     utterance.rate = 0.92
     utterance.pitch = 1
+    const voice = pickBestVoice()
+    if (voice) utterance.voice = voice
     utterance.onend = () => setTtsState('idle')
     utterance.onerror = () => setTtsState('idle')
     utteranceRef.current = utterance
@@ -69,7 +102,12 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border border-border w-fit">
       <Volume2 className="w-4 h-4 text-primary shrink-0" />
-      <span className="text-xs text-muted-foreground font-medium pr-1">Ouvir aula</span>
+      <div className="pr-1">
+        <span className="text-xs text-muted-foreground font-medium">Ouvir aula</span>
+        {voiceName && (
+          <span className="block text-[10px] text-muted-foreground/60 leading-none mt-0.5 truncate max-w-[140px]">{voiceName}</span>
+        )}
+      </div>
 
       {ttsState === 'idle' && (
         <button onClick={handlePlay} title="Reproduzir" className={btnClass}>
