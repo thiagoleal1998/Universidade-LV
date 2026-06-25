@@ -498,7 +498,7 @@ export function MarketingManager({ items, sections }: { items: MarketingItem[]; 
   return (
     <div>
       {/* Tabs principais */}
-      <div className="flex gap-0 border-b border-border overflow-x-auto">
+      <div className="flex gap-0 border-b border-border flex-wrap">
         {cats.map(({ key, label, Icon }) => (
           <button
             key={key}
@@ -519,7 +519,7 @@ export function MarketingManager({ items, sections }: { items: MarketingItem[]; 
 
       {/* Sub-tabs de Materiais Visuais */}
       {isVisual && (
-        <div className="flex gap-0 border-b border-border overflow-x-auto mb-6">
+        <div className="flex gap-0 border-b border-border flex-wrap mb-6">
           {VISUAL_SUBSECTIONS.map(({ key, label }) => (
             <button
               key={key}
