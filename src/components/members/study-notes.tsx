@@ -38,7 +38,12 @@ export function StudyNotes({ lessonId, initialContent }: Props) {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Suas anotações pessoais — visíveis apenas para você.{' '}
-          <span className="text-xs">As anotações são salvas automaticamente enquanto você digita.</span>
+          <span className="text-xs">
+            Salvas automaticamente.{' '}
+            <a href="/dashboard/documentos/anotacoes" className="underline hover:text-foreground transition-colors">
+              Veja todas em Documentos →
+            </a>
+          </span>
         </p>
         {status === 'saving' && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
