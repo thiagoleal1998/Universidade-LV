@@ -50,21 +50,10 @@ function pickBestVoice(): SpeechSynthesisVoice | null {
 
 function TextToSpeechPlayer({ html }: { html: string }) {
   const [ttsState, setTtsState] = useState<TtsState>('idle')
-  const [voiceName, setVoiceName] = useState<string>('')
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
-  // Vozes podem carregar de forma assíncrona no browser
   useEffect(() => {
-    function loadVoice() {
-      const v = pickBestVoice()
-      if (v) setVoiceName(v.name)
-    }
-    loadVoice()
-    window.speechSynthesis.addEventListener('voiceschanged', loadVoice)
-    return () => {
-      window.speechSynthesis.removeEventListener('voiceschanged', loadVoice)
-      window.speechSynthesis?.cancel()
-    }
+    return () => { window.speechSynthesis?.cancel() }
   }, [html])
 
   function handlePlay() {
@@ -97,49 +86,53 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     setTtsState('idle')
   }
 
-  const btnClass = 'p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground'
+  const iconBtn = 'w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground hover:text-foreground'
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border border-border w-fit">
-      <Volume2 className="w-4 h-4 text-primary shrink-0" />
-      <div className="pr-1">
-        <span className="text-xs text-muted-foreground font-medium">Ouvir aula</span>
-        {voiceName && (
-          <span className="block text-[10px] text-muted-foreground/60 leading-none mt-0.5 truncate max-w-[140px]">{voiceName}</span>
+    <div className="flex items-center justify-between py-3 border-y border-border">
+      {/* Label + status */}
+      <div className="flex items-center gap-2.5">
+        <Volume2 className={cn('w-4 h-4 shrink-0', ttsState === 'playing' ? 'text-primary' : 'text-muted-foreground')} />
+        <span className="text-sm text-muted-foreground">Ouvir esta aula</span>
+        {ttsState === 'playing' && (
+          <span className="inline-flex gap-0.5 items-end h-4">
+            {[0, 150, 300].map((delay) => (
+              <span
+                key={delay}
+                className="w-0.5 rounded-full bg-primary animate-bounce"
+                style={{ height: '10px', animationDelay: `${delay}ms`, animationDuration: '800ms' }}
+              />
+            ))}
+          </span>
+        )}
+        {ttsState === 'paused' && (
+          <span className="text-xs text-muted-foreground italic">pausado</span>
         )}
       </div>
 
-      {ttsState === 'idle' && (
-        <button onClick={handlePlay} title="Reproduzir" className={btnClass}>
-          <Play className="w-3.5 h-3.5 fill-current" />
-        </button>
-      )}
-      {ttsState === 'playing' && (
-        <>
-          <button onClick={handlePause} title="Pausar" className={btnClass}>
-            <Pause className="w-3.5 h-3.5 fill-current" />
+      {/* Controls */}
+      <div className="flex items-center gap-0.5">
+        {ttsState === 'idle' ? (
+          <button onClick={handlePlay} title="Reproduzir" className={iconBtn}>
+            <Play className="w-4 h-4 fill-current" />
           </button>
-          <button onClick={handleStop} title="Parar" className={btnClass}>
-            <StopCircle className="w-3.5 h-3.5" />
-          </button>
-        </>
-      )}
-      {ttsState === 'paused' && (
-        <>
-          <button onClick={handlePlay} title="Continuar" className={btnClass}>
-            <Play className="w-3.5 h-3.5 fill-current" />
-          </button>
-          <button onClick={handleStop} title="Parar" className={btnClass}>
-            <StopCircle className="w-3.5 h-3.5" />
-          </button>
-        </>
-      )}
-
-      {ttsState !== 'idle' && (
-        <span className="text-[10px] text-primary animate-pulse ml-1">
-          {ttsState === 'playing' ? 'reproduzindo…' : 'pausado'}
-        </span>
-      )}
+        ) : (
+          <>
+            <button
+              onClick={ttsState === 'playing' ? handlePause : handlePlay}
+              title={ttsState === 'playing' ? 'Pausar' : 'Continuar'}
+              className={iconBtn}
+            >
+              {ttsState === 'playing'
+                ? <Pause className="w-4 h-4 fill-current" />
+                : <Play className="w-4 h-4 fill-current" />}
+            </button>
+            <button onClick={handleStop} title="Parar" className={iconBtn}>
+              <StopCircle className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }
