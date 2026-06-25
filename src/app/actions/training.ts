@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { toWebP } from '@/lib/image'
 
 function formatLiveAt(iso: string | null): string {
   if (!iso) return ''
@@ -252,10 +253,10 @@ export async function deleteTrainingItem(id: string) {
 
 export async function uploadTrainingCover(file: File) {
   const supabase = await createClient()
-  const ext = file.name.split('.').pop()
-  const path = `training-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  const path = `training-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
 
-  const { error } = await supabase.storage.from('marketing-files').upload(path, file)
+  const { error } = await supabase.storage.from('marketing-files').upload(path, webpFile, { contentType: 'image/webp' })
   if (error) return { error: error.message }
 
   const { data: { publicUrl } } = supabase.storage.from('marketing-files').getPublicUrl(path)

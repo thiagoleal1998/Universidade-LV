@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { toWebP } from '@/lib/image'
 
 export async function uploadAvatar(formData: FormData) {
   const file = formData.get('avatar') as File
@@ -12,14 +13,14 @@ export async function uploadAvatar(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const ext = file.name.split('.').pop()
-  const path = `avatars/${user.id}/avatar.${ext}`
+  const webpFile = await toWebP(file, { maxWidth: 400, quality: 85 })
+  const path = `avatars/${user.id}/avatar.webp`
 
   const adminClient = createAdminClient()
 
   const { error: uploadError } = await adminClient.storage
     .from('lesson-photos')
-    .upload(path, file, { upsert: true })
+    .upload(path, webpFile, { upsert: true, contentType: 'image/webp' })
 
   if (uploadError) return { error: uploadError.message }
 

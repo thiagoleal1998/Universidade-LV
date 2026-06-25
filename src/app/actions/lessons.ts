@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { notifyCourseMembers } from '@/app/actions/notifications'
+import { toWebP } from '@/lib/image'
 
 export async function createLesson(moduleId: string, formData: FormData) {
   const supabase = await createClient()
@@ -187,9 +188,11 @@ export async function publishAllLessons(moduleId: string) {
 
 export async function uploadContentImage(lessonId: string, file: File) {
   const supabase = await createClient()
-  const ext = file.name.split('.').pop()
+  const webpFile = await toWebP(file, { maxWidth: 1200, quality: 85 })
+  const isSvg = webpFile.type === 'image/svg+xml'
+  const ext = isSvg ? file.name.split('.').pop() : 'webp'
   const path = `content-images/${lessonId}/${Date.now()}.${ext}`
-  const { error } = await supabase.storage.from('uploads').upload(path, file)
+  const { error } = await supabase.storage.from('uploads').upload(path, webpFile, { contentType: webpFile.type })
   if (error) return { error: error.message }
   const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
   return { url: publicUrl }
@@ -213,12 +216,12 @@ export async function uploadLessonPhoto(
 ) {
   const supabase = await createClient()
 
-  const ext = file.name.split('.').pop()
-  const path = `${lessonId}/${Date.now()}.${ext}`
+  const webpFile = await toWebP(file, { maxWidth: 1200, quality: 85 })
+  const path = `${lessonId}/${Date.now()}.webp`
 
   const { error: uploadError } = await supabase.storage
     .from('lesson-photos')
-    .upload(path, file)
+    .upload(path, webpFile, { contentType: 'image/webp' })
 
   if (uploadError) return { error: uploadError.message }
 

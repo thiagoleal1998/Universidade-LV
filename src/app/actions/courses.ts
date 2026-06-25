@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { toWebP } from '@/lib/image'
 
 export async function createCourse(formData: FormData) {
   const supabase = await createClient()
@@ -47,12 +48,12 @@ export async function updateCourse(courseId: string, formData: FormData) {
 export async function uploadInstructorPhoto(courseId: string, file: File) {
   const supabase = await createClient()
 
-  const ext = file.name.split('.').pop()
-  const path = `${courseId}/instructor-${Date.now()}.${ext}`
+  const webpFile = await toWebP(file, { maxWidth: 400, quality: 85 })
+  const path = `${courseId}/instructor-${Date.now()}.webp`
 
   const { error: uploadError } = await supabase.storage
     .from('course-covers')
-    .upload(path, file, { upsert: true })
+    .upload(path, webpFile, { upsert: true, contentType: 'image/webp' })
 
   if (uploadError) return { error: uploadError.message }
 
@@ -92,12 +93,12 @@ export async function deleteCourse(courseId: string) {
 export async function uploadCourseCover(courseId: string, file: File) {
   const supabase = await createClient()
 
-  const ext = file.name.split('.').pop()
-  const path = `${courseId}/${Date.now()}.${ext}`
+  const webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  const path = `${courseId}/${Date.now()}.webp`
 
   const { error: uploadError } = await supabase.storage
     .from('course-covers')
-    .upload(path, file, { upsert: true })
+    .upload(path, webpFile, { upsert: true, contentType: 'image/webp' })
 
   if (uploadError) return { error: uploadError.message }
 

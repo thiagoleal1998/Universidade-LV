@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { toWebP } from '@/lib/image'
 
 export async function updateSettings(formData: FormData) {
   const supabase = await createClient()
@@ -100,12 +101,15 @@ export async function uploadSiteLogo(formData: FormData) {
   if (!file || file.size === 0) return { error: 'Nenhum arquivo selecionado' }
 
   const adminClient = createAdminClient()
-  const ext = file.name.split('.').pop()
+  // SVGs are returned unchanged by toWebP; raster logos are converted
+  const webpFile = await toWebP(file, { maxWidth: 512, quality: 90 })
+  const isSvg = webpFile.type === 'image/svg+xml'
+  const ext = isSvg ? 'svg' : 'webp'
   const path = `logos/logo-${Date.now()}.${ext}`
 
   const { error } = await adminClient.storage
     .from('lesson-photos')
-    .upload(path, file, { upsert: true })
+    .upload(path, webpFile, { upsert: true, contentType: webpFile.type })
 
   if (error) return { error: error.message }
 
