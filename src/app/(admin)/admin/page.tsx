@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminDashboardShell } from '@/components/admin/admin-dashboard-shell'
-import type { ModuleStat, LessonWithCount, MemberStat } from '@/components/admin/admin-dashboard-shell'
+import type { ModuleStat, LessonWithCount, MemberStat, PendingLesson } from '@/components/admin/admin-dashboard-shell'
 
 type LessonRow = {
   id: string
@@ -19,6 +20,7 @@ type RecentActivity = {
 
 export default async function AdminDashboard() {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -37,6 +39,7 @@ export default async function AdminDashboard() {
     { count: completionsPrevWeek },
     { count: newMembersThisWeek },
     { count: newMembersPrevWeek },
+    { data: pendingResponsesRaw },
   ] = await Promise.all([
     supabase.from('modules').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member'),
@@ -59,6 +62,10 @@ export default async function AdminDashboard() {
     supabase.from('member_progress').select('*', { count: 'exact', head: true }).gte('completed_at', fourteenDaysAgo).lt('completed_at', sevenDaysAgo),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member').gte('created_at', sevenDaysAgo),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member').gte('created_at', fourteenDaysAgo).lt('created_at', sevenDaysAgo),
+    adminClient
+      .from('lesson_task_responses')
+      .select('task_id')
+      .is('grade', null),
   ])
 
   const lessons = (lessonsData as LessonRow[] | null) ?? []
@@ -146,6 +153,33 @@ export default async function AdminDashboard() {
     created_at: m.created_at,
   }))
 
+  // Tarefas pendentes de correção
+  const pendingResponses = (pendingResponsesRaw ?? []) as { task_id: string }[]
+  let pendingLessons: PendingLesson[] = []
+  if (pendingResponses.length > 0) {
+    const taskCountMap = new Map<string, number>()
+    for (const r of pendingResponses) {
+      taskCountMap.set(r.task_id, (taskCountMap.get(r.task_id) ?? 0) + 1)
+    }
+    const taskIds = [...taskCountMap.keys()]
+    const { data: tasksRaw } = await adminClient
+      .from('lesson_tasks')
+      .select('id, title, lesson_id')
+      .in('id', taskIds)
+    const lessonIds = [...new Set((tasksRaw ?? []).map((t: any) => t.lesson_id))]
+    const { data: lessonTitlesRaw } = await adminClient
+      .from('lessons')
+      .select('id, title')
+      .in('id', lessonIds)
+    const lessonTitleMap = new Map((lessonTitlesRaw ?? []).map((l: any) => [l.id, l.title]))
+    pendingLessons = (tasksRaw ?? []).map((t: any) => ({
+      lessonId: t.lesson_id,
+      lessonTitle: lessonTitleMap.get(t.lesson_id) ?? 'Aula',
+      taskTitle: t.title,
+      count: taskCountMap.get(t.id) ?? 0,
+    }))
+  }
+
   return (
     <AdminDashboardShell
       totalModules={totalModules ?? 0}
@@ -164,6 +198,7 @@ export default async function AdminDashboard() {
       recentActivity={transformedActivity}
       newSignups={transformedSignups}
       engagementBuckets={engagementBuckets}
+      pendingLessons={pendingLessons}
     />
   )
 }

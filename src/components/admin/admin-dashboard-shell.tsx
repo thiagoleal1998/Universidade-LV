@@ -6,13 +6,14 @@ import {
   Users, BookOpen, GraduationCap, TrendingUp, TrendingDown, Minus,
   Activity, BarChart3, Lightbulb, Settings, Megaphone, MessageSquare,
   ArrowUpRight, Trophy, AlertTriangle, CheckCircle2, UserPlus,
-  LayoutDashboard, Presentation, FileText,
+  LayoutDashboard, Presentation, FileText, ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type ModuleStat = { id: string; title: string; pct: number; lessonCount: number; completions: number }
 export type LessonWithCount = { id: string; title: string; moduleTitle: string; completions: number }
 export type MemberStat = { id: string; name: string; completed: number; pct: number }
+export type PendingLesson = { lessonId: string; lessonTitle: string; taskTitle: string; count: number }
 
 export type RecentActivityItem = {
   completed_at: string
@@ -44,6 +45,7 @@ export type DashboardProps = {
   recentActivity: RecentActivityItem[]
   newSignups: SignupRow[]
   engagementBuckets: EngagementBucket[]
+  pendingLessons: PendingLesson[]
 }
 
 type TrendDir = 'up' | 'down' | 'flat'
@@ -133,6 +135,19 @@ export function AdminDashboardShell(props: DashboardProps) {
               Área do Aluno <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
+
+          {/* Banner tarefas pendentes */}
+          {props.pendingLessons.length > 0 && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40">
+              <ClipboardCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-300 flex-1">
+                <span className="font-semibold">
+                  {props.pendingLessons.reduce((s, l) => s + l.count, 0)} tarefa{props.pendingLessons.reduce((s, l) => s + l.count, 0) !== 1 ? 's' : ''} aguardando correção
+                </span>
+                {' '}— veja no painel ao lado para corrigir.
+              </p>
+            </div>
+          )}
 
           {/* Tab nav — pill style */}
           <div className="flex gap-1 p-1 bg-muted/60 rounded-xl w-fit">
@@ -489,6 +504,42 @@ export function AdminDashboardShell(props: DashboardProps) {
 
         {/* ── Painel lateral direito ── */}
         <div className="space-y-4">
+
+          {/* Tarefas pendentes de correção */}
+          {props.pendingLessons.length > 0 && (
+            <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <ClipboardCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 leading-tight">Aguardando Correção</p>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-500">
+                    {props.pendingLessons.reduce((s, l) => s + l.count, 0)} resposta{props.pendingLessons.reduce((s, l) => s + l.count, 0) !== 1 ? 's' : ''} pendente{props.pendingLessons.reduce((s, l) => s + l.count, 0) !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {props.pendingLessons.map((p) => (
+                  <Link
+                    key={p.lessonId}
+                    href={`/admin/aulas/${p.lessonId}`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors group"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-amber-900 dark:text-amber-200 truncate group-hover:text-amber-700 dark:group-hover:text-amber-100 transition-colors">
+                        {p.lessonTitle}
+                      </p>
+                      <p className="text-[10px] text-amber-600 dark:text-amber-500 truncate">{p.taskTitle}</p>
+                    </div>
+                    <span className="shrink-0 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-200 dark:bg-amber-800/60 px-2 py-0.5 rounded-full tabular-nums">
+                      {p.count}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Acesso rápido */}
           <div className="rounded-2xl border border-border bg-card p-5">
