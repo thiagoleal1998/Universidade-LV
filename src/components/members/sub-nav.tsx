@@ -2,16 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Award, NotebookPen } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { LucideIcon } from 'lucide-react'
 
-type Item = { href: string; label: string; icon: LucideIcon }
+const ITEMS = [
+  { href: '/dashboard/documentos/certificados', label: 'Certificados', Icon: Award },
+  { href: '/dashboard/documentos/anotacoes',    label: 'Anotações',    Icon: NotebookPen },
+]
 
-export function SubNav({ items }: { items: Item[] }) {
+export function SubNav() {
   const pathname = usePathname()
   return (
     <>
-      {items.map(({ href, label, icon: Icon }) => {
+      {ITEMS.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname.startsWith(href + '/')
         return (
           <Link

@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { FileText, Award, NotebookPen } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { SubNav } from '@/components/members/sub-nav'
 
 export default function DocumentosLayout({ children }: { children: React.ReactNode }) {
@@ -14,12 +13,7 @@ export default function DocumentosLayout({ children }: { children: React.ReactNo
       </div>
 
       <div className="flex gap-1 border-b border-border mb-6">
-        <SubNav
-          items={[
-            { href: '/dashboard/documentos/certificados', label: 'Certificados', icon: Award },
-            { href: '/dashboard/documentos/anotacoes', label: 'Anotações', icon: NotebookPen },
-          ]}
-        />
+        <SubNav />
       </div>
 
       {children}
