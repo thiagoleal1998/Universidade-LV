@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { CheckCircle2, ChevronDown, ChevronUp, Star, BookOpen } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Star, BookOpen, XCircle, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Answer = {
@@ -196,56 +196,62 @@ export function TaskResponsesPanel({
                       </div>
 
                       {/* Resposta do aluno */}
-                      {ans.text_answer ? (
-                        <p className="text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 whitespace-pre-wrap">{ans.text_answer}</p>
-                      ) : ans.option_indices?.length ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {ans.option_indices.map((i) => {
-                            const isCorrect = q.correct_options?.includes(i)
+                      {isText ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                            {ans.text_answer || <span className="italic">Sem resposta</span>}
+                          </p>
+                          {q.correct_answer && (
+                            <div className="flex items-start gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
+                              <BookOpen className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-0.5">Resposta esperada</p>
+                                <p className="text-xs text-green-800 dark:text-green-300 whitespace-pre-wrap">{q.correct_answer}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (q.type === 'multiple_choice' || q.type === 'checkboxes') ? (
+                        <div className="space-y-1">
+                          {q.options.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">Sem opções definidas</p>
+                          ) : q.options.map((opt, i) => {
+                            const selected = ans.option_indices?.includes(i) ?? false
+                            const correct  = q.correct_options?.includes(i) ?? false
+                            const wrong    = selected && !correct
+                            const missed   = !selected && correct
+                            const neutral  = !selected && !correct
                             return (
-                              <span key={i} className={cn(
-                                'text-xs px-2 py-0.5 rounded-full border',
-                                isCorrect
-                                  ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30'
-                                  : 'bg-primary/10 text-primary border-primary/20'
+                              <div key={i} className={cn(
+                                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                                selected && correct && 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700 text-green-800 dark:text-green-300',
+                                wrong               && 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-400',
+                                missed              && 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300',
+                                neutral             && 'bg-muted/20 border-border text-muted-foreground',
                               )}>
-                                {q.options[i] ?? `Opção ${i + 1}`}
-                              </span>
+                                {selected && correct && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400" />}
+                                {wrong               && <XCircle      className="w-3.5 h-3.5 shrink-0 text-red-500"                      />}
+                                {missed              && <Minus        className="w-3.5 h-3.5 shrink-0 text-amber-500"                    />}
+                                {neutral             && <div className="w-3.5 h-3.5 shrink-0 rounded-full border border-current opacity-30" />}
+                                <span>{opt}</span>
+                                {selected && !correct && q.correct_options?.length > 0 && (
+                                  <span className="ml-auto text-[10px] font-medium text-red-500">selecionada (errada)</span>
+                                )}
+                                {missed && (
+                                  <span className="ml-auto text-[10px] font-medium text-amber-600 dark:text-amber-400">correta</span>
+                                )}
+                                {selected && correct && (
+                                  <span className="ml-auto text-[10px] font-medium text-green-600 dark:text-green-400">correta ✓</span>
+                                )}
+                              </div>
                             )
                           })}
+                          {q.correct_options?.length === 0 && (
+                            <p className="text-[10px] text-muted-foreground/60 italic pt-0.5">Gabarito não definido para esta questão</p>
+                          )}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground italic">Sem resposta</p>
-                      )}
-
-                      {/* Gabarito texto */}
-                      {isText && q.correct_answer && (
-                        <div className="flex items-start gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
-                          <BookOpen className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-0.5">Resposta esperada</p>
-                            <p className="text-xs text-green-800 dark:text-green-300 whitespace-pre-wrap">{q.correct_answer}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Gabarito múltipla escolha / checkboxes */}
-                      {(q.type === 'multiple_choice' || q.type === 'checkboxes') && q.correct_options?.length > 0 && (
-                        <div className="flex items-start gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
-                          <BookOpen className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0 mt-1" />
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-1.5">
-                              {q.correct_options.length === 1 ? 'Resposta correta' : 'Respostas corretas'}
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {q.correct_options.map((i) => (
-                                <span key={i} className="text-xs bg-green-500/15 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full border border-green-400/40">
-                                  {q.options[i] ?? `Opção ${i + 1}`}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
                       )}
                     </div>
                   )

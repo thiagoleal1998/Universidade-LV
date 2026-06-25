@@ -51,7 +51,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   const task = taskRaw
     ? {
         ...taskRaw,
-        questions: (taskRaw.questions ?? []).map((q: any) => ({ ...q, options: q.options ?? [], points: q.points ?? 1, correct_answer: q.correct_answer ?? null })),
+        questions: (taskRaw.questions ?? []).map((q: any) => ({ ...q, options: q.options ?? [], correct_options: q.correct_options ?? [], points: q.points ?? 1, correct_answer: q.correct_answer ?? null })),
         response_count: (taskRaw as any).response_count?.[0]?.count ?? 0,
       } as LessonTask
     : null
