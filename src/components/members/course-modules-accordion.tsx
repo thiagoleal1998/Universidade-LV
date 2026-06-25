@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, ChevronDown, ChevronRight, Lock, CalendarClock, Clock } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Lock, CalendarClock, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type LessonSummary = {
