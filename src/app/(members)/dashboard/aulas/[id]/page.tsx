@@ -122,7 +122,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
   ] = await Promise.all([
     client.from('lesson_photos').select('*').eq('lesson_id', id).order('order_index'),
     client.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
-    supabase.from('lesson_comments').select('id, body, created_at, user_id, profiles(full_name)').eq('lesson_id', id).order('created_at'),
+    supabase.from('lesson_comments').select('id, body, created_at, user_id').eq('lesson_id', id).order('created_at'),
     supabase
       .from('lesson_tasks')
       .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, required, order_index)')
@@ -148,6 +148,19 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
       .maybeSingle()
     myResponse = resData as TaskResponse | null
   }
+
+  // Resolve nomes dos autores dos comentários via adminClient (bypassa RLS de profiles)
+  const rawComments = (commentsData ?? []) as { id: string; body: string; created_at: string; user_id: string }[]
+  const commentUserIds = [...new Set(rawComments.map((c) => c.user_id))]
+  const adminForProfiles = createAdminClient()
+  const { data: commentProfiles } = commentUserIds.length > 0
+    ? await adminForProfiles.from('profiles').select('id, full_name').in('id', commentUserIds)
+    : { data: [] }
+  const profileMap = new Map((commentProfiles ?? []).map((p) => [p.id, p.full_name]))
+  const comments = rawComments.map((c) => ({
+    ...c,
+    profiles: { full_name: profileMap.get(c.user_id) ?? 'Membro' },
+  }))
 
   const rawPhotos = (photosData as LessonPhoto[] | null) ?? []
   const rawAttachments = (attachmentsData as LessonAttachment[] | null) ?? []
@@ -194,7 +207,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
       prevLessonId={prevLesson?.id ?? null}
       nextLessonId={nextLesson?.id ?? null}
       nextLessonTitle={nextLesson?.title ?? null}
-      comments={(commentsData ?? []) as unknown as Parameters<typeof StudyInterface>[0]['comments']}
+      comments={comments as Parameters<typeof StudyInterface>[0]['comments']}
       currentUserId={user.id}
       totalDone={totalDone}
       totalLessons={totalLessons}
