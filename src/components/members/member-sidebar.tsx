@@ -56,6 +56,7 @@ function SidebarContent({
 
   const NAV_ITEMS = [
     { href: '/dashboard',               label: labels.home,      icon: Home,          exact: true  },
+    { href: '/dashboard/cursos',        label: 'Meus cursos',   icon: GraduationCap, exact: false },
     { href: '/dashboard/treinamentos',  label: 'Treinamentos',   icon: BookOpen,      exact: false },
     { href: '/dashboard/comunidade',    label: labels.community, icon: MessageSquare, exact: false },
     { href: '/dashboard/documentos',    label: labels.documents, icon: FileText,      exact: false },
