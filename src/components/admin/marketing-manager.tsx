@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { ImageIcon, Link2, Mail, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X } from 'lucide-react'
+import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,8 +23,10 @@ import {
   updateMarketingItem,
   deleteMarketingItem,
   uploadMarketingFile,
+  createMarketingProduct,
+  deleteMarketingProduct,
 } from '@/app/actions/marketing'
-import type { MarketingCategory } from '@/app/actions/marketing'
+import type { MarketingCategory, MarketingProduct } from '@/app/actions/marketing'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -38,10 +40,21 @@ type MarketingItem = {
   description: string
   content: string
   url: string
+  audience?: string | null
+  scope?: string | null
+  product_id?: string | null
   created_at: string
 }
 
-type SubmitData = { title: string; description: string; content: string; url: string }
+type SubmitData = {
+  title: string
+  description: string
+  content: string
+  url: string
+  audience?: string
+  scope?: string
+  product_id?: string
+}
 
 type CatDef = {
   key: string
@@ -80,20 +93,42 @@ function sectionToCatDef(sec: MarketingSection): CatDef {
   }
 }
 
+function AudiencePill({ value, label, active, onClick }: { value: string; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+        active
+          ? 'bg-primary text-primary-foreground border-primary'
+          : 'bg-transparent text-muted-foreground border-border hover:border-primary/50',
+      )}
+    >
+      {label}
+    </button>
+  )
+}
+
 function ItemForm({
   cat,
+  products,
   defaultValues,
   onSubmit,
   isPending,
   onCancel,
 }: {
   cat: CatDef
+  products: MarketingProduct[]
   defaultValues?: Partial<MarketingItem>
   onSubmit: (data: SubmitData) => void
   isPending: boolean
   onCancel: () => void
 }) {
   const [url, setUrl] = useState(defaultValues?.url ?? '')
+  const [audience, setAudience] = useState(defaultValues?.audience ?? '')
+  const [scope, setScope] = useState(defaultValues?.scope ?? '')
+  const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
   const [isUploading, startUpload] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -116,10 +151,14 @@ function ItemForm({
       description: (fd.get('description') as string) ?? '',
       content: (fd.get('content') as string) ?? '',
       url,
+      audience: audience || undefined,
+      scope: scope || undefined,
+      product_id: productId || undefined,
     })
   }
 
   const isImage = url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
+  const isVisual = cat.type === 'visual'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
@@ -164,6 +203,53 @@ function ItemForm({
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={url} alt="preview" className="h-28 rounded-lg object-cover border mt-1" />
           )}
+        </div>
+      )}
+
+      {isVisual && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Público</Label>
+            <div className="flex gap-1.5 flex-wrap">
+              <AudiencePill
+                value="B2C" label="B2C" active={audience === 'B2C'}
+                onClick={() => setAudience(prev => prev === 'B2C' ? '' : 'B2C')}
+              />
+              <AudiencePill
+                value="B2B" label="B2B" active={audience === 'B2B'}
+                onClick={() => setAudience(prev => prev === 'B2B' ? '' : 'B2B')}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Âmbito</Label>
+            <div className="flex gap-1.5 flex-wrap">
+              <AudiencePill
+                value="Nacional" label="Nacional" active={scope === 'Nacional'}
+                onClick={() => setScope(prev => prev === 'Nacional' ? '' : 'Nacional')}
+              />
+              <AudiencePill
+                value="Internacional" label="Internacional" active={scope === 'Internacional'}
+                onClick={() => setScope(prev => prev === 'Internacional' ? '' : 'Internacional')}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isVisual && products.length > 0 && (
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Produto</Label>
+          <select
+            value={productId ?? ''}
+            onChange={(e) => setProductId(e.target.value)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <option value="">— Nenhum —</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -221,10 +307,20 @@ function DeleteConfirm({ label, onConfirm }: { label: string; onConfirm: () => v
   )
 }
 
-function VisualCard({ item, cat }: { item: MarketingItem; cat: CatDef }) {
+function ItemTag({ children, color }: { children: React.ReactNode; color: 'blue' | 'green' | 'purple' }) {
+  const cls = {
+    blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    green: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  }[color]
+  return <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', cls)}>{children}</span>
+}
+
+function VisualCard({ item, cat, products }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[] }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
+  const product = products.find((p) => p.id === item.product_id)
 
   function handleUpdate(data: SubmitData) {
     startTransition(async () => {
@@ -245,7 +341,7 @@ function VisualCard({ item, cat }: { item: MarketingItem; cat: CatDef }) {
   if (editing) {
     return (
       <div className="bg-card border rounded-lg p-4 col-span-full">
-        <ItemForm cat={cat} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+        <ItemForm cat={cat} products={products} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
       </div>
     )
   }
@@ -283,11 +379,18 @@ function VisualCard({ item, cat }: { item: MarketingItem; cat: CatDef }) {
           <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
         </div>
       </div>
+      {(item.audience || item.scope || product) && (
+        <div className="flex flex-wrap gap-1 px-3 pb-2.5">
+          {item.audience && <ItemTag color="blue">{item.audience}</ItemTag>}
+          {item.scope && <ItemTag color="green">{item.scope}</ItemTag>}
+          {product && <ItemTag color="purple">{product.name}</ItemTag>}
+        </div>
+      )}
     </div>
   )
 }
 
-function LinkRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
+function LinkRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[] }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -310,7 +413,7 @@ function LinkRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
   if (editing) {
     return (
       <div className="bg-card border rounded-lg p-4">
-        <ItemForm cat={cat} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+        <ItemForm cat={cat} products={products} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
       </div>
     )
   }
@@ -350,7 +453,7 @@ function LinkRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
   )
 }
 
-function TextRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
+function TextRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[] }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -374,7 +477,7 @@ function TextRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
   if (editing) {
     return (
       <div className="bg-card border rounded-lg p-4">
-        <ItemForm cat={cat} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+        <ItemForm cat={cat} products={products} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
       </div>
     )
   }
@@ -415,7 +518,80 @@ function TextRow({ item, cat }: { item: MarketingItem; cat: CatDef }) {
   )
 }
 
-function CategorySection({ cat, items }: { cat: CatDef; items: MarketingItem[] }) {
+function ProductsManager({ products }: { products: MarketingProduct[] }) {
+  const [open, setOpen] = useState(false)
+  const [newProduct, setNewProduct] = useState('')
+  const [isAdding, startAdd] = useTransition()
+  const [isDeleting, startDelete] = useTransition()
+
+  function handleAdd() {
+    if (!newProduct.trim()) return
+    startAdd(async () => {
+      const r = await createMarketingProduct(newProduct)
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Produto adicionado!'); setNewProduct('') }
+    })
+  }
+
+  function handleDelete(id: string) {
+    startDelete(async () => {
+      const r = await deleteMarketingProduct(id)
+      if (r?.error) toast.error(r.error)
+      else toast.success('Produto removido!')
+    })
+  }
+
+  return (
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Package className="w-4 h-4" />
+        Gerenciar Produtos
+        <ChevronDown className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="mt-2 bg-muted/40 border rounded-lg p-4 space-y-3">
+          <div className="flex gap-2">
+            <Input
+              value={newProduct}
+              onChange={(e) => setNewProduct(e.target.value)}
+              placeholder="Nome do produto"
+              className="flex-1"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+            />
+            <Button type="button" size="sm" onClick={handleAdd} disabled={isAdding || !newProduct.trim()}>
+              {isAdding ? <Spinner className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            </Button>
+          </div>
+          {products.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nenhum produto cadastrado.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {products.map((p) => (
+                <div key={p.id} className="flex items-center justify-between bg-card rounded-md px-3 py-2">
+                  <span className="text-sm">{p.name}</span>
+                  <Button
+                    type="button" variant="ghost" size="icon"
+                    className="text-red-500 hover:text-red-600 h-7 w-7"
+                    onClick={() => handleDelete(p.id)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CategorySection({ cat, items, products }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[] }) {
   const [showForm, setShowForm] = useState(false)
   const [isCreating, startCreate] = useTransition()
 
@@ -439,7 +615,7 @@ function CategorySection({ cat, items }: { cat: CatDef; items: MarketingItem[] }
       {showForm && (
         <div className="bg-muted/40 border border-dashed rounded-lg p-4">
           <p className="text-sm font-medium text-foreground mb-3">Novo item</p>
-          <ItemForm cat={cat} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
+          <ItemForm cat={cat} products={products} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
         </div>
       )}
 
@@ -451,15 +627,15 @@ function CategorySection({ cat, items }: { cat: CatDef; items: MarketingItem[] }
 
       {cat.type === 'visual' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} />)}
+          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} products={products} />)}
         </div>
       ) : cat.type === 'link' ? (
         <div className="space-y-2">
-          {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} />)}
+          {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} products={products} />)}
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((item) => <TextRow key={item.id} item={item} cat={cat} />)}
+          {items.map((item) => <TextRow key={item.id} item={item} cat={cat} products={products} />)}
         </div>
       )}
     </div>
@@ -476,7 +652,15 @@ const DEFAULT_SECTIONS: MarketingSection[] = [
   { key: 'link',   label: 'Links Úteis',        type: 'link'   },
 ]
 
-export function MarketingManager({ items, sections }: { items: MarketingItem[]; sections?: MarketingSection[] }) {
+export function MarketingManager({
+  items,
+  sections,
+  products = [],
+}: {
+  items: MarketingItem[]
+  sections?: MarketingSection[]
+  products?: MarketingProduct[]
+}) {
   const cats = (sections && sections.length > 0 ? sections : DEFAULT_SECTIONS).map(sectionToCatDef)
   const [activeTab, setActiveTab] = useState(cats[0]?.key ?? 'visual')
   const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
@@ -517,7 +701,7 @@ export function MarketingManager({ items, sections }: { items: MarketingItem[]; 
 
       {/* Sub-tabs de Materiais Visuais */}
       {isVisual && (
-        <div className="flex gap-0 border-b border-border flex-wrap mb-6">
+        <div className="flex gap-0 border-b border-border flex-wrap mb-4">
           {VISUAL_SUBSECTIONS.map(({ key, label }) => (
             <button
               key={key}
@@ -536,9 +720,18 @@ export function MarketingManager({ items, sections }: { items: MarketingItem[]; 
         </div>
       )}
 
+      {/* Gerenciar Produtos — exibido apenas na aba visual */}
+      {isVisual && (
+        <div className="mt-3 mb-2">
+          <ProductsManager products={products} />
+        </div>
+      )}
+
       {!isVisual && <div className="mb-6" />}
 
-      {effectiveCat && <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} />}
+      {effectiveCat && (
+        <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} products={products} />
+      )}
     </div>
   )
 }

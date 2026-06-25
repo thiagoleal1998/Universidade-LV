@@ -3,6 +3,7 @@ import { getSettings } from '@/lib/settings'
 import { MarketingTabs } from '@/components/admin/marketing-tabs'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import { getTrainingItems } from '@/app/actions/training'
+import { getMarketingProducts } from '@/app/actions/marketing'
 
 const REMOVED_KEYS = ['email', 'script']
 
@@ -18,10 +19,11 @@ function parseSections(json: string): MarketingSection[] {
 export default async function MarketingPage() {
   const supabase = await createClient()
 
-  const [{ data }, settings, trainingItems] = await Promise.all([
+  const [{ data }, settings, trainingItems, products] = await Promise.all([
     supabase.from('marketing_items').select('*').order('order_index'),
     getSettings(),
     getTrainingItems(),
+    getMarketingProducts(),
   ])
 
   return (
@@ -30,6 +32,7 @@ export default async function MarketingPage() {
         marketingItems={data ?? []}
         sections={parseSections(settings.marketing_sections)}
         trainingItems={trainingItems}
+        products={products}
       />
     </div>
   )
