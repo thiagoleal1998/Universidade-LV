@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { Star } from 'lucide-react'
 import { NotaCard } from '@/components/members/nota-card'
 import type { NotaData } from '@/components/members/nota-card'
+import { MarkAsReadOnMount } from '@/components/members/mark-as-read-on-mount'
 
 export default async function NotasRecebidasPage() {
   const supabase = await createClient()
@@ -24,17 +25,20 @@ export default async function NotasRecebidasPage() {
 
   if (responses.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-          <Star className="w-7 h-7 text-muted-foreground/50" />
+      <>
+        <MarkAsReadOnMount type="task_graded" />
+        <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <Star className="w-7 h-7 text-muted-foreground/50" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Nenhuma nota recebida ainda</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Suas notas aparecerão aqui quando suas tarefas forem corrigidas.
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-medium text-foreground">Nenhuma nota recebida ainda</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Suas notas aparecerão aqui quando suas tarefas forem corrigidas.
-          </p>
-        </div>
-      </div>
+      </>
     )
   }
 
@@ -86,10 +90,13 @@ export default async function NotasRecebidasPage() {
   })
 
   return (
-    <div className="space-y-3">
-      {notas.map((nota) => (
-        <NotaCard key={nota.id} nota={nota} />
-      ))}
-    </div>
+    <>
+      <MarkAsReadOnMount type="task_graded" />
+      <div className="space-y-3">
+        {notas.map((nota) => (
+          <NotaCard key={nota.id} nota={nota} />
+        ))}
+      </div>
+    </>
   )
 }

@@ -30,6 +30,23 @@ export async function getNotifications(): Promise<Notification[]> {
   return (data ?? []) as Notification[]
 }
 
+export async function markNotificationsByTypeRead(type: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const adminClient = createAdminClient()
+  await adminClient
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .eq('type', type)
+    .is('read_at', null)
+
+  revalidatePath('/dashboard/documentos', 'layout')
+  return { success: true }
+}
+
 export async function markAllNotificationsRead() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
