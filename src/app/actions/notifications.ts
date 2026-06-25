@@ -19,7 +19,8 @@ export async function getNotifications(): Promise<Notification[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const { data } = await supabase
+  const adminClient = createAdminClient()
+  const { data } = await adminClient
     .from('notifications')
     .select('id, type, title, body, link, read_at, created_at')
     .eq('user_id', user.id)
@@ -34,7 +35,8 @@ export async function markAllNotificationsRead() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  await supabase
+  const adminClient = createAdminClient()
+  await adminClient
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('user_id', user.id)

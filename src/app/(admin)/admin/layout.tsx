@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 
@@ -9,10 +10,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!user) redirect('/login')
 
+  const adminClient = createAdminClient()
   const [{ data: profileData }, settings, { count: unreadCount }] = await Promise.all([
     supabase.from('profiles').select('full_name, avatar_url, role').eq('id', user.id).single(),
     getSettings(),
-    supabase
+    adminClient
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getFaqItems } from '@/app/actions/faq'
 import { MemberSidebar } from '@/components/members/member-sidebar'
@@ -13,10 +14,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login')
 
+  const adminClient = createAdminClient()
   const [{ data: profileData }, settings, { count: unreadCount }, faqItems] = await Promise.all([
     supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
     getSettings(),
-    supabase
+    adminClient
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
