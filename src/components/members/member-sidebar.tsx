@@ -108,7 +108,7 @@ function SidebarContent({
       </div>
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden flex flex-col">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
 
         {/* Search */}
         <button
@@ -153,15 +153,17 @@ function SidebarContent({
             </Link>
           )
         })}
+      </nav>
 
-        {/* Collapse/expand toggle — bottom of nav, always visible */}
-        {onToggleCollapse && (
+      {/* ── Collapse toggle — fixed, never scrolls ── */}
+      {onToggleCollapse && (
+        <div className="px-2 pb-1 shrink-0">
           <button
             type="button"
             onClick={onToggleCollapse}
             title={collapsed ? 'Expandir menu' : 'Minimizar menu'}
             className={cn(
-              'mt-auto w-full flex items-center rounded-lg font-medium transition-colors',
+              'w-full flex items-center rounded-lg font-medium transition-colors',
               'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent',
               collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
             )}
@@ -171,8 +173,8 @@ function SidebarContent({
               : <PanelLeftClose className="w-4 h-4 shrink-0" />}
             <span style={slideText(collapsed, 120)}>Minimizar</span>
           </button>
-        )}
-      </nav>
+        </div>
+      )}
 
       {/* ── User footer ── */}
       <div className="px-2 py-3 border-t border-border shrink-0">
