@@ -18,8 +18,93 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Circle,
   PanelRight, PanelRightClose, GraduationCap, X, Table2,
+  Volume2, Play, Pause, StopCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+}
+
+type TtsState = 'idle' | 'playing' | 'paused'
+
+function TextToSpeechPlayer({ html }: { html: string }) {
+  const [ttsState, setTtsState] = useState<TtsState>('idle')
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+
+  useEffect(() => {
+    return () => { window.speechSynthesis?.cancel() }
+  }, [html])
+
+  function handlePlay() {
+    if (ttsState === 'paused') {
+      window.speechSynthesis.resume()
+      setTtsState('playing')
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(stripHtml(html))
+    utterance.lang = 'pt-BR'
+    utterance.rate = 0.92
+    utterance.pitch = 1
+    utterance.onend = () => setTtsState('idle')
+    utterance.onerror = () => setTtsState('idle')
+    utteranceRef.current = utterance
+    window.speechSynthesis.speak(utterance)
+    setTtsState('playing')
+  }
+
+  function handlePause() {
+    window.speechSynthesis.pause()
+    setTtsState('paused')
+  }
+
+  function handleStop() {
+    window.speechSynthesis.cancel()
+    setTtsState('idle')
+  }
+
+  const btnClass = 'p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground'
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border border-border w-fit">
+      <Volume2 className="w-4 h-4 text-primary shrink-0" />
+      <span className="text-xs text-muted-foreground font-medium pr-1">Ouvir aula</span>
+
+      {ttsState === 'idle' && (
+        <button onClick={handlePlay} title="Reproduzir" className={btnClass}>
+          <Play className="w-3.5 h-3.5 fill-current" />
+        </button>
+      )}
+      {ttsState === 'playing' && (
+        <>
+          <button onClick={handlePause} title="Pausar" className={btnClass}>
+            <Pause className="w-3.5 h-3.5 fill-current" />
+          </button>
+          <button onClick={handleStop} title="Parar" className={btnClass}>
+            <StopCircle className="w-3.5 h-3.5" />
+          </button>
+        </>
+      )}
+      {ttsState === 'paused' && (
+        <>
+          <button onClick={handlePlay} title="Continuar" className={btnClass}>
+            <Play className="w-3.5 h-3.5 fill-current" />
+          </button>
+          <button onClick={handleStop} title="Parar" className={btnClass}>
+            <StopCircle className="w-3.5 h-3.5" />
+          </button>
+        </>
+      )}
+
+      {ttsState !== 'idle' && (
+        <span className="text-[10px] text-primary animate-pulse ml-1">
+          {ttsState === 'playing' ? 'reproduzindo…' : 'pausado'}
+        </span>
+      )}
+    </div>
+  )
+}
 
 function getSheetEmbedUrl(url: string): string | null {
   if (!url?.trim()) return null
@@ -272,10 +357,15 @@ export function StudyInterface({
                 </div>
 
                 {contentText && (
-                  <div
-                    className="rich-text"
-                    dangerouslySetInnerHTML={{ __html: contentText }}
-                  />
+                  <>
+                    {!videoId && !embedUrl && (
+                      <TextToSpeechPlayer html={contentText} />
+                    )}
+                    <div
+                      className="rich-text"
+                      dangerouslySetInnerHTML={{ __html: contentText }}
+                    />
+                  </>
                 )}
 
                 {photos.length > 0 && (
