@@ -139,7 +139,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             </Link>
           )}
         </div>
-        {course.description && <p className="text-muted-foreground text-sm">{course.description}</p>}
+        {course.description && <p className="text-muted-foreground text-sm mt-3 leading-relaxed">{course.description}</p>}
 
         {/* Progress */}
         <div className="mt-4">
