@@ -35,8 +35,15 @@ function getEmbedUrl(url: string): string | null {
 type ModuleRow = { id: string; title: string; order_index: number; course_id: string | null }
 type LessonRow = { id: string; title: string; is_published: boolean; order_index: number; module_id: string }
 
-export default async function LessonPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function LessonPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const [{ id }, sp] = await Promise.all([params, searchParams])
+  const initialTab = sp.tab === 'anotacoes' ? 'anotacoes' : sp.tab === 'comentarios' ? 'comentarios' : 'sobre'
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -216,6 +223,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
       sheetUrl={lesson.sheet_url ?? null}
       taskStartDate={lesson.task_start_date ?? null}
       taskEndDate={lesson.task_end_date ?? null}
+      initialTab={initialTab}
     />
   )
 }

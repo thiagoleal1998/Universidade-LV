@@ -200,6 +200,7 @@ type Props = {
   sheetUrl?: string | null
   taskStartDate?: string | null
   taskEndDate?: string | null
+  initialTab?: Tab
 }
 
 type Tab = 'sobre' | 'comentarios' | 'anotacoes'
@@ -234,11 +235,12 @@ export function StudyInterface({
   sheetUrl = null,
   taskStartDate = null,
   taskEndDate = null,
+  initialTab = 'sobre',
 }: Props) {
   const router = useRouter()
   const [completed, setCompleted] = useState(initialCompleted)
   const [isPending, startTransition] = useTransition()
-  const [tab, setTab] = useState<Tab>('sobre')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showNextBanner, setShowNextBanner] = useState(false)
   const [countdown, setCountdown] = useState(5)
