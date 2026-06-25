@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Info, ArrowRight, CheckCircle2, Circle, GraduationCap, UserCircle2 } from 'lucide-react'
+import { BookOpen, Info, ArrowRight, CheckCircle2, Circle, UserCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type LessonSummary = { id: string; is_published: boolean }
@@ -34,7 +34,7 @@ function ProgressBar({ pct }: { pct: number }) {
   )
 }
 
-function CourseDetailSheet({
+function CourseDetailDialog({
   course,
   progress,
   completedSet,
@@ -50,96 +50,105 @@ function CourseDetailSheet({
   const { total, done, pct } = progress
   const modCount = course.modules.length
 
+  const ctaLabel = pct === 0 ? 'Começar curso' : pct === 100 ? 'Revisar curso' : 'Continuar curso'
+
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="rounded-t-2xl p-0 max-h-[88vh] overflow-y-auto focus:outline-none"
-      >
-        {/* Cover */}
-        {course.cover_image_url && (
-          <div className="aspect-video w-full overflow-hidden rounded-t-2xl bg-muted shrink-0">
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="p-0 gap-0 overflow-hidden rounded-2xl max-w-[380px] w-[calc(100vw-2rem)]">
+
+        {/* Cover — compact fixed height */}
+        {course.cover_image_url ? (
+          <div className="h-44 w-full overflow-hidden bg-muted shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={course.cover_image_url} alt={course.name} className="w-full h-full object-cover" />
+            <img
+              src={course.cover_image_url}
+              alt={course.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="h-24 w-full bg-primary/10 flex items-center justify-center shrink-0">
+            <BookOpen className="w-8 h-8 text-primary/40" />
           </div>
         )}
 
-        <div className="p-5 space-y-5">
-          {/* Title + progress */}
-          <div>
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <h2 className="text-lg font-bold text-foreground leading-tight">{course.name}</h2>
-              <Badge variant={pct === 100 ? 'default' : 'outline'} className="shrink-0 text-xs">
-                {pct === 100 ? 'Concluído' : `${pct}%`}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-              <span>{done} de {total} aulas concluídas</span>
+        <div className="p-4 space-y-3">
+          {/* Title + badge */}
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-sm font-bold text-foreground leading-snug">{course.name}</h2>
+            <Badge
+              variant={pct === 100 ? 'default' : 'outline'}
+              className="shrink-0 text-xs tabular-nums"
+            >
+              {pct === 100 ? 'Concluído' : `${pct}%`}
+            </Badge>
+          </div>
+
+          {/* Progress */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{done} de {total} aulas</span>
               <span>{modCount} {modCount === 1 ? 'módulo' : 'módulos'}</span>
             </div>
             <ProgressBar pct={pct} />
           </div>
 
-          {/* Description */}
+          {/* Description — scrollable se longa */}
           {course.description && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição</p>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{course.description}</p>
-            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed max-h-24 overflow-y-auto pr-0.5">
+              {course.description}
+            </p>
           )}
 
-          {/* Modules list */}
+          {/* Modules — compact chips */}
           {course.modules.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Conteúdo ({modCount} {modCount === 1 ? 'módulo' : 'módulos'})
-              </p>
-              <div className="space-y-2">
-                {course.modules.map((mod) => {
-                  const pubLessons = mod.lessons.filter((l) => l.is_published)
-                  const modDone = pubLessons.filter((l) => completedSet.has(l.id)).length
-                  const modComplete = pubLessons.length > 0 && modDone === pubLessons.length
-                  return (
-                    <div key={mod.id} className="flex items-center gap-2.5">
-                      {modComplete
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                        : <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                      }
-                      <span className={cn('text-sm flex-1 min-w-0 truncate', modComplete ? 'text-muted-foreground line-through' : 'text-foreground')}>
-                        {mod.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {modDone}/{pubLessons.length}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+            <div className="flex flex-wrap gap-1.5">
+              {course.modules.map((mod) => {
+                const pub = mod.lessons.filter((l) => l.is_published)
+                const modDone = pub.filter((l) => completedSet.has(l.id)).length
+                const complete = pub.length > 0 && modDone === pub.length
+                return (
+                  <span
+                    key={mod.id}
+                    className={cn(
+                      'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border',
+                      complete
+                        ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400'
+                        : 'bg-muted border-border text-muted-foreground',
+                    )}
+                  >
+                    {complete
+                      ? <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                      : <Circle className="w-2.5 h-2.5 shrink-0" />
+                    }
+                    <span className="truncate max-w-[100px]">{mod.title}</span>
+                  </span>
+                )
+              })}
             </div>
           )}
 
-          {/* Instructor */}
+          {/* Instructor — one liner */}
           {course.instructor_name && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
+            <div className="flex items-center gap-2 pt-0.5">
               {course.instructor_photo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={course.instructor_photo_url}
                   alt={course.instructor_name}
-                  className="w-10 h-10 rounded-full object-cover shrink-0"
+                  className="w-6 h-6 rounded-full object-cover shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <UserCircle2 className="w-5 h-5 text-primary" />
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <UserCircle2 className="w-3.5 h-3.5 text-primary" />
                 </div>
               )}
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{course.instructor_name}</p>
+              <span className="text-xs text-muted-foreground truncate">
+                {course.instructor_name}
                 {course.instructor_role && (
-                  <p className="text-xs text-muted-foreground truncate">{course.instructor_role}</p>
+                  <span className="text-muted-foreground/60"> · {course.instructor_role}</span>
                 )}
-              </div>
-              <GraduationCap className="w-4 h-4 text-muted-foreground/40 ml-auto shrink-0" />
+              </span>
             </div>
           )}
 
@@ -147,14 +156,14 @@ function CourseDetailSheet({
           <Link
             href={`/dashboard/cursos/${course.id}`}
             onClick={onClose}
-            className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-semibold text-sm py-3 rounded-xl"
+            className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-semibold text-sm py-2.5 rounded-xl mt-1"
           >
-            {pct === 0 ? 'Começar curso' : pct === 100 ? 'Revisar curso' : 'Continuar curso'}
+            {ctaLabel}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -185,7 +194,6 @@ export function CourseGrid({
             <div key={course.id} className="relative group">
               <Link href={`/dashboard/cursos/${course.id}`} className="block">
                 <div className="h-full rounded-xl border border-border bg-card hover:border-primary/50 transition-colors overflow-hidden">
-                  {/* Cover */}
                   {course.cover_image_url ? (
                     <div className="aspect-video overflow-hidden bg-muted">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -201,7 +209,6 @@ export function CourseGrid({
                     </div>
                   )}
 
-                  {/* Body */}
                   <div className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
@@ -213,7 +220,9 @@ export function CourseGrid({
                     </div>
 
                     {course.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{course.description}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {course.description}
+                      </p>
                     )}
 
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -221,7 +230,6 @@ export function CourseGrid({
                       {modCount} {modCount === 1 ? 'módulo' : 'módulos'}
                     </div>
 
-                    {/* Progress */}
                     <div>
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
                         <span>Progresso</span>
@@ -233,7 +241,7 @@ export function CourseGrid({
                 </div>
               </Link>
 
-              {/* Info button — outside the Link, positioned absolute */}
+              {/* Info button */}
               <button
                 type="button"
                 aria-label="Ver detalhes do curso"
@@ -253,7 +261,7 @@ export function CourseGrid({
       </div>
 
       {selected && (
-        <CourseDetailSheet
+        <CourseDetailDialog
           course={selected}
           progress={getProgress(selected)}
           completedSet={completedSet}
