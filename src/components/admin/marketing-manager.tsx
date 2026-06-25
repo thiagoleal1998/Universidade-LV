@@ -469,8 +469,6 @@ function CategorySection({ cat, items }: { cat: CatDef; items: MarketingItem[] }
 const VISUAL_SUBSECTIONS: { key: string; label: string }[] = [
   { key: 'ofertas_diarias', label: 'Ofertas Diárias' },
   { key: 'laminas',         label: 'Lâminas de Condições' },
-  { key: 'condicoes',       label: 'Condições Comerciais Exclusivas' },
-  { key: 'bloqueios',       label: 'Bloqueios' },
 ]
 
 const DEFAULT_SECTIONS: MarketingSection[] = [
