@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createComment, deleteComment } from '@/app/actions/comments'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ interface LessonCommentsProps {
 }
 
 export function LessonComments({ lessonId, comments, currentUserId, isAdmin }: LessonCommentsProps) {
+  const router = useRouter()
   const [isSubmitting, startSubmit] = useTransition()
   const [isDeleting, startDelete] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
@@ -34,15 +36,23 @@ export function LessonComments({ lessonId, comments, currentUserId, isAdmin }: L
     const formData = new FormData(e.currentTarget)
     startSubmit(async () => {
       const result = await createComment(lessonId, formData)
-      if (result?.error) toast.error(result.error)
-      else formRef.current?.reset()
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        formRef.current?.reset()
+        router.refresh()
+      }
     })
   }
 
   function handleDelete(commentId: string) {
     startDelete(async () => {
       const result = await deleteComment(commentId, lessonId)
-      if (result?.error) toast.error(result.error)
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        router.refresh()
+      }
     })
   }
 
