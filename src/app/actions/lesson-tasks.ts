@@ -177,17 +177,15 @@ export async function submitTaskResponse(
     .single()
   const taskTitle = (taskData as any)?.title ?? 'Tarefa'
   const lessonTitle = (taskData as any)?.lessons?.title ?? ''
-  const { data: { user: submitter } } = await supabase.auth.getUser()
-  if (submitter) {
-    notifyAllAdmins(submitter.id, {
-      type: 'task_submitted',
-      title: `Nova tarefa aguardando correção`,
-      body: `${taskTitle}${lessonTitle ? ` · ${lessonTitle}` : ''} — enviada por um aluno.`,
-      link: `/admin/aulas/${lessonId}`,
-    })
-  }
+  await notifyAllAdmins(user.id, {
+    type: 'task_submitted',
+    title: `Nova tarefa aguardando correção`,
+    body: `${taskTitle}${lessonTitle ? ` · ${lessonTitle}` : ''} — enviada por um aluno.`,
+    link: `/admin/aulas/${lessonId}`,
+  })
 
   revalidatePath(`/dashboard/aulas/${lessonId}`)
+  revalidatePath('/dashboard', 'layout')
   return { success: true }
 }
 
@@ -219,8 +217,7 @@ export async function gradeTaskResponse(
     const rd = responseData as any
     const memberId = rd.user_id
     const taskTitle = rd.lesson_task?.title ?? 'Tarefa'
-    const lid = rd.lesson_task?.lesson_id ?? lessonId
-    notifyUser(memberId, {
+    await notifyUser(memberId, {
       type: 'task_graded',
       title: `Sua tarefa foi corrigida`,
       body: `"${taskTitle}" recebeu nota ${grade}/10.`,
@@ -230,6 +227,7 @@ export async function gradeTaskResponse(
 
   revalidatePath(`/admin/aulas/${lessonId}`)
   revalidatePath(`/dashboard/documentos/notas`)
+  revalidatePath('/dashboard', 'layout')
   return { success: true }
 }
 

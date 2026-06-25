@@ -3,11 +3,24 @@
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Bell } from 'lucide-react'
+import { Bell, ClipboardCheck, Star, Megaphone, Video, BookOpen } from 'lucide-react'
 import { getNotifications, markAllNotificationsRead } from '@/app/actions/notifications'
 import type { Notification } from '@/app/actions/notifications'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from '@/lib/time'
+
+function NotifIcon({ type }: { type: string }) {
+  const base = 'w-7 h-7 rounded-lg flex items-center justify-center shrink-0'
+  if (type === 'task_submitted')
+    return <div className={cn(base, 'bg-amber-500/15')}><ClipboardCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /></div>
+  if (type === 'task_graded')
+    return <div className={cn(base, 'bg-green-500/15')}><Star className="w-3.5 h-3.5 text-green-600 dark:text-green-400" /></div>
+  if (type === 'announcement')
+    return <div className={cn(base, 'bg-blue-500/15')}><Megaphone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></div>
+  if (type === 'new_training' || type === 'training_replay')
+    return <div className={cn(base, 'bg-purple-500/15')}><Video className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /></div>
+  return <div className={cn(base, 'bg-primary/10')}><BookOpen className="w-3.5 h-3.5 text-primary" /></div>
+}
 
 export function NotificationBell({
   unreadCount: initialCount,
@@ -159,12 +172,15 @@ function NotificationItem({
         !n.read_at && 'bg-primary/5'
       )}
     >
-      <div className="flex items-start gap-2">
-        {!n.read_at && (
-          <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-        )}
+      <div className="flex items-start gap-3">
+        <NotifIcon type={n.type} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground leading-tight">{n.title}</p>
+          <div className="flex items-start justify-between gap-1">
+            <p className="text-sm font-medium text-foreground leading-tight">{n.title}</p>
+            {!n.read_at && (
+              <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1 shrink-0" />
+            )}
+          </div>
           {n.body && (
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
           )}
