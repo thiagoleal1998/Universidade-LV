@@ -1,7 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 
 export type QuestionType = 'short_text' | 'long_text' | 'multiple_choice' | 'checkboxes' | 'file_upload'
 
@@ -14,6 +16,7 @@ export type TaskQuestion = {
   correct_options: number[]
   required: boolean
   order_index: number
+  points: number
 }
 
 export type LessonTask = {
@@ -35,6 +38,9 @@ export type TaskResponse = {
   id: string
   submitted_at: string
   answers: TaskAnswer[]
+  grade: number | null
+  feedback: string | null
+  graded_at: string | null
 }
 
 // ── Admin actions ────────────────────────────────────────────────────────────
@@ -81,7 +87,7 @@ export async function addQuestion(taskId: string, lessonId: string) {
   const nextIndex = (existing?.[0]?.order_index ?? -1) + 1
   const { data, error } = await supabase
     .from('lesson_task_questions')
-    .insert({ task_id: taskId, type: 'short_text', question: '', options: [], required: true, order_index: nextIndex })
+    .insert({ task_id: taskId, type: 'short_text', question: '', options: [], required: true, order_index: nextIndex, points: 1 })
     .select()
     .single()
   if (error) return { error: error.message }
@@ -92,7 +98,7 @@ export async function addQuestion(taskId: string, lessonId: string) {
 export async function updateQuestion(
   questionId: string,
   lessonId: string,
-  payload: { type: QuestionType; question: string; options: string[]; correct_options: number[]; required: boolean }
+  payload: { type: QuestionType; question: string; options: string[]; correct_options: number[]; required: boolean; points: number }
 ) {
   const supabase = await createClient()
   const { error } = await supabase
@@ -163,7 +169,67 @@ export async function submitTaskResponse(
   const { error: ansError } = await supabase.from('lesson_task_answers').insert(rows)
   if (ansError) return { error: ansError.message }
 
+  // Notifica todos os admins sobre nova tarefa aguardando correção
+  const { data: taskData } = await supabase
+    .from('lesson_tasks')
+    .select('title, lessons(title)')
+    .eq('id', taskId)
+    .single()
+  const taskTitle = (taskData as any)?.title ?? 'Tarefa'
+  const lessonTitle = (taskData as any)?.lessons?.title ?? ''
+  const { data: { user: submitter } } = await supabase.auth.getUser()
+  if (submitter) {
+    notifyAllAdmins(submitter.id, {
+      type: 'task_submitted',
+      title: `Nova tarefa aguardando correção`,
+      body: `${taskTitle}${lessonTitle ? ` · ${lessonTitle}` : ''} — enviada por um aluno.`,
+      link: `/admin/aulas/${lessonId}`,
+    })
+  }
+
   revalidatePath(`/dashboard/aulas/${lessonId}`)
+  return { success: true }
+}
+
+export async function gradeTaskResponse(
+  responseId: string,
+  lessonId: string,
+  grade: number,
+  feedback: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const { error } = await supabase
+    .from('lesson_task_responses')
+    .update({ grade, feedback: feedback.trim() || null, graded_at: new Date().toISOString(), graded_by: user.id })
+    .eq('id', responseId)
+
+  if (error) return { error: error.message }
+
+  // Notifica o aluno que recebeu sua nota
+  const { data: responseData } = await supabase
+    .from('lesson_task_responses')
+    .select('user_id, lesson_task:task_id(title, lesson_id)')
+    .eq('id', responseId)
+    .single()
+
+  if (responseData) {
+    const rd = responseData as any
+    const memberId = rd.user_id
+    const taskTitle = rd.lesson_task?.title ?? 'Tarefa'
+    const lid = rd.lesson_task?.lesson_id ?? lessonId
+    notifyUser(memberId, {
+      type: 'task_graded',
+      title: `Sua tarefa foi corrigida`,
+      body: `"${taskTitle}" recebeu nota ${grade}/10.`,
+      link: `/dashboard/documentos/notas`,
+    })
+  }
+
+  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/dashboard/documentos/notas`)
   return { success: true }
 }
 

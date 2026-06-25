@@ -43,7 +43,7 @@ const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
 // ── Question Card ─────────────────────────────────────────────────────────────
 
 function QuestionCard({
-  q, taskId, lessonId, isFirst, isLast, index,
+  q, taskId, lessonId, isFirst, isLast, index, onPointsChange,
 }: {
   q: TaskQuestion
   taskId: string
@@ -51,6 +51,7 @@ function QuestionCard({
   isFirst: boolean
   isLast: boolean
   index: number
+  onPointsChange: (id: string, pts: number) => void
 }) {
   const router = useRouter()
   const [questionText, setQuestionText] = useState(q.question)
@@ -58,6 +59,7 @@ function QuestionCard({
   const [options, setOptions] = useState<string[]>(q.options.length ? q.options : [''])
   const [correctOptions, setCorrectOptions] = useState<number[]>(q.correct_options ?? [])
   const [required, setRequired] = useState(q.required)
+  const [points, setPoints] = useState<number>(q.points ?? 1)
   const [isSaving, startSave] = useTransition()
   const [isDeleting, startDelete] = useTransition()
   const [isReordering, startReorder] = useTransition()
@@ -67,17 +69,24 @@ function QuestionCard({
     t: QuestionType = type,
     opts: string[] = options,
     correct: number[] = correctOptions,
-    req: boolean = required
+    req: boolean = required,
+    pts: number = points,
   ) {
     const isChoice = t === 'multiple_choice' || t === 'checkboxes'
     const cleanOpts = isChoice ? opts.filter((o) => o.trim() !== '') : []
     const cleanCorrect = isChoice ? correct.filter((i) => i < cleanOpts.length) : []
     startSave(async () => {
       const r = await updateQuestion(q.id, lessonId, {
-        type: t, question: qt, options: cleanOpts, correct_options: cleanCorrect, required: req,
+        type: t, question: qt, options: cleanOpts, correct_options: cleanCorrect, required: req, points: pts,
       })
       if (r?.error) toast.error(r.error)
     })
+  }
+
+  function handlePointsChange(val: number) {
+    const clamped = Math.max(0, Math.min(10, val))
+    setPoints(clamped)
+    onPointsChange(q.id, clamped)
   }
 
   function handleTypeChange(newType: QuestionType) {
@@ -312,8 +321,8 @@ function QuestionCard({
         )}
       </div>
 
-      {/* Footer: required toggle */}
-      <div className="px-4 py-2.5 border-t bg-muted/20 flex items-center justify-end gap-3">
+      {/* Footer: required + points */}
+      <div className="px-4 py-2.5 border-t bg-muted/20 flex items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
           <input
             type="checkbox"
@@ -322,6 +331,19 @@ function QuestionCard({
             className="rounded"
           />
           Obrigatória
+        </label>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
+          <span>Pontos:</span>
+          <input
+            type="number"
+            min={0}
+            max={10}
+            step={0.5}
+            value={points}
+            onChange={(e) => handlePointsChange(parseFloat(e.target.value) || 0)}
+            onBlur={() => save()}
+            className="w-16 border border-input rounded-md px-2 py-0.5 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-center"
+          />
         </label>
       </div>
     </div>
@@ -409,6 +431,11 @@ export function LessonTaskEditor({ task, lessonId }: { task: LessonTask | null; 
   const router = useRouter()
   const [isCreating, startCreate] = useTransition()
   const [isAddingQ, startAddQ] = useTransition()
+  const [pointsMap, setPointsMap] = useState<Record<string, number>>(
+    Object.fromEntries((task?.questions ?? []).map((q) => [q.id, q.points ?? 1]))
+  )
+  const totalPoints = Object.values(pointsMap).reduce((s, v) => s + v, 0)
+  const overLimit = totalPoints > 10
 
   if (!task) {
     return (
@@ -436,6 +463,19 @@ export function LessonTaskEditor({ task, lessonId }: { task: LessonTask | null; 
     <div className="space-y-3">
       <TaskHeader task={task} lessonId={lessonId} />
 
+      {/* Total de pontos */}
+      <div className={cn(
+        'flex items-center justify-between px-4 py-2 rounded-lg text-xs border',
+        overLimit
+          ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-400'
+          : 'bg-muted/40 border-border text-muted-foreground',
+      )}>
+        <span>Total de pontos das questões</span>
+        <span className="font-semibold tabular-nums">
+          {totalPoints.toFixed(1)} / 10{overLimit && ' ⚠ excede o máximo'}
+        </span>
+      </div>
+
       {sorted.map((q, i) => (
         <QuestionCard
           key={q.id}
@@ -445,6 +485,7 @@ export function LessonTaskEditor({ task, lessonId }: { task: LessonTask | null; 
           index={i}
           isFirst={i === 0}
           isLast={i === sorted.length - 1}
+          onPointsChange={(id, pts) => setPointsMap((prev) => ({ ...prev, [id]: pts }))}
         />
       ))}
 

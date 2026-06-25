@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Award, NotebookPen } from 'lucide-react'
+import { Award, NotebookPen, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ITEMS = [
   { href: '/dashboard/documentos/certificados', label: 'Certificados', Icon: Award },
   { href: '/dashboard/documentos/anotacoes',    label: 'Anotações',    Icon: NotebookPen },
+  { href: '/dashboard/documentos/notas',        label: 'Notas',        Icon: Star },
 ]
 
 export function SubNav() {
