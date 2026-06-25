@@ -2,22 +2,21 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Award, NotebookPen, Star } from 'lucide-react'
+import { Clock, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ITEMS = [
-  { href: '/dashboard/documentos/certificados', label: 'Certificados', Icon: Award },
-  { href: '/dashboard/documentos/anotacoes',    label: 'Anotações',    Icon: NotebookPen },
-  { href: '/dashboard/documentos/notas',        label: 'Notas',        Icon: Star },
+  { href: '/dashboard/documentos/notas/pendentes', label: 'Pendentes',  Icon: Clock },
+  { href: '/dashboard/documentos/notas/recebidas', label: 'Recebidas',  Icon: Star  },
 ]
 
-export function SubNav({ badges = {} }: { badges?: Record<string, number> }) {
+export function NotasNav({ pendingCount }: { pendingCount: number }) {
   const pathname = usePathname()
   return (
-    <>
+    <div className="flex gap-1 border-b border-border mb-5">
       {ITEMS.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname.startsWith(href + '/')
-        const badgeCount = badges[href] ?? 0
+        const showBadge = label === 'Pendentes' && pendingCount > 0
         return (
           <Link
             key={href}
@@ -31,14 +30,14 @@ export function SubNav({ badges = {} }: { badges?: Record<string, number> }) {
           >
             <Icon className="w-4 h-4" />
             {label}
-            {badgeCount > 0 && (
-              <span className="min-w-[1.1rem] h-[1.1rem] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
-                {badgeCount > 9 ? '9+' : badgeCount}
+            {showBadge && (
+              <span className="min-w-[1.1rem] h-[1.1rem] bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                {pendingCount > 9 ? '9+' : pendingCount}
               </span>
             )}
           </Link>
         )
       })}
-    </>
+    </div>
   )
 }
