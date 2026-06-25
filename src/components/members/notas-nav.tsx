@@ -10,13 +10,12 @@ const ITEMS = [
   { href: '/dashboard/documentos/notas/recebidas', label: 'Recebidas',  Icon: Star  },
 ]
 
-export function NotasNav({ pendingCount }: { pendingCount: number }) {
+export function NotasNav() {
   const pathname = usePathname()
   return (
     <div className="flex gap-1 border-b border-border mb-5">
       {ITEMS.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname.startsWith(href + '/')
-        const showBadge = label === 'Pendentes' && pendingCount > 0
         return (
           <Link
             key={href}
@@ -30,11 +29,6 @@ export function NotasNav({ pendingCount }: { pendingCount: number }) {
           >
             <Icon className="w-4 h-4" />
             {label}
-            {showBadge && (
-              <span className="min-w-[1.1rem] h-[1.1rem] bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
-                {pendingCount > 9 ? '9+' : pendingCount}
-              </span>
-            )}
           </Link>
         )
       })}
