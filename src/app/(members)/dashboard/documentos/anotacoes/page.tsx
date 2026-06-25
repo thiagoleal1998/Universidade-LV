@@ -10,19 +10,27 @@ export default async function AnotacoesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: notesData } = await supabase
+  const { data: notesRaw } = await supabase
     .from('lesson_notes')
-    .select('lesson_id, content, updated_at, lessons(id, title)')
+    .select('lesson_id, content, updated_at')
     .eq('user_id', user.id)
     .neq('content', '')
     .order('updated_at', { ascending: false })
 
-  const notes = (notesData ?? []) as unknown as {
-    lesson_id: string
-    content: string
-    updated_at: string
-    lessons: { id: string; title: string } | null
-  }[]
+  const rawNotes = (notesRaw ?? []) as { lesson_id: string; content: string; updated_at: string }[]
+
+  // Busca títulos das aulas em query separada (evita depender de FK registrada)
+  const lessonIds = rawNotes.map((n) => n.lesson_id)
+  const { data: lessonsData } = lessonIds.length > 0
+    ? await supabase.from('lessons').select('id, title').in('id', lessonIds)
+    : { data: [] }
+
+  const lessonMap = new Map((lessonsData ?? []).map((l: { id: string; title: string }) => [l.id, l.title]))
+
+  const notes = rawNotes.map((n) => ({
+    ...n,
+    lessonTitle: lessonMap.get(n.lesson_id) ?? 'Aula sem título',
+  }))
 
   if (notes.length === 0) {
     return (
@@ -40,14 +48,12 @@ export default async function AnotacoesPage() {
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{notes.length} {notes.length === 1 ? 'anotação' : 'anotações'}</p>
 
-      {notes.map((note) => {
-        const lesson = Array.isArray(note.lessons) ? note.lessons[0] : note.lessons
-        return (
+      {notes.map((note) => (
           <div key={note.lesson_id} className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="font-medium text-foreground truncate">
-                  {lesson?.title ?? 'Aula sem título'}
+                  {note.lessonTitle}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Atualizado em {new Date(note.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
@@ -67,8 +73,7 @@ export default async function AnotacoesPage() {
               </p>
             </div>
           </div>
-        )
-      })}
+      ))}
     </div>
   )
 }
