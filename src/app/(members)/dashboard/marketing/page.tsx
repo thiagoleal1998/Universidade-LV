@@ -6,7 +6,7 @@ export const metadata = { title: 'Marketing' }
 
 type MarketingItem = {
   id: string
-  category: 'visual' | 'link' | 'email' | 'script'
+  category: string
   title: string
   description: string
   content: string

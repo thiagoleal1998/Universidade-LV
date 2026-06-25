@@ -91,10 +91,11 @@ const SECTION_TYPE_LABELS: Record<SectionType, string> = {
 }
 
 const DEFAULT_SECTIONS: MarketingSection[] = [
-  { key: 'visual', label: 'Materiais Visuais', type: 'visual' },
-  { key: 'link',   label: 'Links Úteis',        type: 'link'   },
-  { key: 'email',  label: 'Templates de Email', type: 'text'   },
-  { key: 'script', label: 'Scripts e Roteiros', type: 'text'   },
+  { key: 'ofertas_diarias', label: 'Ofertas Diárias',                 type: 'visual' },
+  { key: 'laminas',         label: 'Lâminas de Condições',            type: 'visual' },
+  { key: 'condicoes',       label: 'Condições Comerciais Exclusivas', type: 'visual' },
+  { key: 'bloqueios',       label: 'Bloqueios',                       type: 'visual' },
+  { key: 'link',            label: 'Links Úteis',                     type: 'link'   },
 ]
 
 function parseSections(json: string): MarketingSection[] {
