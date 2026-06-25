@@ -162,10 +162,13 @@ export function CourseModulesAccordion({
             </button>
 
             {/* Aulas — animação suave de abertura via grid-rows */}
-            <div className={cn(
-              'grid transition-all duration-300 ease-in-out',
-              isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
-            )}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateRows: isOpen ? '1fr' : '0fr',
+                transition: 'grid-template-rows 300ms ease-in-out',
+              }}
+            >
               <div className="overflow-hidden">
                 <div className="border-t border-border divide-y divide-border">
                   {lessons.map((lesson) => (
