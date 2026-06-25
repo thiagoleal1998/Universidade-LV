@@ -84,7 +84,11 @@ export function CourseEditor({ course }: { course: Course }) {
   return (
     <form action={handleSave} className="bg-card border rounded-xl overflow-hidden">
       {/* Cover image */}
-      <div className="relative w-full h-44 bg-muted group cursor-pointer" onClick={() => fileRef.current?.click()}>
+      <div
+        className="relative w-full bg-muted group cursor-pointer"
+        style={{ aspectRatio: '16/9' }}
+        onClick={() => fileRef.current?.click()}
+      >
         {coverUrl ? (
           <Image src={coverUrl} alt={course.name} fill className="object-cover" />
         ) : (
@@ -99,6 +103,9 @@ export function CourseEditor({ course }: { course: Course }) {
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
       </div>
+      <p className="px-6 pt-2 pb-0 text-xs text-muted-foreground">
+        Tamanho ideal: <strong>1280 × 720 px</strong> (proporção 16:9) · JPG ou PNG
+      </p>
 
       {/* Fields */}
       <div className="p-6 space-y-4">
