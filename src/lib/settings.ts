@@ -258,11 +258,8 @@ const DEFAULTS = {
     '/admin/configuracoes',
   ]),
   marketing_sections: JSON.stringify([
-    { key: 'ofertas_diarias', label: 'Ofertas Diárias',                 type: 'visual' },
-    { key: 'laminas',         label: 'Lâminas de Condições',            type: 'visual' },
-    { key: 'condicoes',       label: 'Condições Comerciais Exclusivas', type: 'visual' },
-    { key: 'bloqueios',       label: 'Bloqueios',                       type: 'visual' },
-    { key: 'link',            label: 'Links Úteis',                     type: 'link'   },
+    { key: 'visual', label: 'Materiais Visuais', type: 'visual' },
+    { key: 'link',   label: 'Links Úteis',        type: 'link'   },
   ]),
   seo_title: 'Universidade LV',
   seo_description: 'Plataforma de aprendizado exclusiva para agentes de viagem. Cursos, módulos e certificados online.',

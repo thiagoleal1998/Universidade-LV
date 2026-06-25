@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 
-export type MarketingCategory = 'visual' | 'link' | 'email' | 'script'
+export type MarketingCategory = string
 
 export async function createMarketingItem(data: {
   category: MarketingCategory

@@ -449,11 +449,11 @@ function CategorySection({ cat, items }: { cat: CatDef; items: MarketingItem[] }
         </p>
       )}
 
-      {cat.key === 'visual' ? (
+      {cat.type === 'visual' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} />)}
         </div>
-      ) : cat.key === 'link' ? (
+      ) : cat.type === 'link' ? (
         <div className="space-y-2">
           {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} />)}
         </div>
@@ -466,20 +466,28 @@ function CategorySection({ cat, items }: { cat: CatDef; items: MarketingItem[] }
   )
 }
 
+const VISUAL_SUBSECTIONS: { key: string; label: string }[] = [
+  { key: 'ofertas_diarias', label: 'Ofertas Diárias' },
+  { key: 'laminas',         label: 'Lâminas de Condições' },
+  { key: 'condicoes',       label: 'Condições Comerciais Exclusivas' },
+  { key: 'bloqueios',       label: 'Bloqueios' },
+]
+
 const DEFAULT_SECTIONS: MarketingSection[] = [
-  { key: 'ofertas_diarias', label: 'Ofertas Diárias',                 type: 'visual' },
-  { key: 'laminas',         label: 'Lâminas de Condições',            type: 'visual' },
-  { key: 'condicoes',       label: 'Condições Comerciais Exclusivas', type: 'visual' },
-  { key: 'bloqueios',       label: 'Bloqueios',                       type: 'visual' },
-  { key: 'link',            label: 'Links Úteis',                     type: 'link'   },
+  { key: 'visual', label: 'Materiais Visuais', type: 'visual' },
+  { key: 'link',   label: 'Links Úteis',        type: 'link'   },
 ]
 
 export function MarketingManager({ items, sections }: { items: MarketingItem[]; sections?: MarketingSection[] }) {
   const cats = (sections && sections.length > 0 ? sections : DEFAULT_SECTIONS).map(sectionToCatDef)
   const [activeTab, setActiveTab] = useState(cats[0]?.key ?? 'visual')
+  const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
 
   const cat = cats.find((c) => c.key === activeTab) ?? cats[0]
-  const tabItems = items.filter((i) => i.category === activeTab)
+  const isVisual = cat?.type === 'visual'
+  const effectiveKey = isVisual ? visualSubTab : activeTab
+  const tabItems = items.filter((i) => i.category === effectiveKey)
+  const effectiveCat = isVisual && cat ? { ...cat, key: effectiveKey } : cat
 
   if (cats.length === 0) return (
     <p className="text-sm text-muted-foreground text-center py-16">
@@ -489,7 +497,8 @@ export function MarketingManager({ items, sections }: { items: MarketingItem[]; 
 
   return (
     <div>
-      <div className="flex gap-0 mb-6 border-b border-border overflow-x-auto">
+      {/* Tabs principais */}
+      <div className="flex gap-0 border-b border-border overflow-x-auto">
         {cats.map(({ key, label, Icon }) => (
           <button
             key={key}
@@ -508,7 +517,30 @@ export function MarketingManager({ items, sections }: { items: MarketingItem[]; 
         ))}
       </div>
 
-      {cat && <CategorySection key={activeTab} cat={cat} items={tabItems} />}
+      {/* Sub-tabs de Materiais Visuais */}
+      {isVisual && (
+        <div className="flex gap-0 border-b border-border overflow-x-auto mb-6">
+          {VISUAL_SUBSECTIONS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setVisualSubTab(key)}
+              className={cn(
+                'px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+                visualSubTab === key
+                  ? 'border-primary/70 text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!isVisual && <div className="mb-6" />}
+
+      {effectiveCat && <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} />}
     </div>
   )
 }
