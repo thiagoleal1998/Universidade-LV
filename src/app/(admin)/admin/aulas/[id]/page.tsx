@@ -27,7 +27,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
     supabase.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
     supabase
       .from('lesson_tasks')
-      .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, required, order_index, points), response_count:lesson_task_responses(count)')
+      .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, correct_answer, required, order_index, points), response_count:lesson_task_responses(count)')
       .eq('lesson_id', id)
       .maybeSingle(),
   ])
@@ -51,7 +51,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   const task = taskRaw
     ? {
         ...taskRaw,
-        questions: (taskRaw.questions ?? []).map((q: any) => ({ ...q, options: q.options ?? [], points: q.points ?? 1 })),
+        questions: (taskRaw.questions ?? []).map((q: any) => ({ ...q, options: q.options ?? [], points: q.points ?? 1, correct_answer: q.correct_answer ?? null })),
         response_count: (taskRaw as any).response_count?.[0]?.count ?? 0,
       } as LessonTask
     : null
@@ -61,7 +61,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   if (task) {
     const { data: responsesRaw } = await adminClient
       .from('lesson_task_responses')
-      .select('id, user_id, submitted_at, grade, feedback, graded_at, answers:lesson_task_answers(question_id, text_answer, option_indices)')
+      .select('id, user_id, submitted_at, grade, feedback, graded_at, answers:lesson_task_answers(question_id, text_answer, option_indices, grade)')
       .eq('task_id', task.id)
       .order('submitted_at', { ascending: false })
 

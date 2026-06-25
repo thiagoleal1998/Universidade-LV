@@ -58,6 +58,7 @@ function QuestionCard({
   const [type, setType] = useState<QuestionType>(q.type)
   const [options, setOptions] = useState<string[]>(q.options.length ? q.options : [''])
   const [correctOptions, setCorrectOptions] = useState<number[]>(q.correct_options ?? [])
+  const [correctAnswer, setCorrectAnswer] = useState<string>(q.correct_answer ?? '')
   const [required, setRequired] = useState(q.required)
   const [points, setPoints] = useState<number>(q.points ?? 1)
   const [isSaving, startSave] = useTransition()
@@ -71,13 +72,16 @@ function QuestionCard({
     correct: number[] = correctOptions,
     req: boolean = required,
     pts: number = points,
+    ca: string = correctAnswer,
   ) {
     const isChoice = t === 'multiple_choice' || t === 'checkboxes'
     const cleanOpts = isChoice ? opts.filter((o) => o.trim() !== '') : []
     const cleanCorrect = isChoice ? correct.filter((i) => i < cleanOpts.length) : []
     startSave(async () => {
       const r = await updateQuestion(q.id, lessonId, {
-        type: t, question: qt, options: cleanOpts, correct_options: cleanCorrect, required: req, points: pts,
+        type: t, question: qt, options: cleanOpts, correct_options: cleanCorrect,
+        correct_answer: (t === 'short_text' || t === 'long_text') ? (ca.trim() || null) : null,
+        required: req, points: pts,
       })
       if (r?.error) toast.error(r.error)
     })
@@ -92,12 +96,14 @@ function QuestionCard({
   function handleTypeChange(newType: QuestionType) {
     setType(newType)
     setCorrectOptions([])
+    const isText = newType === 'short_text' || newType === 'long_text'
+    if (!isText) setCorrectAnswer('')
     if (newType === 'multiple_choice' || newType === 'checkboxes') {
       const opts = options.length ? options : ['']
       setOptions(opts)
-      save(questionText, newType, opts, [], required)
+      save(questionText, newType, opts, [], required, points, '')
     } else {
-      save(questionText, newType, [], [], required)
+      save(questionText, newType, [], [], required, points, isText ? correctAnswer : '')
     }
   }
 
@@ -307,6 +313,21 @@ function QuestionCard({
             <div className="h-14 border-b border-dashed border-muted-foreground/40 text-xs text-muted-foreground/50 flex items-end pb-1">
               Resposta longa
             </div>
+          </div>
+        )}
+
+        {/* Gabarito (apenas texto curto/longo) */}
+        {(type === 'short_text' || type === 'long_text') && (
+          <div className="pl-7 space-y-1.5">
+            <p className="text-xs text-muted-foreground font-medium">Resposta esperada <span className="font-normal opacity-60">(gabarito para o instrutor — opcional)</span></p>
+            <Textarea
+              value={correctAnswer}
+              onChange={(e) => setCorrectAnswer(e.target.value)}
+              onBlur={() => save()}
+              placeholder="Descreva a resposta correta esperada. Será exibida na correção como referência."
+              rows={type === 'long_text' ? 3 : 2}
+              className="text-sm resize-none border-green-300 dark:border-green-800 focus-visible:ring-green-400/30 bg-green-50/40 dark:bg-green-950/20 placeholder:text-muted-foreground/40"
+            />
           </div>
         )}
 

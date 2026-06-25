@@ -14,6 +14,7 @@ export type TaskQuestion = {
   question: string
   options: string[]
   correct_options: number[]
+  correct_answer: string | null
   required: boolean
   order_index: number
   points: number
@@ -98,7 +99,7 @@ export async function addQuestion(taskId: string, lessonId: string) {
 export async function updateQuestion(
   questionId: string,
   lessonId: string,
-  payload: { type: QuestionType; question: string; options: string[]; correct_options: number[]; required: boolean; points: number }
+  payload: { type: QuestionType; question: string; options: string[]; correct_options: number[]; correct_answer: string | null; required: boolean; points: number }
 ) {
   const supabase = await createClient()
   const { error } = await supabase
@@ -193,21 +194,32 @@ export async function gradeTaskResponse(
   responseId: string,
   lessonId: string,
   grade: number,
-  feedback: string
+  feedback: string,
+  answerGrades: { questionId: string; grade: number }[] = []
 ) {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('lesson_task_responses')
     .update({ grade, feedback: feedback.trim() || null, graded_at: new Date().toISOString(), graded_by: user.id })
     .eq('id', responseId)
 
   if (error) return { error: error.message }
 
+  // Salva nota por questão
+  for (const ag of answerGrades) {
+    await adminClient
+      .from('lesson_task_answers')
+      .update({ grade: ag.grade })
+      .eq('response_id', responseId)
+      .eq('question_id', ag.questionId)
+  }
+
   // Notifica o aluno que recebeu sua nota
-  const { data: responseData } = await supabase
+  const { data: responseData } = await adminClient
     .from('lesson_task_responses')
     .select('user_id, lesson_task:task_id(title, lesson_id)')
     .eq('id', responseId)

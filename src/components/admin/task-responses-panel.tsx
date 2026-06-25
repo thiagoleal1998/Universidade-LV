@@ -7,13 +7,14 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { CheckCircle2, ChevronDown, ChevronUp, ClipboardCheck, Star } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Star, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Answer = {
   question_id: string
   text_answer: string | null
   option_indices: number[] | null
+  grade: number | null
 }
 
 type Question = {
@@ -21,6 +22,8 @@ type Question = {
   question: string
   type: string
   options: string[]
+  correct_options: number[]
+  correct_answer: string | null
   points: number
 }
 
@@ -46,8 +49,21 @@ export function TaskResponsesPanel({
 }) {
   const router = useRouter()
   const [openId, setOpenId] = useState<string | null>(null)
+
+  // Nota total por resposta
   const [grades, setGrades] = useState<Record<string, string>>(
     Object.fromEntries(responses.map((r) => [r.id, r.grade != null ? String(r.grade) : '']))
+  )
+  // Nota por questão: [responseId][questionId]
+  const [answerGrades, setAnswerGrades] = useState<Record<string, Record<string, string>>>(
+    Object.fromEntries(
+      responses.map((r) => [
+        r.id,
+        Object.fromEntries(
+          r.answers.map((a) => [a.question_id, a.grade != null ? String(a.grade) : ''])
+        ),
+      ])
+    )
   )
   const [feedbacks, setFeedbacks] = useState<Record<string, string>>(
     Object.fromEntries(responses.map((r) => [r.id, r.feedback ?? '']))
@@ -55,6 +71,30 @@ export function TaskResponsesPanel({
   const [isPending, startSave] = useTransition()
 
   const questionMap = new Map(questions.map((q) => [q.id, q]))
+  const isTextType = (type: string) => type === 'short_text' || type === 'long_text'
+
+  function handleAnswerGradeChange(responseId: string, questionId: string, val: string) {
+    const updated = { ...(answerGrades[responseId] ?? {}), [questionId]: val }
+    setAnswerGrades((p) => ({ ...p, [responseId]: updated }))
+    // Auto-soma para preencher nota total
+    let total = 0
+    for (const v of Object.values(updated)) {
+      const n = parseFloat(v)
+      if (!isNaN(n)) total += n
+    }
+    const capped = Math.min(total, 10)
+    setGrades((p) => ({ ...p, [responseId]: capped % 1 === 0 ? String(capped) : capped.toFixed(1) }))
+  }
+
+  function autoTotal(responseId: string): number {
+    const qGrades = answerGrades[responseId] ?? {}
+    let total = 0
+    for (const v of Object.values(qGrades)) {
+      const n = parseFloat(v)
+      if (!isNaN(n)) total += n
+    }
+    return Math.min(total, 10)
+  }
 
   function handleGrade(responseId: string) {
     const gradeVal = parseFloat(grades[responseId] ?? '')
@@ -62,8 +102,12 @@ export function TaskResponsesPanel({
       toast.error('Nota deve ser entre 0 e 10')
       return
     }
+    const qGrades = Object.entries(answerGrades[responseId] ?? {})
+      .map(([questionId, val]) => ({ questionId, grade: parseFloat(val) || 0 }))
+      .filter((ag) => !isNaN(ag.grade))
+
     startSave(async () => {
-      const r = await gradeTaskResponse(responseId, lessonId, gradeVal, feedbacks[responseId] ?? '')
+      const r = await gradeTaskResponse(responseId, lessonId, gradeVal, feedbacks[responseId] ?? '', qGrades)
       if (r?.error) toast.error(r.error)
       else { toast.success('Nota salva!'); router.refresh() }
     })
@@ -82,6 +126,7 @@ export function TaskResponsesPanel({
       {responses.map((resp) => {
         const isOpen = openId === resp.id
         const hasGrade = resp.grade != null
+        const auto = autoTotal(resp.id)
         return (
           <div key={resp.id} className="border rounded-xl overflow-hidden bg-card">
             {/* Header */}
@@ -97,7 +142,7 @@ export function TaskResponsesPanel({
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{resp.member_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Enviado em {new Date(resp.submitted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(resp.submitted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
               </div>
@@ -115,40 +160,92 @@ export function TaskResponsesPanel({
 
             {/* Body */}
             {isOpen && (
-              <div className="border-t border-border px-4 py-4 space-y-4">
-                {/* Respostas */}
+              <div className="border-t border-border px-4 py-4 space-y-5">
+
+                {/* Respostas + nota por questão */}
                 {resp.answers.map((ans) => {
                   const q = questionMap.get(ans.question_id)
                   if (!q) return null
+                  const isText = isTextType(q.type)
+                  const maxPts = q.points
+                  const qGradeVal = answerGrades[resp.id]?.[ans.question_id] ?? ''
+
                   return (
-                    <div key={ans.question_id} className="space-y-1">
-                      <p className="text-xs font-semibold text-foreground">
-                        {q.question}
-                        <span className="ml-2 text-muted-foreground font-normal">({q.points} {q.points === 1 ? 'pt' : 'pts'})</span>
-                      </p>
+                    <div key={ans.question_id} className="space-y-2">
+                      {/* Cabeçalho da questão */}
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold text-foreground leading-snug flex-1">
+                          {q.question}
+                          <span className="ml-2 text-muted-foreground font-normal">({maxPts} {maxPts === 1 ? 'pt' : 'pts'})</span>
+                        </p>
+                        {/* Input de nota por questão */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <label className="text-xs text-muted-foreground whitespace-nowrap">Nota:</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={maxPts}
+                            step={0.5}
+                            value={qGradeVal}
+                            onChange={(e) => handleAnswerGradeChange(resp.id, ans.question_id, e.target.value)}
+                            className="w-16 border border-input rounded-lg px-2 py-1 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-center"
+                            placeholder={`0–${maxPts}`}
+                          />
+                          <span className="text-xs text-muted-foreground">/ {maxPts}</span>
+                        </div>
+                      </div>
+
+                      {/* Resposta do aluno */}
                       {ans.text_answer ? (
                         <p className="text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 whitespace-pre-wrap">{ans.text_answer}</p>
                       ) : ans.option_indices?.length ? (
                         <div className="flex flex-wrap gap-1.5">
-                          {ans.option_indices.map((i) => (
-                            <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
-                              {q.options[i] ?? `Opção ${i + 1}`}
-                            </span>
-                          ))}
+                          {ans.option_indices.map((i) => {
+                            const isCorrect = q.correct_options?.includes(i)
+                            return (
+                              <span key={i} className={cn(
+                                'text-xs px-2 py-0.5 rounded-full border',
+                                isCorrect
+                                  ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30'
+                                  : 'bg-primary/10 text-primary border-primary/20'
+                              )}>
+                                {q.options[i] ?? `Opção ${i + 1}`}
+                              </span>
+                            )
+                          })}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground italic">Sem resposta</p>
+                      )}
+
+                      {/* Gabarito (só para texto) */}
+                      {isText && q.correct_answer && (
+                        <div className="flex items-start gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
+                          <BookOpen className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-0.5">Resposta esperada</p>
+                            <p className="text-xs text-green-800 dark:text-green-300 whitespace-pre-wrap">{q.correct_answer}</p>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )
                 })}
 
-                {/* Correção */}
+                {/* Correção — nota total + feedback */}
                 <div className="border-t border-border pt-4 space-y-3">
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Correção</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Nota Final</p>
+                    {auto > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        Soma automática: <span className="font-semibold text-foreground">{auto % 1 === 0 ? auto : auto.toFixed(1)}</span>/10
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-start gap-3">
                     <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Nota (0–10)</label>
+                      <label className="text-xs text-muted-foreground block mb-1">Nota geral (0–10)</label>
                       <input
                         type="number"
                         min={0}
@@ -171,6 +268,7 @@ export function TaskResponsesPanel({
                       />
                     </div>
                   </div>
+
                   <Button
                     size="sm"
                     disabled={isPending}
@@ -180,6 +278,7 @@ export function TaskResponsesPanel({
                     <CheckCircle2 className="w-4 h-4" />
                     {hasGrade ? 'Atualizar nota' : 'Salvar nota'}
                   </Button>
+
                   {resp.graded_at && (
                     <p className="text-xs text-muted-foreground">
                       Corrigido em {new Date(resp.graded_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
