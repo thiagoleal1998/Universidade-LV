@@ -4,10 +4,13 @@ import { MarketingTabs } from '@/components/admin/marketing-tabs'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import { getTrainingItems } from '@/app/actions/training'
 
+const REMOVED_KEYS = ['email', 'script']
+
 function parseSections(json: string): MarketingSection[] {
   try {
     const parsed = JSON.parse(json)
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    if (Array.isArray(parsed) && parsed.length > 0)
+      return parsed.filter((s: MarketingSection) => !REMOVED_KEYS.includes(s.key))
   } catch {}
   return []
 }

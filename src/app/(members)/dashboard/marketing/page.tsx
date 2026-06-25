@@ -25,9 +25,11 @@ export default async function MemberMarketingPage() {
 
   const items = (itemsData ?? []) as MarketingItem[]
 
+  const REMOVED_KEYS = ['email', 'script']
   let sections: { key: string; label: string; type: string }[] = []
   try {
-    sections = JSON.parse(settings.marketing_sections)
+    sections = (JSON.parse(settings.marketing_sections) as { key: string; label: string; type: string }[])
+      .filter((s) => !REMOVED_KEYS.includes(s.key))
   } catch {
     sections = []
   }
