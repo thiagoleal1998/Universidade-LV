@@ -33,7 +33,7 @@ type Props = {
   memberNavLabels?: string
 }
 
-// Smooth slide-out for any text content when sidebar collapses
+// Smooth slide-out for text elements — max-width + opacity
 function slideText(collapsed: boolean, maxW = 180): CSSProperties {
   return {
     overflow: 'hidden',
@@ -43,17 +43,6 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
     transition: collapsed
       ? 'max-width 240ms cubic-bezier(0.4,0,0.6,1), opacity 160ms ease'
       : 'max-width 280ms cubic-bezier(0.0,0,0.2,1) 60ms, opacity 200ms ease 80ms',
-  }
-}
-
-// Fade a whole block in/out
-function fadeBlock(collapsed: boolean): CSSProperties {
-  return {
-    opacity: collapsed ? 0 : 1,
-    pointerEvents: collapsed ? 'none' : 'auto',
-    transition: collapsed
-      ? 'opacity 160ms ease'
-      : 'opacity 200ms ease 120ms',
   }
 }
 
@@ -82,64 +71,44 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
 
-      {/* ── Brand ── */}
-      <div className="border-b border-border bg-primary/5 shrink-0 min-h-[64px] flex items-center">
-        {/* Collapsed: only the expand button, centered */}
-        {collapsed && !onClose && onToggleCollapse ? (
-          <div className="flex-1 flex justify-center">
-            <button
-              onClick={onToggleCollapse}
-              title="Expandir menu"
-              className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2.5 px-3 py-4 w-full">
-            <Link
-              href="/dashboard"
-              onClick={onClose}
-              className="flex items-center gap-2.5 shrink-0"
-            >
-              {logoUrl ? (
-                <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border shadow-sm">
-                  <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full" />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-sm">
-                  <GraduationCap className="w-4 h-4 text-primary-foreground" />
-                </div>
-              )}
-            </Link>
-
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate leading-tight">{siteName}</p>
-              <p className="text-xs text-primary/70 font-medium">{areaSubtitle}</p>
+      {/* ── Brand — logo always visible ── */}
+      <div className="border-b border-border bg-primary/5 shrink-0 flex items-center px-3 py-4 gap-2.5 min-h-[64px]">
+        <Link
+          href="/dashboard"
+          onClick={onClose}
+          title={collapsed ? siteName : undefined}
+          className="shrink-0"
+        >
+          {logoUrl ? (
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-border shadow-sm">
+              <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full" />
             </div>
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+              <GraduationCap className="w-4 h-4 text-primary-foreground" />
+            </div>
+          )}
+        </Link>
 
-            {onClose ? (
-              <button
-                onClick={onClose}
-                className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            ) : onToggleCollapse && (
-              <button
-                onClick={onToggleCollapse}
-                title="Minimizar menu"
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              >
-                <PanelLeftClose className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+        {/* Text slides out when collapsed */}
+        <div className="flex-1 min-w-0" style={slideText(collapsed, 155)}>
+          <p className="text-sm font-semibold text-foreground truncate leading-tight">{siteName}</p>
+          <p className="text-xs text-primary/70 font-medium">{areaSubtitle}</p>
+        </div>
+
+        {/* Mobile: close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
         )}
       </div>
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden flex flex-col">
 
         {/* Search */}
         <button
@@ -153,8 +122,9 @@ function SidebarContent({
           onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))}
         >
           <Search className="w-3.5 h-3.5 shrink-0" />
-          <span style={slideText(collapsed, 140)} className="flex-1 text-left">Busca rápida</span>
-          <kbd style={fadeBlock(collapsed)} className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono hidden md:inline">
+          <span style={slideText(collapsed, 130)} className="flex-1 text-left">Busca rápida</span>
+          {/* kbd uses slideText so it takes 0px layout space when collapsed */}
+          <kbd style={slideText(collapsed, 58)} className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono hidden md:block">
             Ctrl K
           </kbd>
         </button>
@@ -183,75 +153,90 @@ function SidebarContent({
             </Link>
           )
         })}
+
+        {/* Collapse/expand toggle — bottom of nav, always visible */}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expandir menu' : 'Minimizar menu'}
+            className={cn(
+              'mt-auto w-full flex items-center rounded-lg font-medium transition-colors',
+              'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent',
+              collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
+            )}
+          >
+            {collapsed
+              ? <PanelLeftOpen className="w-4 h-4 shrink-0" />
+              : <PanelLeftClose className="w-4 h-4 shrink-0" />}
+            <span style={slideText(collapsed, 120)}>Minimizar</span>
+          </button>
+        )}
       </nav>
 
       {/* ── User footer ── */}
-      <div className="px-2 py-3 border-t border-border space-y-1 shrink-0">
-        {/* Avatar row */}
-        <div className={cn('flex items-center transition-all duration-300', collapsed ? 'justify-center gap-0' : 'gap-1')}>
-          <Link
-            href="/dashboard/perfil"
-            onClick={onClose}
-            title={collapsed ? (userName || 'Perfil') : undefined}
-            className={cn(
-              'flex items-center rounded-lg transition-colors shrink-0',
-              collapsed ? 'p-1' : 'gap-2 px-2 py-1.5 flex-1 min-w-0',
-              isProfileActive ? 'bg-primary/10' : 'hover:bg-muted',
-            )}
-          >
-            <Avatar className="w-7 h-7 shrink-0">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
-              <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0" style={slideText(collapsed, 120)}>
-              {userName && <p className="text-xs font-medium truncate text-foreground">{userName}</p>}
-              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
-            </div>
-          </Link>
-
-          {/* Bell + Theme — always visible, fade the gap */}
-          <div style={fadeBlock(collapsed)} className="flex items-center gap-0.5 shrink-0">
+      <div className="px-2 py-3 border-t border-border shrink-0">
+        {collapsed ? (
+          /* Collapsed: icons stacked, centered */
+          <div className="flex flex-col items-center gap-1.5">
+            <Link
+              href="/dashboard/perfil"
+              title={userName || 'Perfil'}
+              className={cn('p-1 rounded-lg transition-colors', isProfileActive ? 'bg-primary/10' : 'hover:bg-muted')}
+            >
+              <Avatar className="w-7 h-7">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
+                <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+              </Avatar>
+            </Link>
             <NotificationBell unreadCount={unreadCount} placement="sidebar" />
             <ThemeToggle />
+            <form action={logout}>
+              <button
+                type="submit"
+                title="Sair"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </form>
           </div>
-        </div>
-
-        {/* When collapsed: bell + theme stacked */}
-        <div
-          className="flex flex-col items-center gap-1"
-          style={{
-            overflow: 'hidden',
-            maxHeight: collapsed ? 72 : 0,
-            opacity: collapsed ? 1 : 0,
-            pointerEvents: collapsed ? 'auto' : 'none',
-            transition: collapsed
-              ? 'max-height 280ms cubic-bezier(0.0,0,0.2,1) 60ms, opacity 200ms ease 100ms'
-              : 'max-height 200ms cubic-bezier(0.4,0,0.6,1), opacity 140ms ease',
-          }}
-        >
-          <NotificationBell unreadCount={unreadCount} placement="sidebar" />
-          <ThemeToggle />
-        </div>
-
-        {/* Logout */}
-        <form action={logout}>
-          <button
-            type="submit"
-            title={collapsed ? 'Sair' : undefined}
-            className={cn(
-              'w-full flex items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm font-medium h-8',
-              collapsed ? 'justify-center px-0' : 'gap-2 px-3',
-            )}
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            <span style={slideText(collapsed, 100)}>Sair</span>
-          </button>
-        </form>
-
-        {/* Version */}
-        <div style={fadeBlock(collapsed)}>
-          <p className="text-xs text-muted-foreground/40 font-mono text-center pt-1">v{APP_VERSION}</p>
-        </div>
+        ) : (
+          /* Expanded: full user info + actions */
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Link
+                href="/dashboard/perfil"
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-2 px-2 py-1.5 rounded-lg flex-1 min-w-0 transition-colors',
+                  isProfileActive ? 'bg-primary/10' : 'hover:bg-muted',
+                )}
+              >
+                <Avatar className="w-7 h-7 shrink-0">
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
+                  <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  {userName && <p className="text-xs font-medium truncate text-foreground">{userName}</p>}
+                  <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                </div>
+              </Link>
+              <NotificationBell unreadCount={unreadCount} placement="sidebar" />
+              <ThemeToggle />
+            </div>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="w-full flex items-center gap-2 px-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm font-medium h-8"
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                Sair
+              </button>
+            </form>
+            <p className="text-xs text-muted-foreground/40 font-mono text-center pt-1">v{APP_VERSION}</p>
+          </div>
+        )}
       </div>
     </div>
   )
