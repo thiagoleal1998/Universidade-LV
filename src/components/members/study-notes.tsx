@@ -36,7 +36,10 @@ export function StudyNotes({ lessonId, initialContent }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Suas anotações pessoais — visíveis apenas para você.</p>
+        <p className="text-sm text-muted-foreground">
+          Suas anotações pessoais — visíveis apenas para você.{' '}
+          <span className="text-xs">As anotações são salvas automaticamente enquanto você digita.</span>
+        </p>
         {status === 'saving' && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="w-3 h-3 animate-spin" />
