@@ -13,16 +13,16 @@ function formatRemaining(ms: number): string {
 }
 
 export function LiveCountdown({ liveAt }: { liveAt: string }) {
-  const [remaining, setRemaining] = useState(() => new Date(liveAt).getTime() - Date.now())
+  const [remaining, setRemaining] = useState<number | null>(null)
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setRemaining(new Date(liveAt).getTime() - Date.now())
-    }, 1000)
+    const tick = () => setRemaining(new Date(liveAt).getTime() - Date.now())
+    tick()
+    const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [liveAt])
 
-  if (remaining <= 0) return null
+  if (remaining === null || remaining <= 0) return null
 
   return (
     <span className="font-mono text-xs font-semibold tabular-nums">

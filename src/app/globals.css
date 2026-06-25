@@ -20,6 +20,20 @@
   animation: faq-float 3s ease-in-out infinite;
 }
 
+@keyframes bell-ring {
+  0%,100% { transform: rotate(0deg);  }
+  4%       { transform: rotate(14deg); }
+  8%       { transform: rotate(-10deg);}
+  12%      { transform: rotate(8deg);  }
+  16%      { transform: rotate(-5deg); }
+  20%      { transform: rotate(0deg);  }
+}
+
+.bell-ringing {
+  animation: bell-ring 3s ease-in-out infinite;
+  transform-origin: top center;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
