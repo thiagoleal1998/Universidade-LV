@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, X } from 'lucide-react'
+import { Megaphone, X } from 'lucide-react'
 
 type Announcement = { id: string; title: string; body: string; created_at: string }
 
@@ -44,27 +44,30 @@ export function DismissibleAnnouncements({ announcements }: { announcements: Ann
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 mb-1">
-        <Bell className="w-4 h-4 text-primary" />
+        <Megaphone className="w-4 h-4 text-amber-500" />
         <h2 className="text-sm font-semibold text-foreground">Avisos</h2>
       </div>
       {visible.map((ann) => (
         <div
           key={ann.id}
-          className="flex items-start gap-4 bg-card border-l-4 border-l-primary border border-border rounded-xl px-5 py-4"
+          className="flex items-start gap-4 bg-amber-500/8 border-l-4 border-l-amber-500 border border-amber-500/20 rounded-xl px-5 py-4"
         >
+          <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+            <Megaphone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-medium text-foreground text-sm">{ann.title}</p>
-              <span className="text-xs text-muted-foreground shrink-0">
+              <p className="font-semibold text-amber-900 dark:text-amber-100 text-sm">{ann.title}</p>
+              <span className="text-xs text-amber-700/60 dark:text-amber-300/60 shrink-0">
                 {new Date(ann.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-3">{ann.body}</p>
+            <p className="text-sm text-amber-800/80 dark:text-amber-200/80 mt-1 whitespace-pre-wrap line-clamp-3">{ann.body}</p>
           </div>
           <button
             type="button"
             onClick={() => dismiss(ann.id)}
-            className="text-muted-foreground hover:text-foreground transition-colors shrink-0 mt-0.5"
+            className="text-amber-600/60 hover:text-amber-700 dark:text-amber-400/60 dark:hover:text-amber-300 transition-colors shrink-0 mt-0.5"
             title="Dispensar"
           >
             <X className="w-4 h-4" />
