@@ -15,6 +15,17 @@ git push origin main
 - Nunca force-push em `main`
 - Sempre faça push ao final de cada tarefa concluída
 
+# Versão do Sistema
+
+A versão fica em `src/lib/version.ts` (constante `APP_VERSION`) e exibida no rodapé do sidebar.
+
+**Regra:** a cada conjunto de mudanças commitado, incremente a versão seguindo semver:
+- `patch` (x.x.**N**) — correções de bugs, ajustes visuais, pequenas melhorias
+- `minor` (x.**N**.0) — funcionalidades novas ou mudanças relevantes de UX
+- `major` (**N**.0.0) — mudanças arquiteturais grandes (raramente)
+
+Atualize `src/lib/version.ts` junto com os demais arquivos no mesmo commit.
+
 # Projeto — Universidade LV
 
 **Criador:** Thiago Leal da Silva
