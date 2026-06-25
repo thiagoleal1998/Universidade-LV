@@ -218,13 +218,32 @@ export function TaskResponsesPanel({
                         <p className="text-xs text-muted-foreground italic">Sem resposta</p>
                       )}
 
-                      {/* Gabarito (só para texto) */}
+                      {/* Gabarito texto */}
                       {isText && q.correct_answer && (
                         <div className="flex items-start gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
                           <BookOpen className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-0.5">Resposta esperada</p>
                             <p className="text-xs text-green-800 dark:text-green-300 whitespace-pre-wrap">{q.correct_answer}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Gabarito múltipla escolha / checkboxes */}
+                      {(q.type === 'multiple_choice' || q.type === 'checkboxes') && q.correct_options?.length > 0 && (
+                        <div className="flex items-start gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
+                          <BookOpen className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0 mt-1" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-1.5">
+                              {q.correct_options.length === 1 ? 'Resposta correta' : 'Respostas corretas'}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {q.correct_options.map((i) => (
+                                <span key={i} className="text-xs bg-green-500/15 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full border border-green-400/40">
+                                  {q.options[i] ?? `Opção ${i + 1}`}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       )}
