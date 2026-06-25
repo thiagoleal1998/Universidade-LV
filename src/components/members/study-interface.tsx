@@ -391,7 +391,7 @@ export function StudyInterface({
 
                 {contentText && (
                   <>
-                    {!videoId && !embedUrl && (
+                    {!videoId && !embedUrl && !task && (
                       <TextToSpeechPlayer html={contentText} />
                     )}
                     <div
