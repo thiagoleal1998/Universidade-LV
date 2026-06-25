@@ -140,7 +140,7 @@ export function CourseModulesAccordion({
                 ) : (
                   <>
                     {mod.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{mod.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{mod.description}</p>
                     )}
                     {lessons.length > 0 && (
                       <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden w-full max-w-xs">
