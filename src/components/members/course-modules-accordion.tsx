@@ -156,49 +156,52 @@ export function CourseModulesAccordion({
 
               {!isLocked && (
                 <span className="shrink-0 mt-0.5 text-muted-foreground">
-                  {isOpen
-                    ? <ChevronDown className="w-4 h-4" />
-                    : <ChevronRight className="w-4 h-4" />}
+                  <ChevronRight className={cn('w-4 h-4 transition-transform duration-300', isOpen && 'rotate-90')} />
                 </span>
               )}
             </button>
 
-            {/* Aulas — só aparecem quando o módulo está aberto */}
-            {isOpen && (
-              <div className="border-t border-border divide-y divide-border">
-                {lessons.map((lesson) => (
-                  <Link
-                    key={lesson.id}
-                    href={`/dashboard/aulas/${lesson.id}`}
-                    className="flex items-center justify-between px-5 py-3 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {completedSet.has(lesson.id)
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                        : <div className="w-4 h-4 rounded-full border-2 border-border shrink-0" />
-                      }
-                      <div className="min-w-0 flex-1">
-                        <span className="text-sm text-green-600 block truncate">{lesson.title}</span>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {isAdmin && !lesson.is_published && (
-                            <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400 py-0 shrink-0">
-                              Rascunho
-                            </Badge>
-                          )}
-                          <TaskPeriodBadge start={lesson.task_start_date} end={lesson.task_end_date} />
+            {/* Aulas — animação suave de abertura via grid-rows */}
+            <div className={cn(
+              'grid transition-all duration-300 ease-in-out',
+              isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+            )}>
+              <div className="overflow-hidden">
+                <div className="border-t border-border divide-y divide-border">
+                  {lessons.map((lesson) => (
+                    <Link
+                      key={lesson.id}
+                      href={`/dashboard/aulas/${lesson.id}`}
+                      className="flex items-center justify-between px-5 py-3 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {completedSet.has(lesson.id)
+                          ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                          : <div className="w-4 h-4 rounded-full border-2 border-border shrink-0" />
+                        }
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm text-green-600 block truncate">{lesson.title}</span>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {isAdmin && !lesson.is_published && (
+                              <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400 py-0 shrink-0">
+                                Rascunho
+                              </Badge>
+                            )}
+                            <TaskPeriodBadge start={lesson.task_start_date} end={lesson.task_end_date} />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                ))}
-                {lessons.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    Nenhuma aula neste módulo ainda.
-                  </p>
-                )}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                  ))}
+                  {lessons.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      Nenhuma aula neste módulo ainda.
+                    </p>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         )
       })}
