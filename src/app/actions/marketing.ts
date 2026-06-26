@@ -34,6 +34,15 @@ export async function createMarketingProduct(name: string) {
   return { success: true }
 }
 
+export async function updateMarketingProduct(id: string, name: string) {
+  const adminClient = createAdminClient()
+  if (!name.trim()) return { error: 'Nome obrigatório' }
+  const { error } = await adminClient.from('marketing_products').update({ name: name.trim() }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/marketing')
+  return { success: true }
+}
+
 export async function deleteMarketingProduct(id: string) {
   const adminClient = createAdminClient()
   const { error } = await adminClient.from('marketing_products').delete().eq('id', id)

@@ -25,6 +25,7 @@ import {
   deleteMarketingItem,
   uploadMarketingFile,
   createMarketingProduct,
+  updateMarketingProduct,
   deleteMarketingProduct,
   createMarketingPeriod,
   deleteMarketingPeriod,
@@ -749,7 +750,10 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [newProduct, setNewProduct] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
   const [isAdding, startAdd] = useTransition()
+  const [isSaving, startSave] = useTransition()
   const [isDeleting, startDelete] = useTransition()
 
   function handleAdd() {
@@ -758,6 +762,19 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
       const r = await createMarketingProduct(newProduct)
       if (r?.error) toast.error(r.error)
       else { toast.success('Produto adicionado!'); setNewProduct(''); router.refresh() }
+    })
+  }
+
+  function startEdit(p: MarketingProduct) {
+    setEditingId(p.id)
+    setEditingName(p.name)
+  }
+
+  function handleSave(id: string) {
+    startSave(async () => {
+      const r = await updateMarketingProduct(id, editingName)
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Produto atualizado!'); setEditingId(null); router.refresh() }
     })
   }
 
@@ -799,16 +816,46 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
           ) : (
             <div className="space-y-1.5">
               {products.map((p) => (
-                <div key={p.id} className="flex items-center justify-between bg-card rounded-md px-3 py-2">
-                  <span className="text-sm">{p.name}</span>
-                  <Button
-                    type="button" variant="ghost" size="icon"
-                    className="text-red-500 hover:text-red-600 h-7 w-7"
-                    onClick={() => handleDelete(p.id)}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                <div key={p.id} className="flex items-center gap-2 bg-card rounded-md px-3 py-2">
+                  {editingId === p.id ? (
+                    <>
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="flex-1 h-7 text-sm"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSave(p.id)
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                      />
+                      <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={() => handleSave(p.id)} disabled={isSaving}>
+                        {isSaving ? <Spinner className="w-3 h-3" /> : 'Salvar'}
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingId(null)}>
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm flex-1">{p.name}</span>
+                      <Button
+                        type="button" variant="ghost" size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => startEdit(p)}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        type="button" variant="ghost" size="icon"
+                        className="text-red-500 hover:text-red-600 h-7 w-7"
+                        onClick={() => handleDelete(p.id)}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
