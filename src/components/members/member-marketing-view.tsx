@@ -213,13 +213,13 @@ const PERIOD_THEMES: { match: string[]; theme: PeriodTheme; coldTheme?: PeriodTh
   },
 ]
 
-function getSpecialPeriodTheme(periodName: string | undefined, itemTitle?: string | null, itemDescription?: string | null): PeriodTheme | null {
+function getSpecialPeriodTheme(periodName: string | undefined, itemTitle?: string | null, itemDescription?: string | null, itemContent?: string | null): PeriodTheme | null {
   if (!periodName) return null
   const lower = periodName.toLowerCase().trim()
   for (const { match, theme, coldTheme } of PERIOD_THEMES) {
     if (match.some((m) => lower.includes(m))) {
       if (coldTheme) {
-        const combined = `${itemTitle ?? ''} ${itemDescription ?? ''}`.toLowerCase()
+        const combined = `${itemTitle ?? ''} ${itemDescription ?? ''} ${itemContent ?? ''}`.toLowerCase()
         if (COLD_DESTINATIONS.some((d) => combined.includes(d))) return coldTheme
       }
       return theme
@@ -246,7 +246,7 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
 function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null }) {
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
-  const periodTheme = getSpecialPeriodTheme(period?.name, item.title, item.description)
+  const periodTheme = getSpecialPeriodTheme(period?.name, item.title, item.description, item.content)
   const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isB2B = item.audience === 'B2B'
