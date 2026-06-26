@@ -13,6 +13,12 @@ export type MarketingProduct = {
   created_at: string
 }
 
+export type MarketingPeriod = {
+  id: string
+  name: string
+  created_at: string
+}
+
 export async function getMarketingProducts(): Promise<MarketingProduct[]> {
   const adminClient = createAdminClient()
   const { data } = await adminClient.from('marketing_products').select('*').order('name')
@@ -36,6 +42,29 @@ export async function deleteMarketingProduct(id: string) {
   return { success: true }
 }
 
+export async function getMarketingPeriods(): Promise<MarketingPeriod[]> {
+  const adminClient = createAdminClient()
+  const { data } = await adminClient.from('marketing_periods').select('*').order('name')
+  return (data ?? []) as MarketingPeriod[]
+}
+
+export async function createMarketingPeriod(name: string) {
+  const adminClient = createAdminClient()
+  if (!name.trim()) return { error: 'Nome obrigatório' }
+  const { error } = await adminClient.from('marketing_periods').insert({ name: name.trim() })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/marketing')
+  return { success: true }
+}
+
+export async function deleteMarketingPeriod(id: string) {
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.from('marketing_periods').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/marketing')
+  return { success: true }
+}
+
 export async function createMarketingItem(data: {
   category: MarketingCategory
   title: string
@@ -45,6 +74,7 @@ export async function createMarketingItem(data: {
   audience?: string
   scope?: string
   product_id?: string
+  period_id?: string
   status?: string
   publish_at?: string
   allowed_tag_ids?: string[]
@@ -70,6 +100,7 @@ export async function createMarketingItem(data: {
     audience: data.audience || null,
     scope: data.scope || null,
     product_id: data.product_id || null,
+    period_id: data.period_id || null,
     status: data.status || 'published',
     publish_at: data.publish_at || null,
     allowed_tag_ids: data.allowed_tag_ids ?? [],
@@ -91,6 +122,7 @@ export async function updateMarketingItem(
     audience?: string
     scope?: string
     product_id?: string
+    period_id?: string
     status?: string
     publish_at?: string
     allowed_tag_ids?: string[]
@@ -109,6 +141,7 @@ export async function updateMarketingItem(
       audience: data.audience || null,
       scope: data.scope || null,
       product_id: data.product_id || null,
+      period_id: data.period_id || null,
       status: data.status || 'published',
       publish_at: data.publish_at || null,
       allowed_tag_ids: data.allowed_tag_ids ?? [],

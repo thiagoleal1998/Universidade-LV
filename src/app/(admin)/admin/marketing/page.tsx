@@ -3,7 +3,7 @@ import { getSettings } from '@/lib/settings'
 import { MarketingTabs } from '@/components/admin/marketing-tabs'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import { getTrainingItems } from '@/app/actions/training'
-import { getMarketingProducts } from '@/app/actions/marketing'
+import { getMarketingProducts, getMarketingPeriods } from '@/app/actions/marketing'
 
 const REMOVED_KEYS = ['email', 'script']
 
@@ -19,11 +19,12 @@ function parseSections(json: string): MarketingSection[] {
 export default async function MarketingPage() {
   const supabase = await createClient()
 
-  const [{ data }, settings, trainingItems, products, { data: tagsData }] = await Promise.all([
+  const [{ data }, settings, trainingItems, products, periods, { data: tagsData }] = await Promise.all([
     supabase.from('marketing_items').select('*').order('order_index'),
     getSettings(),
     getTrainingItems(),
     getMarketingProducts(),
+    getMarketingPeriods(),
     supabase.from('tags').select('*').order('name'),
   ])
 
@@ -34,6 +35,7 @@ export default async function MarketingPage() {
         sections={parseSections(settings.marketing_sections)}
         trainingItems={trainingItems}
         products={products}
+        periods={periods}
         tags={tagsData ?? []}
       />
     </div>

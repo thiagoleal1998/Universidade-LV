@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown, Clock, Eye, BookDashed, Lock } from 'lucide-react'
+import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown, Clock, Eye, BookDashed, Lock, CalendarRange, Maximize2 } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,8 +26,10 @@ import {
   uploadMarketingFile,
   createMarketingProduct,
   deleteMarketingProduct,
+  createMarketingPeriod,
+  deleteMarketingPeriod,
 } from '@/app/actions/marketing'
-import type { MarketingCategory, MarketingProduct } from '@/app/actions/marketing'
+import type { MarketingCategory, MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
 import { getTagColor } from '@/lib/tag-colors'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -48,6 +50,7 @@ type MarketingItem = {
   audience?: string | null
   scope?: string | null
   product_id?: string | null
+  period_id?: string | null
   status?: ItemStatus | null
   publish_at?: string | null
   allowed_tag_ids?: string[] | null
@@ -62,6 +65,7 @@ type SubmitData = {
   audience?: string
   scope?: string
   product_id?: string
+  period_id?: string
   status: ItemStatus
   publish_at?: string
   allowed_tag_ids: string[]
@@ -139,6 +143,7 @@ function toLocalDatetimeValue(iso: string | null | undefined): string {
 function ItemForm({
   cat,
   products,
+  periods = [],
   tags = [],
   defaultValues,
   onSubmit,
@@ -147,6 +152,7 @@ function ItemForm({
 }: {
   cat: CatDef
   products: MarketingProduct[]
+  periods?: MarketingPeriod[]
   tags?: Tag[]
   defaultValues?: Partial<MarketingItem>
   onSubmit: (data: SubmitData) => void
@@ -157,6 +163,7 @@ function ItemForm({
   const [audience, setAudience] = useState(defaultValues?.audience ?? '')
   const [scope, setScope] = useState(defaultValues?.scope ?? '')
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
+  const [periodId, setPeriodId] = useState(defaultValues?.period_id ?? '')
   const [publishAt, setPublishAt] = useState(toLocalDatetimeValue(defaultValues?.publish_at))
   const [allowedTagIds, setAllowedTagIds] = useState<string[]>(parseAllowedTagIds(defaultValues?.allowed_tag_ids))
   const [isUploading, startUpload] = useTransition()
@@ -195,6 +202,7 @@ function ItemForm({
       audience: audience || undefined,
       scope: scope || undefined,
       product_id: productId || undefined,
+      period_id: periodId || undefined,
       status,
       publish_at: status === 'scheduled' ? publishAtIso : undefined,
       allowed_tag_ids: allowedTagIds,
@@ -283,21 +291,33 @@ function ItemForm({
       )}
 
       {isVisual && (
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Produto</Label>
-          <select
-            value={productId ?? ''}
-            onChange={(e) => setProductId(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            <option value="">— Nenhum —</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          {products.length === 0 && (
-            <p className="text-xs text-muted-foreground">Cadastre produtos em &quot;Gerenciar Produtos&quot; acima.</p>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Produto</Label>
+            <select
+              value={productId ?? ''}
+              onChange={(e) => setProductId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <option value="">— Nenhum —</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Período</Label>
+            <select
+              value={periodId ?? ''}
+              onChange={(e) => setPeriodId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <option value="">— Nenhum —</option>
+              {periods.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
@@ -461,11 +481,13 @@ function StatusBadge({ item }: { item: MarketingItem }) {
   return null
 }
 
-function VisualCard({ item, cat, products, tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[] }) {
+function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; periods?: MarketingPeriod[]; tags?: Tag[] }) {
   const [editing, setEditing] = useState(false)
+  const [lightbox, setLightbox] = useState(false)
   const [isPending, startTransition] = useTransition()
   const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const product = products.find((p) => p.id === item.product_id)
+  const period = periods.find((p) => p.id === item.period_id)
   const allowedIds = parseAllowedTagIds(item.allowed_tag_ids)
   const requiredTags = tags.filter((t) => allowedIds.includes(t.id))
   const restrictedToTags = requiredTags.length > 0
@@ -489,67 +511,104 @@ function VisualCard({ item, cat, products, tags = [] }: { item: MarketingItem; c
   if (editing) {
     return (
       <div className="bg-card border rounded-lg p-4 col-span-full">
-        <ItemForm cat={cat} products={products} tags={tags} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+        <ItemForm cat={cat} products={products} periods={periods} tags={tags} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
       </div>
     )
   }
 
   return (
-    <div className="bg-card border rounded-lg overflow-hidden group">
-      {isImage ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={item.url} alt={item.title} className="w-full h-40 object-cover" />
-      ) : (
-        <div className="w-full h-40 bg-muted flex items-center justify-center">
-          <ImageIcon className="w-8 h-8 text-muted-foreground" />
+    <>
+      {/* Lightbox */}
+      {lightbox && isImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4"
+          onClick={() => setLightbox(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/40 rounded-full p-1.5 transition-colors"
+            onClick={() => setLightbox(false)}
+          >
+            <X className="w-5 h-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.url}
+            alt={item.title}
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
-      <div className="px-3 py-2.5 flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
-          {item.description && <p className="text-xs text-muted-foreground truncate">{item.description}</p>}
-        </div>
-        <div className="flex items-center gap-0.5 shrink-0">
-          {item.url && (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Abrir / baixar"
-              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+
+      <div className="bg-card border rounded-lg overflow-hidden group">
+        <div className="relative">
+          {isImage ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.url} alt={item.title} className="w-full h-40 object-cover" />
+              <button
+                type="button"
+                onClick={() => setLightbox(true)}
+                className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors opacity-0 group-hover:opacity-100"
+                title="Expandir imagem"
+              >
+                <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+              </button>
+            </>
+          ) : (
+            <div className="w-full h-40 bg-muted flex items-center justify-center">
+              <ImageIcon className="w-8 h-8 text-muted-foreground" />
+            </div>
           )}
-          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-          <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
         </div>
+        <div className="px-3 py-2.5 flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
+            {item.description && <p className="text-xs text-muted-foreground truncate">{item.description}</p>}
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            {item.url && (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir / baixar"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+            <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+          </div>
+        </div>
+        {(item.audience || item.scope || product || period || (item.status && item.status !== 'published') || restrictedToTags) && (
+          <div className="flex flex-wrap gap-1 px-3 pb-2.5">
+            <StatusBadge item={item} />
+            {item.audience && <ItemTag color="blue">{item.audience}</ItemTag>}
+            {item.scope && <ItemTag color="green">{item.scope}</ItemTag>}
+            {product && <ItemTag color="purple">{product.name}</ItemTag>}
+            {period && <ItemTag color="amber"><CalendarRange className="w-2.5 h-2.5 inline mr-0.5" />{period.name}</ItemTag>}
+            {restrictedToTags && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
+                <Lock className="w-2.5 h-2.5" />
+                {requiredTags.map((t) => {
+                  const c = getTagColor(t.color)
+                  return (
+                    <span key={t.id} className={cn('flex items-center gap-1', c.text)}>
+                      <span className={cn('w-2 h-2 rounded-full', c.dot)} />
+                      {t.name}
+                    </span>
+                  )
+                })}
+              </span>
+            )}
+          </div>
+        )}
       </div>
-      {(item.audience || item.scope || product || (item.status && item.status !== 'published') || restrictedToTags) && (
-        <div className="flex flex-wrap gap-1 px-3 pb-2.5">
-          <StatusBadge item={item} />
-          {item.audience && <ItemTag color="blue">{item.audience}</ItemTag>}
-          {item.scope && <ItemTag color="green">{item.scope}</ItemTag>}
-          {product && <ItemTag color="purple">{product.name}</ItemTag>}
-          {restrictedToTags && (
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
-              <Lock className="w-2.5 h-2.5" />
-              {requiredTags.map((t) => {
-                const c = getTagColor(t.color)
-                return (
-                  <span key={t.id} className={cn('flex items-center gap-1', c.text)}>
-                    <span className={cn('w-2 h-2 rounded-full', c.dot)} />
-                    {t.name}
-                  </span>
-                )
-              })}
-            </span>
-          )}
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
@@ -760,7 +819,81 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
   )
 }
 
-function CategorySection({ cat, items, products, tags = [] }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[]; tags?: Tag[] }) {
+function PeriodsManager({ periods }: { periods: MarketingPeriod[] }) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [newPeriod, setNewPeriod] = useState('')
+  const [isAdding, startAdd] = useTransition()
+  const [isDeleting, startDelete] = useTransition()
+
+  function handleAdd() {
+    if (!newPeriod.trim()) return
+    startAdd(async () => {
+      const r = await createMarketingPeriod(newPeriod)
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Período adicionado!'); setNewPeriod(''); router.refresh() }
+    })
+  }
+
+  function handleDelete(id: string) {
+    startDelete(async () => {
+      const r = await deleteMarketingPeriod(id)
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Período removido!'); router.refresh() }
+    })
+  }
+
+  return (
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <CalendarRange className="w-4 h-4" />
+        Gerenciar Períodos
+        <ChevronDown className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="mt-2 bg-muted/40 border rounded-lg p-4 space-y-3">
+          <div className="flex gap-2">
+            <Input
+              value={newPeriod}
+              onChange={(e) => setNewPeriod(e.target.value)}
+              placeholder="Ex: Julho 2025, Verão, Feriado..."
+              className="flex-1"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+            />
+            <Button type="button" size="sm" onClick={handleAdd} disabled={isAdding || !newPeriod.trim()}>
+              {isAdding ? <Spinner className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            </Button>
+          </div>
+          {periods.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nenhum período cadastrado.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {periods.map((p) => (
+                <div key={p.id} className="flex items-center justify-between bg-card rounded-md px-3 py-2">
+                  <span className="text-sm">{p.name}</span>
+                  <Button
+                    type="button" variant="ghost" size="icon"
+                    className="text-red-500 hover:text-red-600 h-7 w-7"
+                    onClick={() => handleDelete(p.id)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CategorySection({ cat, items, products, periods = [], tags = [] }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[]; periods?: MarketingPeriod[]; tags?: Tag[] }) {
   const [showForm, setShowForm] = useState(false)
   const [isCreating, startCreate] = useTransition()
 
@@ -784,7 +917,7 @@ function CategorySection({ cat, items, products, tags = [] }: { cat: CatDef; ite
       {showForm && (
         <div className="bg-muted/40 border border-dashed rounded-lg p-4">
           <p className="text-sm font-medium text-foreground mb-3">Novo item</p>
-          <ItemForm cat={cat} products={products} tags={tags} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
+          <ItemForm cat={cat} products={products} periods={periods} tags={tags} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
         </div>
       )}
 
@@ -796,7 +929,7 @@ function CategorySection({ cat, items, products, tags = [] }: { cat: CatDef; ite
 
       {cat.type === 'visual' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} products={products} tags={tags} />)}
+          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} products={products} periods={periods} tags={tags} />)}
         </div>
       ) : cat.type === 'link' ? (
         <div className="space-y-2">
@@ -825,11 +958,13 @@ export function MarketingManager({
   items,
   sections,
   products = [],
+  periods = [],
   tags = [],
 }: {
   items: MarketingItem[]
   sections?: MarketingSection[]
   products?: MarketingProduct[]
+  periods?: MarketingPeriod[]
   tags?: Tag[]
 }) {
   const cats = (sections && sections.length > 0 ? sections : DEFAULT_SECTIONS).map(sectionToCatDef)
@@ -891,17 +1026,18 @@ export function MarketingManager({
         </div>
       )}
 
-      {/* Gerenciar Produtos — exibido apenas na aba visual */}
+      {/* Gerenciar Produtos e Períodos — exibidos apenas na aba visual */}
       {isVisual && (
-        <div className="mt-3 mb-2">
+        <div className="mt-3 mb-2 flex flex-wrap gap-6">
           <ProductsManager products={products} />
+          <PeriodsManager periods={periods} />
         </div>
       )}
 
       {!isVisual && <div className="mb-6" />}
 
       {effectiveCat && (
-        <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} products={products} tags={tags} />
+        <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} products={products} periods={periods} tags={tags} />
       )}
     </div>
   )

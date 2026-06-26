@@ -20,6 +20,7 @@ type MarketingItem = {
   audience?: string | null
   scope?: string | null
   product_id?: string | null
+  period_id?: string | null
 }
 
 export default async function MemberMarketingPage() {
@@ -29,10 +30,11 @@ export default async function MemberMarketingPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const adminClient = createAdminClient()
 
-  const [{ data: itemsData }, { data: userTagsData }, { data: productsData }] = await Promise.all([
+  const [{ data: itemsData }, { data: userTagsData }, { data: productsData }, { data: periodsData }] = await Promise.all([
     adminClient.from('marketing_items').select('*').order('order_index'),
     adminClient.from('profile_tags').select('tag_id').eq('profile_id', user!.id),
     adminClient.from('marketing_products').select('id, name').order('name'),
+    adminClient.from('marketing_periods').select('id, name').order('name'),
   ])
 
   const userTagIds = new Set((userTagsData ?? []).map((t: { tag_id: string }) => t.tag_id))
@@ -78,7 +80,7 @@ export default async function MemberMarketingPage() {
         </p>
       </div>
 
-      <MemberMarketingView sections={sections} items={items} products={productsData ?? []} />
+      <MemberMarketingView sections={sections} items={items} products={productsData ?? []} periods={periodsData ?? []} />
     </div>
   )
 }

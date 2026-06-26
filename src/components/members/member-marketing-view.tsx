@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar } from 'lucide-react'
+import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange } from 'lucide-react'
 import { toast } from 'sonner'
 
 type Section = { key: string; label: string; type: string }
 type MarketingProduct = { id: string; name: string }
+type MarketingPeriod = { id: string; name: string }
 type MarketingItem = {
   id: string
   category: string
@@ -17,6 +18,7 @@ type MarketingItem = {
   audience?: string | null
   scope?: string | null
   product_id?: string | null
+  period_id?: string | null
   publish_at?: string | null
   created_at?: string | null
 }
@@ -71,8 +73,9 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
   return null
 }
 
-function OfertaCard({ item, products }: { item: MarketingItem; products: MarketingProduct[] }) {
+function OfertaCard({ item, products, periods }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[] }) {
   const product = products.find((p) => p.id === item.product_id)
+  const period = periods.find((p) => p.id === item.period_id)
   const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isB2B = item.audience === 'B2B'
@@ -104,6 +107,12 @@ function OfertaCard({ item, products }: { item: MarketingItem; products: Marketi
         {product && (
           <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
             {product.name}
+          </span>
+        )}
+        {period && (
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <CalendarRange className="w-3 h-3" />
+            {period.name}
           </span>
         )}
       </div>
@@ -138,7 +147,7 @@ function OfertaCard({ item, products }: { item: MarketingItem; products: Marketi
   )
 }
 
-function OfertasDiariasLayout({ items, products }: { items: MarketingItem[]; products: MarketingProduct[] }) {
+function OfertasDiariasLayout({ items, products, periods }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[] }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.publish_at ? new Date(a.publish_at).getTime() : 0
     const db = b.publish_at ? new Date(b.publish_at).getTime() : 0
@@ -178,7 +187,7 @@ function OfertasDiariasLayout({ items, products }: { items: MarketingItem[]; pro
         <div className="space-y-4">
           {nacional.length === 0
             ? <p className="text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta nacional.</p>
-            : nacional.map((item) => <OfertaCard key={item.id} item={item} products={products} />)}
+            : nacional.map((item) => <OfertaCard key={item.id} item={item} products={products} periods={periods} />)}
         </div>
       </div>
 
@@ -191,7 +200,7 @@ function OfertasDiariasLayout({ items, products }: { items: MarketingItem[]; pro
         <div className="space-y-4">
           {internacional.length === 0
             ? <p className="text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta internacional.</p>
-            : internacional.map((item) => <OfertaCard key={item.id} item={item} products={products} />)}
+            : internacional.map((item) => <OfertaCard key={item.id} item={item} products={products} periods={periods} />)}
         </div>
       </div>
       </div>
@@ -199,7 +208,7 @@ function OfertasDiariasLayout({ items, products }: { items: MarketingItem[]; pro
   )
 }
 
-function VisualGrid({ items, products }: { items: MarketingItem[]; products: MarketingProduct[] }) {
+function VisualGrid({ items, products, periods }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[] }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.publish_at ? new Date(a.publish_at).getTime() : 0
     const db = b.publish_at ? new Date(b.publish_at).getTime() : 0
@@ -210,6 +219,7 @@ function VisualGrid({ items, products }: { items: MarketingItem[]; products: Mar
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {sorted.map((item) => {
         const product = products.find((p) => p.id === item.product_id)
+        const period = periods.find((p) => p.id === item.period_id)
         const dateStr = formatDate(item.publish_at)
         const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
         return (
@@ -225,6 +235,12 @@ function VisualGrid({ items, products }: { items: MarketingItem[]; products: Mar
               {product && (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                   {product.name}
+                </span>
+              )}
+              {period && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  <CalendarRange className="w-3 h-3" />
+                  {period.name}
                 </span>
               )}
               {dateStr && (
@@ -270,10 +286,12 @@ export function MemberMarketingView({
   sections,
   items,
   products = [],
+  periods = [],
 }: {
   sections: Section[]
   items: MarketingItem[]
   products?: MarketingProduct[]
+  periods?: MarketingPeriod[]
 }) {
   const [activeKey, setActiveKey] = useState(sections[0]?.key ?? '')
   const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
@@ -339,13 +357,13 @@ export function MemberMarketingView({
 
       {/* Conteúdo */}
       {isVisual && effectiveCategory === 'ofertas_diarias' && (
-        <OfertasDiariasLayout items={activeItems} products={products} />
+        <OfertasDiariasLayout items={activeItems} products={products} periods={periods} />
       )}
 
       {isVisual && effectiveCategory !== 'ofertas_diarias' && (
         activeItems.length === 0
           ? <div className="text-center py-16 bg-card border rounded-xl"><p className="text-muted-foreground">Nenhum material nesta categoria.</p></div>
-          : <VisualGrid items={activeItems} products={products} />
+          : <VisualGrid items={activeItems} products={products} periods={periods} />
       )}
 
       {activeSection?.type === 'link' && (
