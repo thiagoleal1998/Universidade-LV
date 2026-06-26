@@ -7,6 +7,7 @@ import { TrainingsManager } from '@/components/admin/trainings-manager'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import type { TrainingItem } from '@/app/actions/training'
 import type { MarketingProduct } from '@/app/actions/marketing'
+import type { Tag } from '@/components/admin/marketing-manager'
 import { cn } from '@/lib/utils'
 
 type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo'
@@ -51,11 +52,13 @@ export function MarketingTabs({
   sections,
   trainingItems,
   products = [],
+  tags = [],
 }: {
   marketingItems: object[]
   sections: MarketingSection[]
   trainingItems: TrainingItem[]
   products?: MarketingProduct[]
+  tags?: Tag[]
 }) {
   const [tab, setTab] = useState<Tab>('marketing')
 
@@ -92,7 +95,7 @@ export function MarketingTabs({
 
       {tab === 'marketing' && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <MarketingManager items={marketingItems as any} sections={sections} products={products} />
+        <MarketingManager items={marketingItems as any} sections={sections} products={products} tags={tags} />
       )}
       {tab === 'treinamentos' && (
         <TrainingsManager items={trainingItems} />

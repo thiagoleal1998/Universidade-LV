@@ -19,11 +19,12 @@ function parseSections(json: string): MarketingSection[] {
 export default async function MarketingPage() {
   const supabase = await createClient()
 
-  const [{ data }, settings, trainingItems, products] = await Promise.all([
+  const [{ data }, settings, trainingItems, products, { data: tagsData }] = await Promise.all([
     supabase.from('marketing_items').select('*').order('order_index'),
     getSettings(),
     getTrainingItems(),
     getMarketingProducts(),
+    supabase.from('tags').select('*').order('name'),
   ])
 
   return (
@@ -33,6 +34,7 @@ export default async function MarketingPage() {
         sections={parseSections(settings.marketing_sections)}
         trainingItems={trainingItems}
         products={products}
+        tags={tagsData ?? []}
       />
     </div>
   )

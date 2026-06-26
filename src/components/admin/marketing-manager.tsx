@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown, Clock, Eye, BookDashed } from 'lucide-react'
+import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown, Clock, Eye, BookDashed, Lock } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,11 +28,13 @@ import {
   deleteMarketingProduct,
 } from '@/app/actions/marketing'
 import type { MarketingCategory, MarketingProduct } from '@/app/actions/marketing'
+import { getTagColor } from '@/lib/tag-colors'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 export type SectionType = 'visual' | 'link' | 'text'
 export type MarketingSection = { key: string; label: string; type: SectionType }
+export type Tag = { id: string; name: string; color: string }
 
 type ItemStatus = 'draft' | 'published' | 'scheduled'
 
@@ -48,6 +50,7 @@ type MarketingItem = {
   product_id?: string | null
   status?: ItemStatus | null
   publish_at?: string | null
+  allowed_tag_ids?: string[] | null
   created_at: string
 }
 
@@ -61,6 +64,7 @@ type SubmitData = {
   product_id?: string
   status: ItemStatus
   publish_at?: string
+  allowed_tag_ids: string[]
 }
 
 type CatDef = {
@@ -128,6 +132,7 @@ function toLocalDatetimeValue(iso: string | null | undefined): string {
 function ItemForm({
   cat,
   products,
+  tags,
   defaultValues,
   onSubmit,
   isPending,
@@ -135,6 +140,7 @@ function ItemForm({
 }: {
   cat: CatDef
   products: MarketingProduct[]
+  tags: Tag[]
   defaultValues?: Partial<MarketingItem>
   onSubmit: (data: SubmitData) => void
   isPending: boolean
@@ -145,9 +151,14 @@ function ItemForm({
   const [scope, setScope] = useState(defaultValues?.scope ?? '')
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
   const [publishAt, setPublishAt] = useState(toLocalDatetimeValue(defaultValues?.publish_at))
+  const [allowedTagIds, setAllowedTagIds] = useState<string[]>(defaultValues?.allowed_tag_ids ?? [])
   const [isUploading, startUpload] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
   const statusRef = useRef<ItemStatus>(defaultValues?.status ?? 'published')
+
+  function toggleTag(id: string) {
+    setAllowedTagIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id])
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -179,6 +190,7 @@ function ItemForm({
       product_id: productId || undefined,
       status,
       publish_at: status === 'scheduled' ? publishAtIso : undefined,
+      allowed_tag_ids: allowedTagIds,
     })
   }
 
@@ -300,6 +312,53 @@ function ItemForm({
         </div>
       )}
 
+      {tags.length > 0 && (
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">
+            Visível para
+          </Label>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setAllowedTagIds([])}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                allowedTagIds.length === 0
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-transparent text-muted-foreground border-border hover:border-primary/50',
+              )}
+            >
+              Todos os membros
+            </button>
+            {tags.map((tag) => {
+              const c = getTagColor(tag.color)
+              const selected = allowedTagIds.includes(tag.id)
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => toggleTag(tag.id)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                    selected
+                      ? `${c.bg} ${c.text} border-transparent`
+                      : 'bg-transparent text-muted-foreground border-border hover:border-primary/50',
+                  )}
+                >
+                  <span className={cn('w-2 h-2 rounded-full', c.dot)} />
+                  {tag.name}
+                </button>
+              )
+            })}
+          </div>
+          {allowedTagIds.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Somente membros com as tags selecionadas verão este item.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Data de divulgação</Label>
         <input
@@ -395,11 +454,12 @@ function StatusBadge({ item }: { item: MarketingItem }) {
   return null
 }
 
-function VisualCard({ item, cat, products }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[] }) {
+function VisualCard({ item, cat, products, tags }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags: Tag[] }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const product = products.find((p) => p.id === item.product_id)
+  const restrictedToTags = (item.allowed_tag_ids ?? []).length > 0
 
   function handleUpdate(data: SubmitData) {
     startTransition(async () => {
@@ -420,7 +480,7 @@ function VisualCard({ item, cat, products }: { item: MarketingItem; cat: CatDef;
   if (editing) {
     return (
       <div className="bg-card border rounded-lg p-4 col-span-full">
-        <ItemForm cat={cat} products={products} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+        <ItemForm cat={cat} products={products} tags={tags} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
       </div>
     )
   }
@@ -437,7 +497,10 @@ function VisualCard({ item, cat, products }: { item: MarketingItem; cat: CatDef;
       )}
       <div className="px-3 py-2.5 flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
+            {restrictedToTags && <Lock className="w-3 h-3 text-muted-foreground shrink-0" title="Visibilidade restrita por tag" />}
+          </div>
           {item.description && <p className="text-xs text-muted-foreground truncate">{item.description}</p>}
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
@@ -470,7 +533,7 @@ function VisualCard({ item, cat, products }: { item: MarketingItem; cat: CatDef;
   )
 }
 
-function LinkRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[] }) {
+function LinkRow({ item, cat, products, tags }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags: Tag[] }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -493,11 +556,12 @@ function LinkRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; pr
   if (editing) {
     return (
       <div className="bg-card border rounded-lg p-4">
-        <ItemForm cat={cat} products={products} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+        <ItemForm cat={cat} products={products} tags={tags} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
       </div>
     )
   }
 
+  const restrictedToTags = (item.allowed_tag_ids ?? []).length > 0
   return (
     <div className="bg-card border rounded-lg px-4 py-3 flex items-center gap-3 group">
       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -507,6 +571,7 @@ function LinkRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; pr
         <div className="flex items-center gap-1.5 flex-wrap">
           <p className="font-medium text-sm text-foreground">{item.title}</p>
           <StatusBadge item={item} />
+          {restrictedToTags && <Lock className="w-3 h-3 text-muted-foreground" title="Visibilidade restrita por tag" />}
         </div>
         {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
         {item.url && <p className="text-xs text-primary/80 truncate">{item.url}</p>}
@@ -536,7 +601,7 @@ function LinkRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; pr
   )
 }
 
-function TextRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[] }) {
+function TextRow({ item, cat, products, tags }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags: Tag[] }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -560,7 +625,7 @@ function TextRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; pr
   if (editing) {
     return (
       <div className="bg-card border rounded-lg p-4">
-        <ItemForm cat={cat} products={products} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
+        <ItemForm cat={cat} products={products} tags={tags} defaultValues={item} onSubmit={handleUpdate} isPending={isPending} onCancel={() => setEditing(false)} />
       </div>
     )
   }
@@ -675,7 +740,7 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
   )
 }
 
-function CategorySection({ cat, items, products }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[] }) {
+function CategorySection({ cat, items, products, tags }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[]; tags: Tag[] }) {
   const [showForm, setShowForm] = useState(false)
   const [isCreating, startCreate] = useTransition()
 
@@ -699,7 +764,7 @@ function CategorySection({ cat, items, products }: { cat: CatDef; items: Marketi
       {showForm && (
         <div className="bg-muted/40 border border-dashed rounded-lg p-4">
           <p className="text-sm font-medium text-foreground mb-3">Novo item</p>
-          <ItemForm cat={cat} products={products} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
+          <ItemForm cat={cat} products={products} tags={tags} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
         </div>
       )}
 
@@ -711,15 +776,15 @@ function CategorySection({ cat, items, products }: { cat: CatDef; items: Marketi
 
       {cat.type === 'visual' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} products={products} />)}
+          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} products={products} tags={tags} />)}
         </div>
       ) : cat.type === 'link' ? (
         <div className="space-y-2">
-          {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} products={products} />)}
+          {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} products={products} tags={tags} />)}
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((item) => <TextRow key={item.id} item={item} cat={cat} products={products} />)}
+          {items.map((item) => <TextRow key={item.id} item={item} cat={cat} products={products} tags={tags} />)}
         </div>
       )}
     </div>
@@ -740,10 +805,12 @@ export function MarketingManager({
   items,
   sections,
   products = [],
+  tags = [],
 }: {
   items: MarketingItem[]
   sections?: MarketingSection[]
   products?: MarketingProduct[]
+  tags?: Tag[]
 }) {
   const cats = (sections && sections.length > 0 ? sections : DEFAULT_SECTIONS).map(sectionToCatDef)
   const [activeTab, setActiveTab] = useState(cats[0]?.key ?? 'visual')
@@ -814,7 +881,7 @@ export function MarketingManager({
       {!isVisual && <div className="mb-6" />}
 
       {effectiveCat && (
-        <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} products={products} />
+        <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} products={products} tags={tags} />
       )}
     </div>
   )

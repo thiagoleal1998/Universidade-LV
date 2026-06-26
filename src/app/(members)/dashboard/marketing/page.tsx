@@ -14,26 +14,33 @@ type MarketingItem = {
   order_index: number
   status?: string | null
   publish_at?: string | null
+  allowed_tag_ids?: string[] | null
 }
 
 export default async function MemberMarketingPage() {
   const supabase = await createClient()
   const settings = await getSettings()
 
-  const { data: itemsData } = await supabase
-    .from('marketing_items')
-    .select('*')
-    .order('order_index')
+  const { data: { user } } = await supabase.auth.getUser()
 
+  const [{ data: itemsData }, { data: userTagsData }] = await Promise.all([
+    supabase.from('marketing_items').select('*').order('order_index'),
+    supabase.from('profile_tags').select('tag_id').eq('profile_id', user!.id),
+  ])
+
+  const userTagIds = new Set((userTagsData ?? []).map((t) => t.tag_id))
   const now = new Date()
+
   const items = ((itemsData ?? []) as MarketingItem[]).filter((item) => {
     const status = item.status ?? 'published'
     if (status === 'draft') return false
     if (status === 'scheduled') {
-      if (!item.publish_at) return false
-      return new Date(item.publish_at) <= now
+      if (!item.publish_at || new Date(item.publish_at) > now) return false
     }
-    return true
+
+    const allowed = item.allowed_tag_ids ?? []
+    if (allowed.length === 0) return true
+    return allowed.some((tagId) => userTagIds.has(tagId))
   })
 
   const REMOVED_KEYS = ['email', 'script']
