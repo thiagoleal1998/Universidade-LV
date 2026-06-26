@@ -132,6 +132,83 @@ function getDayLabel(iso: string | null | undefined): string | null {
   return days[d.getDay()] ?? null
 }
 
+type PeriodTheme = { emoji: string; label: string; bannerClass: string; borderClass: string }
+
+const PERIOD_THEMES: { match: string[]; theme: PeriodTheme }[] = [
+  {
+    match: ['férias de janeiro', 'ferias de janeiro'],
+    theme: {
+      emoji: '🌞',
+      label: 'FÉRIAS DE JANEIRO',
+      bannerClass: 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white',
+      borderClass: 'border-yellow-400 ring-1 ring-yellow-300',
+    },
+  },
+  {
+    match: ['carnaval'],
+    theme: {
+      emoji: '🎭',
+      label: 'CARNAVAL',
+      bannerClass: 'bg-gradient-to-r from-fuchsia-600 via-purple-500 to-yellow-400 text-white',
+      borderClass: 'border-fuchsia-500 ring-1 ring-fuchsia-300',
+    },
+  },
+  {
+    match: ['páscoa', 'pascoa'],
+    theme: {
+      emoji: '🐣',
+      label: 'PÁSCOA',
+      bannerClass: 'bg-gradient-to-r from-purple-400 to-pink-300 text-white',
+      borderClass: 'border-purple-400 ring-1 ring-purple-300',
+    },
+  },
+  {
+    match: ['férias de julho', 'ferias de julho'],
+    theme: {
+      emoji: '❄️',
+      label: 'FÉRIAS DE JULHO',
+      bannerClass: 'bg-gradient-to-r from-blue-600 to-sky-400 text-white',
+      borderClass: 'border-blue-500 ring-1 ring-blue-300',
+    },
+  },
+  {
+    match: ['natal'],
+    theme: {
+      emoji: '🎄',
+      label: 'NATAL',
+      bannerClass: 'bg-gradient-to-r from-green-700 to-red-600 text-white',
+      borderClass: 'border-green-600 ring-1 ring-red-400',
+    },
+  },
+  {
+    match: ['reveillon', 'réveillon'],
+    theme: {
+      emoji: '🎆',
+      label: 'RÉVEILLON',
+      bannerClass: 'bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 text-yellow-300',
+      borderClass: 'border-yellow-500 ring-1 ring-yellow-400',
+    },
+  },
+  {
+    match: ['hoteis exclusivos', 'hotéis exclusivos'],
+    theme: {
+      emoji: '👑',
+      label: 'HOTÉIS EXCLUSIVOS',
+      bannerClass: 'bg-gradient-to-r from-black to-zinc-900 text-yellow-400',
+      borderClass: 'border-yellow-500 ring-1 ring-yellow-400',
+    },
+  },
+]
+
+function getSpecialPeriodTheme(periodName: string | undefined): PeriodTheme | null {
+  if (!periodName) return null
+  const lower = periodName.toLowerCase().trim()
+  for (const { match, theme } of PERIOD_THEMES) {
+    if (match.some((m) => lower.includes(m))) return theme
+  }
+  return null
+}
+
 function AudienceBadge({ audience }: { audience: string | null | undefined }) {
   if (!audience) return null
   if (audience === 'B2C') return (
@@ -150,6 +227,7 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
 function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null }) {
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
+  const periodTheme = getSpecialPeriodTheme(period?.name)
   const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isB2B = item.audience === 'B2B'
@@ -158,8 +236,13 @@ function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem
   return (
     <div className={cn(
       'bg-card border rounded-xl overflow-hidden flex flex-col h-full',
-      isLastMinute ? 'border-orange-400 dark:border-orange-600 ring-1 ring-orange-300 dark:ring-orange-700' :
-      isB2B ? 'border-amber-200 dark:border-amber-800' : 'border-border',
+      isLastMinute
+        ? 'border-orange-400 dark:border-orange-600 ring-1 ring-orange-300 dark:ring-orange-700'
+        : periodTheme
+        ? periodTheme.borderClass
+        : isB2B
+        ? 'border-amber-200 dark:border-amber-800'
+        : 'border-border',
     )}>
       {isLastMinute && (
         <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 flex items-center gap-2">
@@ -167,7 +250,13 @@ function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem
           <span>LAST MINUTE</span>
         </div>
       )}
-      {!isLastMinute && isB2B && <div className="h-1 bg-amber-400" />}
+      {!isLastMinute && periodTheme && (
+        <div className={cn('text-xs font-bold px-3 py-1.5 flex items-center gap-2', periodTheme.bannerClass)}>
+          <span>{periodTheme.emoji}</span>
+          <span>{periodTheme.label}</span>
+        </div>
+      )}
+      {!isLastMinute && !periodTheme && isB2B && <div className="h-1 bg-amber-400" />}
 
       {dayLabel && (
         <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/40 border-b border-border/30">
