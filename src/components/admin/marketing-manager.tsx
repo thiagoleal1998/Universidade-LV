@@ -459,7 +459,8 @@ function VisualCard({ item, cat, products, tags = [] }: { item: MarketingItem; c
   const [isPending, startTransition] = useTransition()
   const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const product = products.find((p) => p.id === item.product_id)
-  const restrictedToTags = (item.allowed_tag_ids ?? []).length > 0
+  const requiredTags = tags.filter((t) => (item.allowed_tag_ids ?? []).includes(t.id))
+  const restrictedToTags = requiredTags.length > 0
 
   function handleUpdate(data: SubmitData) {
     startTransition(async () => {
@@ -497,10 +498,7 @@ function VisualCard({ item, cat, products, tags = [] }: { item: MarketingItem; c
       )}
       <div className="px-3 py-2.5 flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
-            {restrictedToTags && <Lock className="w-3 h-3 text-muted-foreground shrink-0" title="Visibilidade restrita por tag" />}
-          </div>
+          <p className="font-medium text-sm text-foreground truncate">{item.title}</p>
           {item.description && <p className="text-xs text-muted-foreground truncate">{item.description}</p>}
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
@@ -521,12 +519,26 @@ function VisualCard({ item, cat, products, tags = [] }: { item: MarketingItem; c
           <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
         </div>
       </div>
-      {(item.audience || item.scope || product || (item.status && item.status !== 'published')) && (
+      {(item.audience || item.scope || product || (item.status && item.status !== 'published') || restrictedToTags) && (
         <div className="flex flex-wrap gap-1 px-3 pb-2.5">
           <StatusBadge item={item} />
           {item.audience && <ItemTag color="blue">{item.audience}</ItemTag>}
           {item.scope && <ItemTag color="green">{item.scope}</ItemTag>}
           {product && <ItemTag color="purple">{product.name}</ItemTag>}
+          {restrictedToTags && (
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
+              <Lock className="w-2.5 h-2.5" />
+              {requiredTags.map((t) => {
+                const c = getTagColor(t.color)
+                return (
+                  <span key={t.id} className={cn('flex items-center gap-1', c.text)}>
+                    <span className={cn('w-2 h-2 rounded-full', c.dot)} />
+                    {t.name}
+                  </span>
+                )
+              })}
+            </span>
+          )}
         </div>
       )}
     </div>
