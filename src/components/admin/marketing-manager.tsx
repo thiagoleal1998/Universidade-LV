@@ -237,7 +237,7 @@ function ItemForm({
         </div>
       )}
 
-      {isVisual && products.length > 0 && (
+      {isVisual && (
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Produto</Label>
           <select
@@ -250,6 +250,9 @@ function ItemForm({
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
+          {products.length === 0 && (
+            <p className="text-xs text-muted-foreground">Cadastre produtos em &quot;Gerenciar Produtos&quot; acima.</p>
+          )}
         </div>
       )}
 
