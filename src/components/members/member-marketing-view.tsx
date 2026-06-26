@@ -129,7 +129,7 @@ function getDayLabel(iso: string | null | undefined): string | null {
   const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
   const d = new Date(iso)
   if (isNaN(d.getTime())) return null
-  return days[d.getUTCDay()] ?? null
+  return days[d.getDay()] ?? null
 }
 
 function AudienceBadge({ audience }: { audience: string | null | undefined }) {
@@ -271,7 +271,7 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
           {nacional.length === 0
             ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta nacional.</p>
             : nacional.map((item) => {
-                const dayLabel = getDayLabel(item.publish_at)
+                const dayLabel = getDayLabel(item.publish_at ?? item.created_at)
                 return (
                   <div key={item.id}>
                     {dayLabel && (
@@ -297,7 +297,7 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
           {internacional.length === 0
             ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta internacional.</p>
             : internacional.map((item) => {
-                const dayLabel = getDayLabel(item.publish_at)
+                const dayLabel = getDayLabel(item.publish_at ?? item.created_at)
                 return (
                   <div key={item.id}>
                     {dayLabel && (
