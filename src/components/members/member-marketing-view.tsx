@@ -165,10 +165,10 @@ const PERIOD_THEMES: { match: string[]; theme: PeriodTheme }[] = [
   {
     match: ['férias de julho', 'ferias de julho'],
     theme: {
-      emoji: '❄️',
+      emoji: '🏖️',
       label: 'FÉRIAS DE JULHO',
-      bannerClass: 'bg-gradient-to-r from-blue-600 to-sky-400 text-white',
-      borderClass: 'border-blue-500 ring-1 ring-blue-300',
+      bannerClass: 'bg-gradient-to-r from-teal-500 to-emerald-400 text-white',
+      borderClass: 'border-teal-400 ring-1 ring-teal-300',
     },
   },
   {
