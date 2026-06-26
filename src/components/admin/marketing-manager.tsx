@@ -585,9 +585,14 @@ function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: Ma
             <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
           </div>
         </div>
-        {(item.audience || item.scope || product || period || (item.status && item.status !== 'published') || restrictedToTags) && (
+        {(item.audience || item.scope || product || period || item.publish_at || (item.status && item.status !== 'published') || restrictedToTags) && (
           <div className="flex flex-wrap gap-1 px-3 pb-2.5">
             <StatusBadge item={item} />
+            {item.publish_at && (
+              <ItemTag color="gray">
+                {new Date(item.publish_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </ItemTag>
+            )}
             {item.audience && <ItemTag color="blue">{item.audience}</ItemTag>}
             {item.scope && <ItemTag color="green">{item.scope}</ItemTag>}
             {product && <ItemTag color="purple">{product.name}</ItemTag>}
