@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { MemberMarketingView } from '@/components/members/member-marketing-view'
 
@@ -22,10 +23,11 @@ export default async function MemberMarketingPage() {
   const settings = await getSettings()
 
   const { data: { user } } = await supabase.auth.getUser()
+  const adminClient = createAdminClient()
 
   const [{ data: itemsData }, { data: userTagsData }] = await Promise.all([
     supabase.from('marketing_items').select('*').order('order_index'),
-    supabase.from('profile_tags').select('tag_id').eq('profile_id', user!.id),
+    adminClient.from('profile_tags').select('tag_id').eq('profile_id', user!.id),
   ])
 
   const userTagIds = new Set((userTagsData ?? []).map((t) => t.tag_id))
