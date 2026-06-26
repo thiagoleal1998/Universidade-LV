@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown } from 'lucide-react'
+import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown, Clock, Eye, BookDashed } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,6 +34,8 @@ import { toast } from 'sonner'
 export type SectionType = 'visual' | 'link' | 'text'
 export type MarketingSection = { key: string; label: string; type: SectionType }
 
+type ItemStatus = 'draft' | 'published' | 'scheduled'
+
 type MarketingItem = {
   id: string
   category: string
@@ -44,6 +46,8 @@ type MarketingItem = {
   audience?: string | null
   scope?: string | null
   product_id?: string | null
+  status?: ItemStatus | null
+  publish_at?: string | null
   created_at: string
 }
 
@@ -55,6 +59,8 @@ type SubmitData = {
   audience?: string
   scope?: string
   product_id?: string
+  status: ItemStatus
+  publish_at?: string
 }
 
 type CatDef = {
@@ -111,6 +117,14 @@ function AudiencePill({ value, label, active, onClick }: { value: string; label:
   )
 }
 
+function toLocalDatetimeValue(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function ItemForm({
   cat,
   products,
@@ -130,8 +144,10 @@ function ItemForm({
   const [audience, setAudience] = useState(defaultValues?.audience ?? '')
   const [scope, setScope] = useState(defaultValues?.scope ?? '')
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
+  const [publishAt, setPublishAt] = useState(toLocalDatetimeValue(defaultValues?.publish_at))
   const [isUploading, startUpload] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
+  const statusRef = useRef<ItemStatus>(defaultValues?.status ?? 'published')
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -147,6 +163,12 @@ function ItemForm({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
+    const status = statusRef.current
+    const publishAtIso = publishAt ? new Date(publishAt).toISOString() : undefined
+    if (status === 'scheduled' && !publishAtIso) {
+      toast.error('Defina a data de divulgação para agendar.')
+      return
+    }
     onSubmit({
       title: (fd.get('title') as string) ?? '',
       description: (fd.get('description') as string) ?? '',
@@ -155,11 +177,14 @@ function ItemForm({
       audience: audience || undefined,
       scope: scope || undefined,
       product_id: productId || undefined,
+      status,
+      publish_at: status === 'scheduled' ? publishAtIso : undefined,
     })
   }
 
   const isImage = url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isVisual = cat.type === 'visual'
+  const isEditing = !!defaultValues?.id
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
@@ -275,15 +300,53 @@ function ItemForm({
         </div>
       )}
 
-      <div className="flex gap-2 pt-1">
-        <Button type="submit" size="sm" disabled={isPending || isUploading}>
-          {isPending
-            ? <><Spinner className="w-4 h-4" /> Salvando...</>
-            : defaultValues?.id
-              ? 'Salvar'
-              : <><Plus className="w-4 h-4 mr-1" /> Adicionar</>}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Data de divulgação</Label>
+        <input
+          type="datetime-local"
+          value={publishAt}
+          onChange={(e) => setPublishAt(e.target.value)}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        />
+        <p className="text-xs text-muted-foreground">Opcional. Necessário apenas para agendar publicação.</p>
+      </div>
+
+      <div className="flex gap-2 pt-1 flex-wrap">
+        {isPending ? (
+          <Button size="sm" disabled>
+            <Spinner className="w-4 h-4 mr-1" /> Salvando...
+          </Button>
+        ) : isEditing ? (
+          <Button type="submit" size="sm" onClick={() => { statusRef.current = defaultValues?.status ?? 'published' }}>
+            Salvar
+          </Button>
+        ) : (
+          <>
+            <Button
+              type="submit" size="sm" variant="outline"
+              disabled={isUploading}
+              onClick={() => { statusRef.current = 'draft' }}
+            >
+              <BookDashed className="w-4 h-4 mr-1" /> Rascunho
+            </Button>
+            <Button
+              type="submit" size="sm"
+              disabled={isUploading}
+              onClick={() => { statusRef.current = 'published' }}
+            >
+              <Eye className="w-4 h-4 mr-1" /> Publicar
+            </Button>
+            <Button
+              type="submit" size="sm" variant="secondary"
+              disabled={isUploading || !publishAt}
+              onClick={() => { statusRef.current = 'scheduled' }}
+              title={!publishAt ? 'Defina a data de divulgação' : ''}
+            >
+              <Clock className="w-4 h-4 mr-1" /> Agendar
+            </Button>
+          </>
+        )}
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={isPending}>
           <X className="w-4 h-4 mr-1" /> Cancelar
         </Button>
       </div>
@@ -311,13 +374,25 @@ function DeleteConfirm({ label, onConfirm }: { label: string; onConfirm: () => v
   )
 }
 
-function ItemTag({ children, color }: { children: React.ReactNode; color: 'blue' | 'green' | 'purple' }) {
+function ItemTag({ children, color }: { children: React.ReactNode; color: 'blue' | 'green' | 'purple' | 'gray' | 'amber' }) {
   const cls = {
     blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     green: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    gray: 'bg-muted text-muted-foreground',
+    amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   }[color]
   return <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', cls)}>{children}</span>
+}
+
+function StatusBadge({ item }: { item: MarketingItem }) {
+  const status = item.status ?? 'published'
+  if (status === 'draft') return <ItemTag color="gray">Rascunho</ItemTag>
+  if (status === 'scheduled') {
+    const date = item.publish_at ? new Date(item.publish_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''
+    return <ItemTag color="amber"><Clock className="w-3 h-3 inline mr-0.5" />Agendado {date}</ItemTag>
+  }
+  return null
 }
 
 function VisualCard({ item, cat, products }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[] }) {
@@ -383,8 +458,9 @@ function VisualCard({ item, cat, products }: { item: MarketingItem; cat: CatDef;
           <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
         </div>
       </div>
-      {(item.audience || item.scope || product) && (
+      {(item.audience || item.scope || product || (item.status && item.status !== 'published')) && (
         <div className="flex flex-wrap gap-1 px-3 pb-2.5">
+          <StatusBadge item={item} />
           {item.audience && <ItemTag color="blue">{item.audience}</ItemTag>}
           {item.scope && <ItemTag color="green">{item.scope}</ItemTag>}
           {product && <ItemTag color="purple">{product.name}</ItemTag>}
@@ -428,7 +504,10 @@ function LinkRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; pr
         <Link2 className="w-4 h-4 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-foreground">{item.title}</p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p className="font-medium text-sm text-foreground">{item.title}</p>
+          <StatusBadge item={item} />
+        </div>
         {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
         {item.url && <p className="text-xs text-primary/80 truncate">{item.url}</p>}
       </div>

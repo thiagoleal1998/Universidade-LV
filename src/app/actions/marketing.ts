@@ -45,6 +45,8 @@ export async function createMarketingItem(data: {
   audience?: string
   scope?: string
   product_id?: string
+  status?: string
+  publish_at?: string
 }) {
   const supabase = await createClient()
   if (!data.title.trim()) return { error: 'Título obrigatório' }
@@ -67,6 +69,8 @@ export async function createMarketingItem(data: {
     audience: data.audience || null,
     scope: data.scope || null,
     product_id: data.product_id || null,
+    status: data.status || 'published',
+    publish_at: data.publish_at || null,
     order_index: nextIndex,
   })
 
@@ -85,6 +89,8 @@ export async function updateMarketingItem(
     audience?: string
     scope?: string
     product_id?: string
+    status?: string
+    publish_at?: string
   },
 ) {
   const supabase = await createClient()
@@ -100,6 +106,8 @@ export async function updateMarketingItem(
       audience: data.audience || null,
       scope: data.scope || null,
       product_id: data.product_id || null,
+      status: data.status || 'published',
+      publish_at: data.publish_at || null,
     })
     .eq('id', id)
 

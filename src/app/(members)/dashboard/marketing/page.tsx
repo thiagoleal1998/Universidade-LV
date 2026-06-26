@@ -12,6 +12,8 @@ type MarketingItem = {
   content: string
   url: string
   order_index: number
+  status?: string | null
+  publish_at?: string | null
 }
 
 export default async function MemberMarketingPage() {
@@ -23,7 +25,16 @@ export default async function MemberMarketingPage() {
     .select('*')
     .order('order_index')
 
-  const items = (itemsData ?? []) as MarketingItem[]
+  const now = new Date()
+  const items = ((itemsData ?? []) as MarketingItem[]).filter((item) => {
+    const status = item.status ?? 'published'
+    if (status === 'draft') return false
+    if (status === 'scheduled') {
+      if (!item.publish_at) return false
+      return new Date(item.publish_at) <= now
+    }
+    return true
+  })
 
   const REMOVED_KEYS = ['email', 'script']
   let sections: { key: string; label: string; type: string }[] = []
