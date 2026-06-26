@@ -134,7 +134,13 @@ function getDayLabel(iso: string | null | undefined): string | null {
 
 type PeriodTheme = { emoji: string; label: string; bannerClass: string; borderClass: string }
 
-const PERIOD_THEMES: { match: string[]; theme: PeriodTheme }[] = [
+const COLD_DESTINATIONS = [
+  'argentina', 'chile', 'patagônia', 'patagonia', 'bariloche', 'ushuaia',
+  'mendoza', 'santiago', 'buenos aires', 'gramado', 'campos do jordão',
+  'campos do jordao', 'urubici', 'monte verde', 'cordilheira', 'neve', 'ski',
+]
+
+const PERIOD_THEMES: { match: string[]; theme: PeriodTheme; coldTheme?: PeriodTheme }[] = [
   {
     match: ['férias de janeiro', 'ferias de janeiro'],
     theme: {
@@ -170,6 +176,13 @@ const PERIOD_THEMES: { match: string[]; theme: PeriodTheme }[] = [
       bannerClass: 'bg-gradient-to-r from-teal-500 to-emerald-400 text-white',
       borderClass: 'border-teal-400 ring-1 ring-teal-300',
     },
+    // Tema alternativo para destinos frios — detectado pelo título da oferta
+    coldTheme: {
+      emoji: '❄️',
+      label: 'FÉRIAS DE JULHO',
+      bannerClass: 'bg-gradient-to-r from-blue-600 to-sky-400 text-white',
+      borderClass: 'border-blue-500 ring-1 ring-blue-300',
+    },
   },
   {
     match: ['natal'],
@@ -200,11 +213,17 @@ const PERIOD_THEMES: { match: string[]; theme: PeriodTheme }[] = [
   },
 ]
 
-function getSpecialPeriodTheme(periodName: string | undefined): PeriodTheme | null {
+function getSpecialPeriodTheme(periodName: string | undefined, itemTitle?: string | null): PeriodTheme | null {
   if (!periodName) return null
   const lower = periodName.toLowerCase().trim()
-  for (const { match, theme } of PERIOD_THEMES) {
-    if (match.some((m) => lower.includes(m))) return theme
+  for (const { match, theme, coldTheme } of PERIOD_THEMES) {
+    if (match.some((m) => lower.includes(m))) {
+      if (coldTheme && itemTitle) {
+        const titleLower = itemTitle.toLowerCase()
+        if (COLD_DESTINATIONS.some((d) => titleLower.includes(d))) return coldTheme
+      }
+      return theme
+    }
   }
   return null
 }
@@ -227,7 +246,7 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
 function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null }) {
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
-  const periodTheme = getSpecialPeriodTheme(period?.name)
+  const periodTheme = getSpecialPeriodTheme(period?.name, item.title)
   const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isB2B = item.audience === 'B2B'
