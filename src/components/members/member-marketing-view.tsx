@@ -129,7 +129,7 @@ function getDayLabel(iso: string | null | undefined): string | null {
   const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
   const d = new Date(iso)
   if (isNaN(d.getTime())) return null
-  return days[d.getDay()] ?? null
+  return days[d.getUTCDay()] ?? null
 }
 
 function AudienceBadge({ audience }: { audience: string | null | undefined }) {
