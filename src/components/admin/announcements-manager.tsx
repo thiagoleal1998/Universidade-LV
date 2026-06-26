@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementPublished, scheduleAnnouncement } from '@/app/actions/announcements'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,77 @@ type Announcement = {
   created_at: string
 }
 
+function RichTextArea({
+  name,
+  defaultValue = '',
+  placeholder,
+  rows = 4,
+}: {
+  name: string
+  defaultValue?: string
+  placeholder?: string
+  rows?: number
+}) {
+  const [value, setValue] = useState(defaultValue)
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  function applyFormat(tag: string) {
+    const ta = ref.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const open = `<${tag}>`
+    const close = `</${tag}>`
+    const newVal = value.slice(0, start) + open + value.slice(start, end) + close + value.slice(end)
+    setValue(newVal)
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(start + open.length, end + open.length)
+    })
+  }
+
+  return (
+    <div>
+      <div className="flex gap-1 px-1.5 py-1 border border-border border-b-0 rounded-t-md bg-muted/30">
+        <button
+          type="button"
+          title="Negrito"
+          onMouseDown={(e) => { e.preventDefault(); applyFormat('strong') }}
+          className="w-7 h-7 flex items-center justify-center rounded text-sm font-bold hover:bg-muted transition-colors"
+        >
+          B
+        </button>
+        <button
+          type="button"
+          title="Itálico"
+          onMouseDown={(e) => { e.preventDefault(); applyFormat('em') }}
+          className="w-7 h-7 flex items-center justify-center rounded text-sm italic hover:bg-muted transition-colors"
+        >
+          I
+        </button>
+        <button
+          type="button"
+          title="Sublinhado"
+          onMouseDown={(e) => { e.preventDefault(); applyFormat('u') }}
+          className="w-7 h-7 flex items-center justify-center rounded text-sm underline hover:bg-muted transition-colors"
+        >
+          U
+        </button>
+      </div>
+      <textarea
+        ref={ref}
+        name={name}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        required
+        className="flex w-full rounded-b-md rounded-t-none border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+      />
+    </div>
+  )
+}
+
 function AnnouncementForm({
   onSubmit,
   isPending,
@@ -58,7 +129,7 @@ function AnnouncementForm({
       </div>
       <div className="space-y-1.5">
         <Label>Mensagem</Label>
-        <Textarea name="body" defaultValue={defaultValues?.body} placeholder="Escreva a mensagem..." rows={4} required />
+        <RichTextArea name="body" defaultValue={defaultValues?.body} placeholder="Escreva a mensagem..." rows={4} />
       </div>
       {showSchedule && (
         <div className="space-y-1.5">
@@ -188,7 +259,7 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
               <Badge variant="secondary">Rascunho</Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ann.body}</p>
+          <div className="text-sm text-muted-foreground whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline" dangerouslySetInnerHTML={{ __html: ann.body }} />
           <p className="text-xs text-muted-foreground mt-2">
             {new Date(ann.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>

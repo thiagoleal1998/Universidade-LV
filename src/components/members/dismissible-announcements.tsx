@@ -62,7 +62,7 @@ export function DismissibleAnnouncements({ announcements }: { announcements: Ann
                 {new Date(ann.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
               </span>
             </div>
-            <p className="text-sm text-amber-800/80 dark:text-amber-200/80 mt-1 whitespace-pre-wrap line-clamp-3">{ann.body}</p>
+            <div className="text-sm text-amber-800/80 dark:text-amber-200/80 mt-1 whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline" dangerouslySetInnerHTML={{ __html: ann.body }} />
           </div>
           <button
             type="button"
