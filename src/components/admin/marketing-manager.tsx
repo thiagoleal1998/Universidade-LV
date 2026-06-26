@@ -205,7 +205,7 @@ function ItemForm({
       product_id: productId || undefined,
       period_id: periodId || undefined,
       status,
-      publish_at: status === 'scheduled' ? publishAtIso : undefined,
+      publish_at: publishAtIso,
       allowed_tag_ids: allowedTagIds,
     })
   }
