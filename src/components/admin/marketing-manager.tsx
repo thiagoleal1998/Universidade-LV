@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { ImageIcon, Link2, FileText, Plus, Trash2, Pencil, ExternalLink, Upload, Copy, X, Package, ChevronDown } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -522,6 +523,7 @@ function TextRow({ item, cat, products }: { item: MarketingItem; cat: CatDef; pr
 }
 
 function ProductsManager({ products }: { products: MarketingProduct[] }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [newProduct, setNewProduct] = useState('')
   const [isAdding, startAdd] = useTransition()
@@ -532,7 +534,7 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
     startAdd(async () => {
       const r = await createMarketingProduct(newProduct)
       if (r?.error) toast.error(r.error)
-      else { toast.success('Produto adicionado!'); setNewProduct('') }
+      else { toast.success('Produto adicionado!'); setNewProduct(''); router.refresh() }
     })
   }
 
@@ -540,7 +542,7 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
     startDelete(async () => {
       const r = await deleteMarketingProduct(id)
       if (r?.error) toast.error(r.error)
-      else toast.success('Produto removido!')
+      else { toast.success('Produto removido!'); router.refresh() }
     })
   }
 
