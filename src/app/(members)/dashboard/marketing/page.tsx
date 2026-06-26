@@ -26,12 +26,22 @@ export default async function MemberMarketingPage() {
   const adminClient = createAdminClient()
 
   const [{ data: itemsData }, { data: userTagsData }] = await Promise.all([
-    supabase.from('marketing_items').select('*').order('order_index'),
+    adminClient.from('marketing_items').select('*').order('order_index'),
     adminClient.from('profile_tags').select('tag_id').eq('profile_id', user!.id),
   ])
 
-  const userTagIds = new Set((userTagsData ?? []).map((t) => t.tag_id))
+  const userTagIds = new Set((userTagsData ?? []).map((t: { tag_id: string }) => t.tag_id))
   const now = new Date()
+
+  // Supabase pode retornar uuid[] como string "{uuid1,uuid2}" dependendo do cache de schema
+  function parseAllowedTags(val: unknown): string[] {
+    if (!val) return []
+    if (Array.isArray(val)) return val as string[]
+    if (typeof val === 'string') {
+      return val.replace(/^{|}$/g, '').split(',').filter(Boolean)
+    }
+    return []
+  }
 
   const items = ((itemsData ?? []) as MarketingItem[]).filter((item) => {
     const status = item.status ?? 'published'
@@ -40,7 +50,7 @@ export default async function MemberMarketingPage() {
       if (!item.publish_at || new Date(item.publish_at) > now) return false
     }
 
-    const allowed = item.allowed_tag_ids ?? []
+    const allowed = parseAllowedTags(item.allowed_tag_ids)
     if (allowed.length === 0) return true
     return allowed.some((tagId) => userTagIds.has(tagId))
   })

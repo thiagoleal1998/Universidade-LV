@@ -104,6 +104,13 @@ function sectionToCatDef(sec: MarketingSection): CatDef {
   }
 }
 
+function parseAllowedTagIds(val: unknown): string[] {
+  if (!val) return []
+  if (Array.isArray(val)) return val as string[]
+  if (typeof val === 'string') return val.replace(/^{|}$/g, '').split(',').filter(Boolean)
+  return []
+}
+
 function AudiencePill({ value, label, active, onClick }: { value: string; label: string; active: boolean; onClick: () => void }) {
   return (
     <button
@@ -151,7 +158,7 @@ function ItemForm({
   const [scope, setScope] = useState(defaultValues?.scope ?? '')
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
   const [publishAt, setPublishAt] = useState(toLocalDatetimeValue(defaultValues?.publish_at))
-  const [allowedTagIds, setAllowedTagIds] = useState<string[]>(defaultValues?.allowed_tag_ids ?? [])
+  const [allowedTagIds, setAllowedTagIds] = useState<string[]>(parseAllowedTagIds(defaultValues?.allowed_tag_ids))
   const [isUploading, startUpload] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
   const statusRef = useRef<ItemStatus>(defaultValues?.status ?? 'published')
@@ -459,7 +466,8 @@ function VisualCard({ item, cat, products, tags = [] }: { item: MarketingItem; c
   const [isPending, startTransition] = useTransition()
   const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const product = products.find((p) => p.id === item.product_id)
-  const requiredTags = tags.filter((t) => (item.allowed_tag_ids ?? []).includes(t.id))
+  const allowedIds = parseAllowedTagIds(item.allowed_tag_ids)
+  const requiredTags = tags.filter((t) => allowedIds.includes(t.id))
   const restrictedToTags = requiredTags.length > 0
 
   function handleUpdate(data: SubmitData) {
