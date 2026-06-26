@@ -147,7 +147,7 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
   return null
 }
 
-function OfertaCard({ item, products, periods }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[] }) {
+function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null }) {
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
   const dateStr = formatDate(item.publish_at ?? item.created_at)
@@ -157,7 +157,7 @@ function OfertaCard({ item, products, periods }: { item: MarketingItem; products
 
   return (
     <div className={cn(
-      'bg-card border rounded-xl overflow-hidden flex flex-col',
+      'bg-card border rounded-xl overflow-hidden flex flex-col h-full',
       isLastMinute ? 'border-orange-400 dark:border-orange-600 ring-1 ring-orange-300 dark:ring-orange-700' :
       isB2B ? 'border-amber-200 dark:border-amber-800' : 'border-border',
     )}>
@@ -169,6 +169,13 @@ function OfertaCard({ item, products, periods }: { item: MarketingItem; products
       )}
       {!isLastMinute && isB2B && <div className="h-1 bg-amber-400" />}
 
+      {dayLabel && (
+        <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/40 border-b border-border/30">
+          <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
+          <span className="text-[10px] font-semibold text-muted-foreground">Oferta de {dayLabel}</span>
+        </div>
+      )}
+
       {item.url && isImage && (
         <div className="aspect-video bg-muted overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -176,15 +183,15 @@ function OfertaCard({ item, products, periods }: { item: MarketingItem; products
         </div>
       )}
 
-      {/* Date bar — always visible */}
-      <div className="flex items-center gap-1.5 px-3 pt-2">
+      {/* Date bar */}
+      <div className="flex items-center gap-1.5 px-3 pt-3">
         <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
         <span className="text-[11px] text-muted-foreground">
           <span className="font-semibold text-foreground">{dateStr ?? '—'}</span>
         </span>
       </div>
 
-      <div className="flex items-center gap-1.5 px-3 pt-1.5 flex-wrap">
+      <div className="flex items-center gap-1.5 px-3 pt-2 flex-wrap">
         <AudienceBadge audience={item.audience} />
         {product && (
           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
@@ -199,13 +206,13 @@ function OfertaCard({ item, products, periods }: { item: MarketingItem; products
         )}
       </div>
 
-      <div className="px-3 pt-1.5 pb-1 flex-1">
+      <div className="px-3 pt-2.5 pb-1 flex-1">
         <p className="font-semibold text-xs text-foreground leading-snug">{item.title}</p>
-        {item.description && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>}
+        {item.description && <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{item.description}</p>}
       </div>
 
       {item.url && (
-        <div className="px-3 pb-3 pt-1.5 flex gap-1.5">
+        <div className="px-3 pb-3 pt-2.5 flex gap-1.5">
           <a
             href={item.url}
             download
@@ -267,23 +274,12 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
           <h3 className="text-sm font-semibold text-foreground">Nacional</h3>
           <span className="text-xs text-muted-foreground">({nacional.length})</span>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 items-start">
           {nacional.length === 0
             ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta nacional.</p>
-            : nacional.map((item) => {
-                const dayLabel = getDayLabel(item.publish_at ?? item.created_at)
-                return (
-                  <div key={item.id}>
-                    {dayLabel && (
-                      <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 shrink-0" />
-                        Oferta de {dayLabel}
-                      </p>
-                    )}
-                    <OfertaCard item={item} products={products} periods={periods} />
-                  </div>
-                )
-              })}
+            : nacional.map((item) => (
+                <OfertaCard key={item.id} item={item} products={products} periods={periods} dayLabel={getDayLabel(item.publish_at ?? item.created_at)} />
+              ))}
         </div>
       </div>
 
@@ -293,23 +289,12 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
           <h3 className="text-sm font-semibold text-foreground">Internacional</h3>
           <span className="text-xs text-muted-foreground">({internacional.length})</span>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 items-start">
           {internacional.length === 0
             ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta internacional.</p>
-            : internacional.map((item) => {
-                const dayLabel = getDayLabel(item.publish_at ?? item.created_at)
-                return (
-                  <div key={item.id}>
-                    {dayLabel && (
-                      <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 shrink-0" />
-                        Oferta de {dayLabel}
-                      </p>
-                    )}
-                    <OfertaCard item={item} products={products} periods={periods} />
-                  </div>
-                )
-              })}
+            : internacional.map((item) => (
+                <OfertaCard key={item.id} item={item} products={products} periods={periods} dayLabel={getDayLabel(item.publish_at ?? item.created_at)} />
+              ))}
         </div>
       </div>
       </div>
@@ -421,7 +406,7 @@ export function MemberMarketingView({
   return (
     <div>
       {/* Tabs principais */}
-      <div className="flex gap-1 border-b border-border mb-0 overflow-x-auto">
+      <div className="flex flex-wrap gap-1 border-b border-border mb-0">
         {sections.map((s) => {
           const Icon = CATEGORY_ICON[s.type] ?? FileText
           return (
