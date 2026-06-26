@@ -54,6 +54,7 @@ type MarketingItem = {
   period_id?: string | null
   status?: ItemStatus | null
   publish_at?: string | null
+  expires_at?: string | null
   allowed_tag_ids?: string[] | null
   created_at: string
 }
@@ -69,6 +70,7 @@ type SubmitData = {
   period_id?: string
   status: ItemStatus
   publish_at?: string
+  expires_at?: string
   allowed_tag_ids: string[]
 }
 
@@ -166,6 +168,7 @@ function ItemForm({
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
   const [periodId, setPeriodId] = useState(defaultValues?.period_id ?? '')
   const [publishAt, setPublishAt] = useState(toLocalDatetimeValue(defaultValues?.publish_at))
+  const [expiresAt, setExpiresAt] = useState(toLocalDatetimeValue(defaultValues?.expires_at))
   const [allowedTagIds, setAllowedTagIds] = useState<string[]>(parseAllowedTagIds(defaultValues?.allowed_tag_ids))
   const [isUploading, startUpload] = useTransition()
   const [isDragging, setIsDragging] = useState(false)
@@ -218,6 +221,7 @@ function ItemForm({
       period_id: periodId || undefined,
       status,
       publish_at: publishAtIso,
+      expires_at: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       allowed_tag_ids: allowedTagIds,
     })
   }
@@ -436,16 +440,29 @@ function ItemForm({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Data de divulgação</Label>
-        <input
-          type="datetime-local"
-          value={publishAt}
-          onChange={(e) => setPublishAt(e.target.value)}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        />
-        <p className="text-xs text-muted-foreground">Opcional. Necessário apenas para agendar publicação.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Data de divulgação</Label>
+          <input
+            type="datetime-local"
+            value={publishAt}
+            onChange={(e) => setPublishAt(e.target.value)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Válido até</Label>
+          <input
+            type="datetime-local"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          />
+        </div>
       </div>
+      <p className="text-xs text-muted-foreground -mt-1">
+        &ldquo;Válido até&rdquo;: oferta fica oculta para os alunos após essa data.
+      </p>
 
       <div className="flex gap-2 pt-1 flex-wrap">
         {isPending ? (
@@ -538,6 +555,12 @@ function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: Ma
   const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
+  const now = new Date()
+  const expiresDate = item.expires_at ? new Date(item.expires_at) : null
+  const isExpired = expiresDate ? expiresDate < now : false
+  const expiresLabel = expiresDate
+    ? expiresDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : null
   const allowedIds = parseAllowedTagIds(item.allowed_tag_ids)
   const requiredTags = tags.filter((t) => allowedIds.includes(t.id))
   const restrictedToTags = requiredTags.length > 0
@@ -639,12 +662,17 @@ function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: Ma
             <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
           </div>
         </div>
-        {(item.audience || item.scope || product || period || item.publish_at || (item.status && item.status !== 'published') || restrictedToTags) && (
+        {(item.audience || item.scope || product || period || item.publish_at || item.expires_at || (item.status && item.status !== 'published') || restrictedToTags) && (
           <div className="flex flex-wrap gap-1 px-3 pb-2.5">
             <StatusBadge item={item} />
             {item.publish_at && (
               <ItemTag color="gray">
                 {new Date(item.publish_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </ItemTag>
+            )}
+            {expiresLabel && (
+              <ItemTag color={isExpired ? 'amber' : 'gray'}>
+                {isExpired ? '⚠ Expirado' : `até ${expiresLabel}`}
               </ItemTag>
             )}
             {item.audience && <ItemTag color="blue">{item.audience}</ItemTag>}

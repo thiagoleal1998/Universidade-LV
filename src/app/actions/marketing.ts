@@ -86,6 +86,7 @@ export async function createMarketingItem(data: {
   period_id?: string
   status?: string
   publish_at?: string
+  expires_at?: string
   allowed_tag_ids?: string[]
 }) {
   const supabase = await createClient()
@@ -112,6 +113,7 @@ export async function createMarketingItem(data: {
     period_id: data.period_id || null,
     status: data.status || 'published',
     publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
+    expires_at: data.expires_at || null,
     allowed_tag_ids: data.allowed_tag_ids ?? [],
     order_index: nextIndex,
   })
@@ -134,6 +136,7 @@ export async function updateMarketingItem(
     period_id?: string
     status?: string
     publish_at?: string
+    expires_at?: string
     allowed_tag_ids?: string[]
   },
 ) {
@@ -153,6 +156,7 @@ export async function updateMarketingItem(
       period_id: data.period_id || null,
       status: data.status || 'published',
       publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
+      expires_at: data.expires_at || null,
       allowed_tag_ids: data.allowed_tag_ids ?? [],
     })
     .eq('id', id)

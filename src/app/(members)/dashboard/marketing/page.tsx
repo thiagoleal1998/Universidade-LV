@@ -21,6 +21,7 @@ type MarketingItem = {
   scope?: string | null
   product_id?: string | null
   period_id?: string | null
+  expires_at?: string | null
 }
 
 export default async function MemberMarketingPage() {
@@ -56,6 +57,8 @@ export default async function MemberMarketingPage() {
     if (status === 'scheduled') {
       if (!item.publish_at || new Date(item.publish_at) > now) return false
     }
+
+    if (item.expires_at && new Date(item.expires_at) < now) return false
 
     const allowed = parseAllowedTags(item.allowed_tag_ids)
     if (allowed.length === 0) return true
