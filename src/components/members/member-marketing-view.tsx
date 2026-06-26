@@ -267,36 +267,43 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div>
-        <div className="flex items-center gap-2 mb-4">
+      {/* Cabeçalhos dos segmentos */}
+      <div className="grid grid-cols-2 gap-8">
+        <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
           <h3 className="text-sm font-semibold text-foreground">Nacional</h3>
           <span className="text-xs text-muted-foreground">({nacional.length})</span>
         </div>
-        <div className="grid grid-cols-2 gap-3 items-start">
-          {nacional.length === 0
-            ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta nacional.</p>
-            : nacional.map((item) => (
-                <OfertaCard key={item.id} item={item} products={products} periods={periods} dayLabel={getDayLabel(item.publish_at ?? item.created_at)} />
-              ))}
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
           <h3 className="text-sm font-semibold text-foreground">Internacional</h3>
           <span className="text-xs text-muted-foreground">({internacional.length})</span>
         </div>
-        <div className="grid grid-cols-2 gap-3 items-start">
-          {internacional.length === 0
-            ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta internacional.</p>
-            : internacional.map((item) => (
-                <OfertaCard key={item.id} item={item} products={products} periods={periods} dayLabel={getDayLabel(item.publish_at ?? item.created_at)} />
-              ))}
-        </div>
       </div>
+
+      {/* Grid unificado: Nacional nas colunas 1-2, Internacional nas 3-4 — linhas compartilhadas garantem altura igual */}
+      <div className="grid grid-cols-4 gap-3">
+        {Array.from(
+          { length: Math.max(Math.ceil(nacional.length / 2), Math.ceil(internacional.length / 2), 1) },
+          (_, row) => [
+            nacional[row * 2] ?? null,
+            nacional[row * 2 + 1] ?? null,
+            internacional[row * 2] ?? null,
+            internacional[row * 2 + 1] ?? null,
+          ]
+        ).flat().map((item, idx) =>
+          item ? (
+            <OfertaCard
+              key={item.id}
+              item={item}
+              products={products}
+              periods={periods}
+              dayLabel={getDayLabel(item.publish_at ?? item.created_at)}
+            />
+          ) : (
+            <div key={`empty-${idx}`} />
+          )
+        )}
       </div>
     </div>
   )
