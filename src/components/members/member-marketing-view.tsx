@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, Mail, FileText } from 'lucide-react'
+import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 type Section = { key: string; label: string; type: string }
@@ -18,9 +18,13 @@ type MarketingItem = {
 const CATEGORY_ICON: Record<string, React.ElementType> = {
   visual: ImageIcon,
   link:   Link2,
-  email:  Mail,
-  script: FileText,
+  text:   FileText,
 }
+
+const VISUAL_SUBSECTIONS = [
+  { key: 'ofertas_diarias', label: 'Ofertas Diárias' },
+  { key: 'laminas',         label: 'Lâminas de Condições' },
+]
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -43,9 +47,13 @@ function CopyButton({ text }: { text: string }) {
 
 export function MemberMarketingView({ sections, items }: { sections: Section[]; items: MarketingItem[] }) {
   const [activeKey, setActiveKey] = useState(sections[0]?.key ?? '')
+  const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
 
   const activeSection = sections.find((s) => s.key === activeKey)
-  const activeItems = items.filter((i) => i.category === activeKey)
+  const isVisual = activeSection?.type === 'visual'
+
+  const effectiveCategory = isVisual ? visualSubTab : activeKey
+  const activeItems = items.filter((i) => i.category === effectiveCategory)
 
   if (sections.length === 0) {
     return (
@@ -57,8 +65,8 @@ export function MemberMarketingView({ sections, items }: { sections: Section[]; 
 
   return (
     <div>
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-border mb-6 overflow-x-auto">
+      {/* Tabs principais */}
+      <div className="flex gap-1 border-b border-border mb-0 overflow-x-auto">
         {sections.map((s) => {
           const Icon = CATEGORY_ICON[s.type] ?? FileText
           return (
@@ -79,6 +87,28 @@ export function MemberMarketingView({ sections, items }: { sections: Section[]; 
         })}
       </div>
 
+      {/* Sub-tabs de Materiais Visuais */}
+      {isVisual && (
+        <div className="flex gap-0 border-b border-border mb-6">
+          {VISUAL_SUBSECTIONS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setVisualSubTab(key)}
+              className={cn(
+                'px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+                visualSubTab === key
+                  ? 'border-primary/70 text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!isVisual && <div className="mb-6" />}
+
       {/* Content */}
       {activeItems.length === 0 ? (
         <div className="text-center py-16 bg-card border rounded-xl">
@@ -86,7 +116,7 @@ export function MemberMarketingView({ sections, items }: { sections: Section[]; 
         </div>
       ) : (
         <div className="space-y-4">
-          {activeSection?.type === 'visual' && (
+          {isVisual && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeItems.map((item) => (
                 <div key={item.id} className="bg-card border rounded-xl overflow-hidden group">
@@ -148,7 +178,7 @@ export function MemberMarketingView({ sections, items }: { sections: Section[]; 
             </div>
           )}
 
-          {(activeSection?.type === 'email' || activeSection?.type === 'text') && (
+          {activeSection?.type === 'text' && (
             <div className="space-y-4">
               {activeItems.map((item) => (
                 <div key={item.id} className="bg-card border rounded-xl overflow-hidden">
