@@ -157,7 +157,18 @@ function OfertasDiariasLayout({ items, products }: { items: MarketingItem[]; pro
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="space-y-6">
+      <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+        <span className="mt-0.5 shrink-0">⚠️</span>
+        <p>
+          As ofertas estão sujeitas à disponibilidade, alteração de valores e condições sem aviso prévio.
+          Tarifas e condições poderão variar conforme a data da cotação, período da viagem, disponibilidade
+          e regras de cada fornecedor. Consulte as condições específicas de cada oferta, incluindo políticas
+          de cancelamento e demais restrições.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       <div>
         <div className="flex items-center gap-2 mb-4">
           <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
@@ -182,6 +193,7 @@ function OfertasDiariasLayout({ items, products }: { items: MarketingItem[]; pro
             ? <p className="text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta internacional.</p>
             : internacional.map((item) => <OfertaCard key={item.id} item={item} products={products} />)}
         </div>
+      </div>
       </div>
     </div>
   )
