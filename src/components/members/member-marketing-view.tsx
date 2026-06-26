@@ -76,7 +76,7 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
 function OfertaCard({ item, products, periods }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[] }) {
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
-  const dateStr = formatDate(item.publish_at)
+  const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isB2B = item.audience === 'B2B'
 
@@ -220,7 +220,7 @@ function VisualGrid({ items, products, periods }: { items: MarketingItem[]; prod
       {sorted.map((item) => {
         const product = products.find((p) => p.id === item.product_id)
         const period = periods.find((p) => p.id === item.period_id)
-        const dateStr = formatDate(item.publish_at)
+        const dateStr = formatDate(item.publish_at ?? item.created_at)
         const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
         return (
           <div key={item.id} className="bg-card border rounded-xl overflow-hidden group flex flex-col">

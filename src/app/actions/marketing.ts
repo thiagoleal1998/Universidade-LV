@@ -111,7 +111,7 @@ export async function createMarketingItem(data: {
     product_id: data.product_id || null,
     period_id: data.period_id || null,
     status: data.status || 'published',
-    publish_at: data.publish_at || null,
+    publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
     allowed_tag_ids: data.allowed_tag_ids ?? [],
     order_index: nextIndex,
   })
@@ -152,7 +152,7 @@ export async function updateMarketingItem(
       product_id: data.product_id || null,
       period_id: data.period_id || null,
       status: data.status || 'published',
-      publish_at: data.publish_at || null,
+      publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
       allowed_tag_ids: data.allowed_tag_ids ?? [],
     })
     .eq('id', id)
