@@ -18,6 +18,7 @@ type MarketingItem = {
   scope?: string | null
   product_id?: string | null
   publish_at?: string | null
+  created_at?: string | null
 }
 
 const CATEGORY_ICON: Record<string, React.ElementType> = {
@@ -72,16 +73,15 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
 
 function OfertaCard({ item, products }: { item: MarketingItem; products: MarketingProduct[] }) {
   const product = products.find((p) => p.id === item.product_id)
-  const dateStr = formatDate(item.publish_at)
+  const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isB2B = item.audience === 'B2B'
 
   return (
     <div className={cn(
       'bg-card border rounded-xl overflow-hidden flex flex-col',
-      isB2B && 'border-amber-200 dark:border-amber-800',
+      isB2B ? 'border-amber-200 dark:border-amber-800' : 'border-border',
     )}>
-      {/* Color top bar for B2B */}
       {isB2B && <div className="h-1 bg-amber-400" />}
 
       {item.url && isImage && (
@@ -91,17 +91,19 @@ function OfertaCard({ item, products }: { item: MarketingItem; products: Marketi
         </div>
       )}
 
-      <div className="flex items-center gap-2 px-4 pt-3 flex-wrap">
+      {/* Date bar — always visible */}
+      <div className="flex items-center gap-2 px-4 pt-3">
+        <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <span className="text-xs text-muted-foreground">
+          Publicado em <span className="font-semibold text-foreground">{dateStr ?? '—'}</span>
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 pt-2 flex-wrap">
         <AudienceBadge audience={item.audience} />
         {product && (
           <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
             {product.name}
-          </span>
-        )}
-        {dateStr && (
-          <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-            <Calendar className="w-3 h-3" />
-            {dateStr}
           </span>
         )}
       </div>

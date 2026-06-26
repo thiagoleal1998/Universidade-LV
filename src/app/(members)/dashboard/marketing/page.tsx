@@ -15,6 +15,7 @@ type MarketingItem = {
   order_index: number
   status?: string | null
   publish_at?: string | null
+  created_at?: string | null
   allowed_tag_ids?: string[] | null
   audience?: string | null
   scope?: string | null
