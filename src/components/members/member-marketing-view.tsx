@@ -44,9 +44,8 @@ function ShareButtons({ title, description, url }: { title: string; description?
   }
 
   return (
-    <div className="px-4 pb-4 pt-2 border-t border-border/40">
-      <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Compartilhar</p>
-      <div className="flex gap-2">
+    <div className="px-3 pb-3 pt-2 border-t border-border/40">
+      <div className="flex gap-1.5">
         {/* WhatsApp */}
         <a
           href={`https://wa.me/?text=${enc(`${text}\n${url}`)}`}
@@ -125,6 +124,14 @@ function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+function getDayLabel(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return days[d.getDay()] ?? null
+}
+
 function AudienceBadge({ audience }: { audience: string | null | undefined }) {
   if (!audience) return null
   if (audience === 'B2C') return (
@@ -158,7 +165,6 @@ function OfertaCard({ item, products, periods }: { item: MarketingItem; products
         <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 flex items-center gap-2">
           <span>🔥</span>
           <span>LAST MINUTE</span>
-          <span className="ml-auto text-[10px] font-normal opacity-90 hidden sm:block">Oportunidade por tempo limitado</span>
         </div>
       )}
       {!isLastMinute && isB2B && <div className="h-1 bg-amber-400" />}
@@ -171,50 +177,50 @@ function OfertaCard({ item, products, periods }: { item: MarketingItem; products
       )}
 
       {/* Date bar — always visible */}
-      <div className="flex items-center gap-2 px-4 pt-3">
-        <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs text-muted-foreground">
-          Publicado em <span className="font-semibold text-foreground">{dateStr ?? '—'}</span>
+      <div className="flex items-center gap-1.5 px-3 pt-2">
+        <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
+        <span className="text-[11px] text-muted-foreground">
+          <span className="font-semibold text-foreground">{dateStr ?? '—'}</span>
         </span>
       </div>
 
-      <div className="flex items-center gap-2 px-4 pt-2 flex-wrap">
+      <div className="flex items-center gap-1.5 px-3 pt-1.5 flex-wrap">
         <AudienceBadge audience={item.audience} />
         {product && (
-          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
             {product.name}
           </span>
         )}
         {period && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-            <CalendarRange className="w-3 h-3" />
+          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <CalendarRange className="w-2.5 h-2.5" />
             {period.name}
           </span>
         )}
       </div>
 
-      <div className="px-4 pt-2 pb-1 flex-1">
-        <p className="font-semibold text-sm text-foreground">{item.title}</p>
-        {item.description && <p className="text-xs text-muted-foreground mt-1">{item.description}</p>}
+      <div className="px-3 pt-1.5 pb-1 flex-1">
+        <p className="font-semibold text-xs text-foreground leading-snug">{item.title}</p>
+        {item.description && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>}
       </div>
 
       {item.url && (
-        <div className="px-4 pb-4 pt-2 flex gap-2">
+        <div className="px-3 pb-3 pt-1.5 flex gap-1.5">
           <a
             href={item.url}
             download
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+            className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg border border-border hover:bg-muted transition-colors"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3 h-3" />
             Baixar
           </a>
           <a
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-3 h-3" />
             Abrir
           </a>
         </div>
@@ -261,10 +267,23 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
           <h3 className="text-sm font-semibold text-foreground">Nacional</h3>
           <span className="text-xs text-muted-foreground">({nacional.length})</span>
         </div>
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
           {nacional.length === 0
-            ? <p className="text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta nacional.</p>
-            : nacional.map((item) => <OfertaCard key={item.id} item={item} products={products} periods={periods} />)}
+            ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta nacional.</p>
+            : nacional.map((item) => {
+                const dayLabel = getDayLabel(item.publish_at)
+                return (
+                  <div key={item.id}>
+                    {dayLabel && (
+                      <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 shrink-0" />
+                        Oferta de {dayLabel}
+                      </p>
+                    )}
+                    <OfertaCard item={item} products={products} periods={periods} />
+                  </div>
+                )
+              })}
         </div>
       </div>
 
@@ -274,10 +293,23 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
           <h3 className="text-sm font-semibold text-foreground">Internacional</h3>
           <span className="text-xs text-muted-foreground">({internacional.length})</span>
         </div>
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
           {internacional.length === 0
-            ? <p className="text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta internacional.</p>
-            : internacional.map((item) => <OfertaCard key={item.id} item={item} products={products} periods={periods} />)}
+            ? <p className="col-span-2 text-sm text-muted-foreground py-8 text-center border rounded-xl">Nenhuma oferta internacional.</p>
+            : internacional.map((item) => {
+                const dayLabel = getDayLabel(item.publish_at)
+                return (
+                  <div key={item.id}>
+                    {dayLabel && (
+                      <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 shrink-0" />
+                        Oferta de {dayLabel}
+                      </p>
+                    )}
+                    <OfertaCard item={item} products={products} periods={periods} />
+                  </div>
+                )
+              })}
         </div>
       </div>
       </div>
