@@ -132,7 +132,7 @@ function toLocalDatetimeValue(iso: string | null | undefined): string {
 function ItemForm({
   cat,
   products,
-  tags,
+  tags = [],
   defaultValues,
   onSubmit,
   isPending,
@@ -140,7 +140,7 @@ function ItemForm({
 }: {
   cat: CatDef
   products: MarketingProduct[]
-  tags: Tag[]
+  tags?: Tag[]
   defaultValues?: Partial<MarketingItem>
   onSubmit: (data: SubmitData) => void
   isPending: boolean
@@ -454,7 +454,7 @@ function StatusBadge({ item }: { item: MarketingItem }) {
   return null
 }
 
-function VisualCard({ item, cat, products, tags }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags: Tag[] }) {
+function VisualCard({ item, cat, products, tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[] }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const isImage = item.url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
@@ -533,7 +533,7 @@ function VisualCard({ item, cat, products, tags }: { item: MarketingItem; cat: C
   )
 }
 
-function LinkRow({ item, cat, products, tags }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags: Tag[] }) {
+function LinkRow({ item, cat, products, tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[] }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -601,7 +601,7 @@ function LinkRow({ item, cat, products, tags }: { item: MarketingItem; cat: CatD
   )
 }
 
-function TextRow({ item, cat, products, tags }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags: Tag[] }) {
+function TextRow({ item, cat, products, tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[] }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -740,7 +740,7 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
   )
 }
 
-function CategorySection({ cat, items, products, tags }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[]; tags: Tag[] }) {
+function CategorySection({ cat, items, products, tags = [] }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[]; tags?: Tag[] }) {
   const [showForm, setShowForm] = useState(false)
   const [isCreating, startCreate] = useTransition()
 
