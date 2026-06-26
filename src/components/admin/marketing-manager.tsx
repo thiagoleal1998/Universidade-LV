@@ -168,6 +168,7 @@ function ItemForm({
   const [publishAt, setPublishAt] = useState(toLocalDatetimeValue(defaultValues?.publish_at))
   const [allowedTagIds, setAllowedTagIds] = useState<string[]>(parseAllowedTagIds(defaultValues?.allowed_tag_ids))
   const [isUploading, startUpload] = useTransition()
+  const [isDragging, setIsDragging] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const statusRef = useRef<ItemStatus>(defaultValues?.status ?? 'published')
 
@@ -175,15 +176,26 @@ function ItemForm({
     setAllowedTagIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id])
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
+  function uploadFile(file: File) {
     startUpload(async () => {
       const r = await uploadMarketingFile(file)
       if (r?.error) toast.error(r.error)
       else if (r.url) { setUrl(r.url); toast.success('Arquivo enviado!') }
     })
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    uploadFile(file)
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) uploadFile(file)
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -253,7 +265,44 @@ function ItemForm({
               </>
             )}
           </div>
-          {isImage && url && (
+          {cat.hasFile && (
+            isImage && url ? (
+              <div
+                className="relative mt-1"
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="preview" className={cn('h-28 w-full rounded-lg object-cover border', isDragging && 'opacity-40')} />
+                {isDragging && (
+                  <div className="absolute inset-0 rounded-lg border-2 border-dashed border-primary bg-primary/10 flex items-center justify-center">
+                    <p className="text-xs font-medium text-primary">Soltar para substituir</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileRef.current?.click()}
+                className={cn(
+                  'mt-1 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors',
+                  isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40 hover:bg-muted/40',
+                )}
+              >
+                {isUploading
+                  ? <Spinner className="w-5 h-5 mx-auto text-muted-foreground" />
+                  : <>
+                      <Upload className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">Arraste um arquivo aqui ou <span className="text-primary">clique para selecionar</span></p>
+                    </>
+                }
+              </div>
+            )
+          )}
+          {!cat.hasFile && isImage && url && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={url} alt="preview" className="h-28 rounded-lg object-cover border mt-1" />
           )}
@@ -542,6 +591,11 @@ function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: Ma
       )}
 
       <div className="bg-card border rounded-lg overflow-hidden group">
+        {/last minute/i.test(item.title) && (
+          <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[10px] font-bold px-3 py-1 flex items-center gap-1.5">
+            🔥 LAST MINUTE
+          </div>
+        )}
         <div className="relative">
           {isImage ? (
             <>

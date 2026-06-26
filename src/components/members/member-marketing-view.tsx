@@ -79,13 +79,22 @@ function OfertaCard({ item, products, periods }: { item: MarketingItem; products
   const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
   const isB2B = item.audience === 'B2B'
+  const isLastMinute = /last minute/i.test(item.title ?? '')
 
   return (
     <div className={cn(
       'bg-card border rounded-xl overflow-hidden flex flex-col',
+      isLastMinute ? 'border-orange-400 dark:border-orange-600 ring-1 ring-orange-300 dark:ring-orange-700' :
       isB2B ? 'border-amber-200 dark:border-amber-800' : 'border-border',
     )}>
-      {isB2B && <div className="h-1 bg-amber-400" />}
+      {isLastMinute && (
+        <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 flex items-center gap-2">
+          <span>🔥</span>
+          <span>LAST MINUTE</span>
+          <span className="ml-auto text-[10px] font-normal opacity-90 hidden sm:block">Oportunidade por tempo limitado</span>
+        </div>
+      )}
+      {!isLastMinute && isB2B && <div className="h-1 bg-amber-400" />}
 
       {item.url && isImage && (
         <div className="aspect-video bg-muted overflow-hidden">
