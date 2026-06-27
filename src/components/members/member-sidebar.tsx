@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Search, Menu, X, BookOpen,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Headphones,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -31,6 +31,7 @@ type Props = {
   unreadCount?: number
   areaSubtitle?: string
   memberNavLabels?: string
+  podviajarActive?: boolean
 }
 
 // Smooth slide-out for text elements — max-width + opacity
@@ -48,7 +49,7 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
 
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, unreadCount = 0,
-  areaSubtitle = 'Área do Aluno', memberNavLabels = '',
+  areaSubtitle = 'Área do Aluno', memberNavLabels = '', podviajarActive = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
@@ -58,6 +59,7 @@ function SidebarContent({
     { href: '/dashboard',               label: labels.home,      icon: Home,          exact: true  },
     { href: '/dashboard/cursos',        label: 'Meus cursos',   icon: GraduationCap, exact: false },
     { href: '/dashboard/treinamentos',  label: 'Treinamentos',   icon: BookOpen,      exact: false },
+    ...(podviajarActive ? [{ href: '/dashboard/podviajar', label: 'PodViajar', icon: Headphones, exact: false }] : []),
     { href: '/dashboard/comunidade',    label: labels.community, icon: MessageSquare, exact: false },
     { href: '/dashboard/documentos',    label: labels.documents, icon: FileText,      exact: false },
     { href: '/dashboard/configuracoes', label: labels.settings,  icon: Settings,      exact: false },

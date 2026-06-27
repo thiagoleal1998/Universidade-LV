@@ -25,6 +25,11 @@ export default async function AdminSeoPage() {
         seoGoogleVerification={settings.seo_google_verification}
         seoRobots={settings.seo_robots}
         seoAuthor={settings.seo_author}
+        aeoFeaturedSnippet={settings.aeo_featured_snippet}
+        aeoFaq={settings.aeo_faq}
+        geoBusinessDescription={settings.geo_business_description}
+        geoTargetAudience={settings.geo_target_audience}
+        geoKeyFacts={settings.geo_key_facts}
       />
     </div>
   )

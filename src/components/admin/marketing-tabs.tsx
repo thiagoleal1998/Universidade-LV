@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Presentation, GraduationCap, TrendingUp, Plane } from 'lucide-react'
+import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones } from 'lucide-react'
 import { MarketingManager } from '@/components/admin/marketing-manager'
 import { TrainingsManager } from '@/components/admin/trainings-manager'
+import { TamoJuntoWinnersManager } from '@/components/admin/tamojunto-winners-manager'
+import { PodviajarManager } from '@/components/admin/podviajar-manager'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import type { TrainingItem } from '@/app/actions/training'
 import type { MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
 import type { Tag } from '@/components/admin/marketing-manager'
 import { cn } from '@/lib/utils'
 
-type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo'
+type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'premiacao' | 'podviajar'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] = [
   {
@@ -37,6 +39,18 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] 
     icon: Plane,
     desc: 'Links e materiais de treinamento aéreo.',
   },
+  {
+    id: 'premiacao',
+    label: 'Premiação',
+    icon: Trophy,
+    desc: 'Defina os vencedores do mês do TamoJunto LV por região do Brasil.',
+  },
+  {
+    id: 'podviajar',
+    label: 'PodViajar',
+    icon: Headphones,
+    desc: 'Gerencie as informações e episódios do podcast PodViajar.',
+  },
 ]
 
 const COMERCIAL_SECTIONS: MarketingSection[] = [
@@ -54,6 +68,8 @@ export function MarketingTabs({
   products = [],
   periods = [],
   tags = [],
+  tamojuntoWinnersRaw = '{}',
+  podviajarRaw = '{}',
 }: {
   marketingItems: object[]
   sections: MarketingSection[]
@@ -61,6 +77,8 @@ export function MarketingTabs({
   products?: MarketingProduct[]
   periods?: MarketingPeriod[]
   tags?: Tag[]
+  tamojuntoWinnersRaw?: string
+  podviajarRaw?: string
 }) {
   const [tab, setTab] = useState<Tab>('marketing')
 
@@ -109,6 +127,12 @@ export function MarketingTabs({
       {tab === 'aereo' && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <MarketingManager items={marketingItems as any} sections={AEREO_SECTIONS} />
+      )}
+      {tab === 'premiacao' && (
+        <TamoJuntoWinnersManager raw={tamojuntoWinnersRaw} />
+      )}
+      {tab === 'podviajar' && (
+        <PodviajarManager raw={podviajarRaw} />
       )}
     </>
   )

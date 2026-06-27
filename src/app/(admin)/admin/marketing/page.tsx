@@ -37,6 +37,8 @@ export default async function MarketingPage() {
         products={products}
         periods={periods}
         tags={tagsData ?? []}
+        tamojuntoWinnersRaw={settings.tamojunto_winners}
+        podviajarRaw={settings.podviajar}
       />
     </div>
   )

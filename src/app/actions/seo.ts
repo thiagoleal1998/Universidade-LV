@@ -12,6 +12,11 @@ const SEO_KEYS = [
   'seo_google_verification',
   'seo_robots',
   'seo_author',
+  'aeo_featured_snippet',
+  'aeo_faq',
+  'geo_business_description',
+  'geo_target_audience',
+  'geo_key_facts',
 ] as const
 
 export async function saveSeoSettings(formData: FormData) {

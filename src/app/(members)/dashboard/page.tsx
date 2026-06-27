@@ -9,7 +9,7 @@ import {
   ChevronRight, BookOpen, PlayCircle, ArrowRight,
   Megaphone, Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
-  TrendingUp, CheckCircle2, Trophy, Star,
+  TrendingUp, CheckCircle2, Trophy, Star, Medal, Headphones, Calendar,
 } from 'lucide-react'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
@@ -357,6 +357,24 @@ export default async function DashboardPage() {
     if (parsed?.active) tamojunto = parsed
   } catch {}
 
+  // TamoJunto Winners
+  type WinnersRegion = { name: string; agency1: string; agency2: string }
+  type WinnersSection = { active: boolean; title: string; badge: string; month: string; regions: WinnersRegion[] }
+  let tamojuntoWinners: WinnersSection | null = null
+  try {
+    const parsed = JSON.parse(settings.tamojunto_winners)
+    if (parsed?.active) tamojuntoWinners = parsed
+  } catch {}
+
+  // PodViajar
+  type PodEpisode = { title: string; description: string; url: string; date: string; cover_url: string; duration: string }
+  type PodviajarSection = { active: boolean; title: string; description: string; image_url: string; spotify_url: string; apple_url: string; episodes: PodEpisode[] }
+  let podviajar: PodviajarSection | null = null
+  try {
+    const parsed = JSON.parse(settings.podviajar)
+    if (parsed?.active) podviajar = parsed
+  } catch {}
+
   // Próximo treinamento para o sidebar
   const now = Date.now()
   const activeTrainings = allTrainings.filter((i: TrainingItem) => i.is_active)
@@ -655,6 +673,99 @@ export default async function DashboardPage() {
               </div>
               <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
             </div>
+          )}
+
+          {/* ── Vencedores TamoJunto LV ── */}
+          {tamojuntoWinners && (
+            <section>
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  <h2 className="text-base font-semibold text-foreground">{tamojuntoWinners.title}</h2>
+                </div>
+                {tamojuntoWinners.badge && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
+                    {tamojuntoWinners.badge}
+                  </span>
+                )}
+                {tamojuntoWinners.month && (
+                  <span className="text-xs font-semibold text-muted-foreground border border-border rounded-full px-3 py-1">
+                    {tamojuntoWinners.month}
+                  </span>
+                )}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {tamojuntoWinners.regions
+                  .filter((r) => r.agency1 || r.agency2)
+                  .map((region) => (
+                    <div key={region.name} className="bg-card border border-border rounded-2xl p-4 space-y-2.5 relative overflow-hidden">
+                      <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{region.name}</p>
+                      {region.agency1 && (
+                        <div className="flex items-center gap-2.5">
+                          <Medal className="w-4 h-4 text-yellow-500 shrink-0" />
+                          <p className="text-sm font-semibold text-foreground leading-tight">{region.agency1}</p>
+                        </div>
+                      )}
+                      {region.agency2 && (
+                        <div className="flex items-center gap-2.5">
+                          <Medal className="w-4 h-4 text-slate-400 shrink-0" />
+                          <p className="text-sm font-medium text-foreground/80 leading-tight">{region.agency2}</p>
+                        </div>
+                      )}
+                      <div className="absolute -right-4 -bottom-4 w-16 h-16 rounded-full bg-yellow-500/5 blur-2xl pointer-events-none" />
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── PodViajar — episódios recentes ── */}
+          {podviajar && podviajar.episodes.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Headphones className="w-5 h-5 text-primary" />
+                  <h2 className="text-base font-semibold text-foreground">{podviajar.title || 'PodViajar'}</h2>
+                </div>
+                <Link href="/dashboard/podviajar" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                  Ver todos <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {podviajar.episodes.slice(0, 3).map((ep, idx) => (
+                  <a
+                    key={idx}
+                    href={ep.url || '#'}
+                    target={ep.url ? '_blank' : undefined}
+                    rel="noreferrer"
+                    className="group flex items-center gap-4 bg-card border border-border rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all"
+                  >
+                    {ep.cover_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={ep.cover_url} alt={ep.title} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Headphones className="w-6 h-6 text-primary/30" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                        {ep.title}
+                      </p>
+                      {ep.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{ep.description}</p>
+                      )}
+                      {ep.date && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground/50 mt-1">
+                          <Calendar className="w-3 h-3" /> {ep.date}
+                        </span>
+                      )}
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary/50 transition-colors shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </section>
           )}
 
           {courses.length === 0 && (

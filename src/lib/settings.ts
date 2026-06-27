@@ -102,6 +102,10 @@ export type Settings = {
   training_whatsapp_url: string
   training_whatsapp_phrase: string
   training_whatsapp_cta_text: string
+  // TamoJunto — Vencedores do Mês
+  tamojunto_winners: string
+  // PodViajar
+  podviajar: string
   // SEO
   seo_title: string
   seo_description: string
@@ -111,6 +115,12 @@ export type Settings = {
   seo_google_verification: string
   seo_robots: string
   seo_author: string
+  // AEO/GEO
+  aeo_featured_snippet: string
+  aeo_faq: string
+  geo_business_description: string
+  geo_target_audience: string
+  geo_key_facts: string
 }
 
 const DEFAULT_LOGIN_MESSAGES = [
@@ -160,6 +170,28 @@ const DEFAULTS = {
   sidebar_social_links: JSON.stringify({ instagram: '', facebook: '', youtube: '', whatsapp: '', twitter: '', linkedin: '' }),
   sidebar_social_label: 'Nos siga',
   tamojunto: JSON.stringify({ active: false, title: 'TamoJuntoLV', description: '', url: '', image_url: '', button_text: 'Participar', badge: 'Comunidade' }),
+  tamojunto_winners: JSON.stringify({
+    active: false,
+    title: 'Vencedores do Mês',
+    badge: 'TamoJunto LV',
+    month: '',
+    regions: [
+      { name: 'Norte', agency1: '', agency2: '' },
+      { name: 'Nordeste', agency1: '', agency2: '' },
+      { name: 'Centro-Oeste', agency1: '', agency2: '' },
+      { name: 'Sudeste', agency1: '', agency2: '' },
+      { name: 'Sul', agency1: '', agency2: '' },
+    ],
+  }),
+  podviajar: JSON.stringify({
+    active: false,
+    title: 'PodViajar',
+    description: 'O podcast sobre turismo e viagens para agentes de viagem.',
+    image_url: '',
+    spotify_url: '',
+    apple_url: '',
+    episodes: [],
+  }),
   landing_hero_title: 'Capacitação exclusiva para agentes de viagem',
   landing_hero_subtitle: 'Treinamentos ao vivo, cursos completos, comunidade e certificados — tudo que você precisa para se destacar no mercado.',
   landing_hero_image_url: '',
@@ -269,6 +301,11 @@ const DEFAULTS = {
   seo_google_verification: '',
   seo_robots: 'index,follow',
   seo_author: 'Universidade LV',
+  aeo_featured_snippet: '',
+  aeo_faq: JSON.stringify([]),
+  geo_business_description: '',
+  geo_target_audience: '',
+  geo_key_facts: '',
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -314,6 +351,8 @@ export async function getSettings(): Promise<Settings> {
       sidebar_social_links: map.sidebar_social_links ?? DEFAULTS.sidebar_social_links,
       sidebar_social_label: map.sidebar_social_label ?? DEFAULTS.sidebar_social_label,
       tamojunto: map.tamojunto ?? DEFAULTS.tamojunto,
+      tamojunto_winners: map.tamojunto_winners ?? DEFAULTS.tamojunto_winners,
+      podviajar: map.podviajar ?? DEFAULTS.podviajar,
       landing_hero_title: map.landing_hero_title ?? DEFAULTS.landing_hero_title,
       landing_hero_subtitle: map.landing_hero_subtitle ?? DEFAULTS.landing_hero_subtitle,
       landing_hero_image_url: map.landing_hero_image_url ?? DEFAULTS.landing_hero_image_url,
@@ -378,6 +417,11 @@ export async function getSettings(): Promise<Settings> {
       seo_google_verification: map.seo_google_verification ?? DEFAULTS.seo_google_verification,
       seo_robots: map.seo_robots ?? DEFAULTS.seo_robots,
       seo_author: map.seo_author ?? DEFAULTS.seo_author,
+      aeo_featured_snippet: map.aeo_featured_snippet ?? DEFAULTS.aeo_featured_snippet,
+      aeo_faq: map.aeo_faq ?? DEFAULTS.aeo_faq,
+      geo_business_description: map.geo_business_description ?? DEFAULTS.geo_business_description,
+      geo_target_audience: map.geo_target_audience ?? DEFAULTS.geo_target_audience,
+      geo_key_facts: map.geo_key_facts ?? DEFAULTS.geo_key_facts,
     }
   } catch {
     return { ...DEFAULTS }

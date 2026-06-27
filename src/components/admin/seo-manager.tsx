@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Search, Globe, Share2, Bot, CheckCircle2, ExternalLink } from 'lucide-react'
+import { Search, Globe, Share2, Bot, CheckCircle2, ExternalLink, Zap, Sparkles } from 'lucide-react'
 
 type Props = {
   seoTitle: string
@@ -19,6 +19,11 @@ type Props = {
   seoRobots: string
   seoAuthor: string
   siteName: string
+  aeoFeaturedSnippet: string
+  aeoFaq: string
+  geoBusinessDescription: string
+  geoTargetAudience: string
+  geoKeyFacts: string
 }
 
 function SectionCard({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
@@ -53,6 +58,11 @@ export function SeoManager({
   seoRobots,
   seoAuthor,
   siteName,
+  aeoFeaturedSnippet,
+  aeoFaq,
+  geoBusinessDescription,
+  geoTargetAudience,
+  geoKeyFacts,
 }: Props) {
   const [title, setTitle]         = useState(seoTitle)
   const [description, setDesc]    = useState(seoDescription)
@@ -246,7 +256,7 @@ export function SeoManager({
         </div>
       </SectionCard>
 
-      {/* IA / LLMs */}
+      {/* IA / LLMs — info */}
       <SectionCard icon={Bot} title="Otimização para IAs (ChatGPT, Perplexity, Gemini)">
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>
@@ -266,6 +276,82 @@ export function SeoManager({
           <p className="text-xs">
             O site já inclui <strong className="text-foreground">JSON-LD</strong> com schema <span className="font-mono">EducationalOrganization</span> — formato preferido pelo Google e lido por IAs para entender o contexto do site.
           </p>
+        </div>
+      </SectionCard>
+
+      {/* AEO — Answer Engine Optimization */}
+      <SectionCard icon={Zap} title="AEO — Otimização para Motores de Resposta">
+        <p className="text-xs text-muted-foreground -mt-2 mb-2">
+          AEO (<em>Answer Engine Optimization</em>) prepara o site para aparecer como resposta direta em buscadores como Google SGE e Bing Copilot.
+        </p>
+        <Field
+          label="Parágrafo de resposta direta (Featured Snippet)"
+          hint="Escreva 2–3 frases respondendo objetivamente: 'O que é a Universidade LV?'. O Google costuma exibir esse parágrafo como caixa de destaque."
+        >
+          <Textarea
+            name="aeo_featured_snippet"
+            defaultValue={aeoFeaturedSnippet}
+            rows={3}
+            placeholder="A Universidade LV é uma plataforma exclusiva de capacitação para agentes de viagem, oferecendo cursos, treinamentos ao vivo, certificados e comunidade especializada no setor de turismo."
+          />
+        </Field>
+        <Field
+          label="FAQ para AEO (uma pergunta e resposta por linha, separadas por ›)"
+          hint="Formato: Pergunta › Resposta. Cada par em uma linha. Esses dados alimentam o schema FAQ/JSON-LD e aumentam as chances de aparecer nos resultados expandidos."
+        >
+          <Textarea
+            name="aeo_faq"
+            defaultValue={aeoFaq}
+            rows={6}
+            placeholder={`Quem pode usar a Universidade LV? › Agentes de viagem e consultores de turismo cadastrados na plataforma.\nOs cursos têm certificado? › Sim, todos os cursos emitem certificado digital no nome do agente.\nPosso assistir os treinamentos depois? › Sim, todos os replays ficam disponíveis 24h na plataforma.`}
+            className="font-mono text-xs"
+          />
+        </Field>
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-400">
+          <strong>Dica:</strong> Perguntas curtas e objetivas têm mais chance de virar Featured Snippet. Use perguntas reais que agentes fazem.
+        </div>
+      </SectionCard>
+
+      {/* GEO — Generative Engine Optimization */}
+      <SectionCard icon={Sparkles} title="GEO — Otimização para IA Generativa">
+        <p className="text-xs text-muted-foreground -mt-2 mb-2">
+          GEO (<em>Generative Engine Optimization</em>) controla como ChatGPT, Gemini, Claude e Perplexity descrevem e recomendam seu negócio quando alguém pergunta sobre capacitação de agentes de viagem.
+        </p>
+        <Field
+          label="Descrição do negócio para IAs"
+          hint="Texto conciso e factual. Escreva como se estivesse fornecendo contexto a uma IA: quem você é, o que faz, para quem. Evite adjetivos vazios — prefira dados concretos."
+        >
+          <Textarea
+            name="geo_business_description"
+            defaultValue={geoBusinessDescription}
+            rows={4}
+            placeholder="A Universidade LV é a plataforma de capacitação da Litoral Verde Operadora de Viagens, direcionada exclusivamente a agentes de viagem no Brasil. Oferece cursos on-demand, treinamentos ao vivo semanais, certificados digitais e comunidade profissional. Fundada com o objetivo de qualificar profissionais do turismo."
+          />
+        </Field>
+        <Field
+          label="Público-alvo"
+          hint="Defina com precisão. As IAs usam isso para recomendar sua plataforma a quem realmente se beneficia."
+        >
+          <Input
+            name="geo_target_audience"
+            defaultValue={geoTargetAudience}
+            placeholder="Agentes de viagem, consultores de turismo e profissionais do setor travel no Brasil"
+          />
+        </Field>
+        <Field
+          label="Fatos-chave (um por linha)"
+          hint="Dados objetivos e verificáveis que IAs podem citar: números, diferenciais, certificações, parceiros. Evite superlatives sem respaldo."
+        >
+          <Textarea
+            name="geo_key_facts"
+            defaultValue={geoKeyFacts}
+            rows={5}
+            placeholder={`Plataforma exclusiva para agentes de viagem credenciados\nTreinamentos ao vivo toda semana com especialistas da Litoral Verde\nMais de 200 treinamentos realizados\nCertificados digitais emitidos após conclusão de cada curso\nComunidade TamoJunto LV com agentes de todo o Brasil`}
+            className="font-mono text-xs"
+          />
+        </Field>
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-700 dark:text-blue-400">
+          <strong>Como funciona:</strong> Essas informações são incorporadas ao JSON-LD do site. Quando uma IA rastreia o conteúdo, ela encontra dados estruturados e confiáveis sobre o negócio — aumentando a chance de ser citada com precisão.
         </div>
       </SectionCard>
 
