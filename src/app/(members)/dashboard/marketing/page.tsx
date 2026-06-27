@@ -33,12 +33,19 @@ export default async function MemberMarketingPage() {
 
   const [{ data: itemsData }, { data: userTagsData }, { data: productsData }, { data: periodsData }] = await Promise.all([
     adminClient.from('marketing_items').select('*').order('order_index'),
-    adminClient.from('profile_tags').select('tag_id').eq('profile_id', user!.id),
+    adminClient.from('profile_tags').select('tag_id, tags(name)').eq('profile_id', user!.id),
     adminClient.from('marketing_products').select('id, name').order('name'),
     adminClient.from('marketing_periods').select('id, name').order('name'),
   ])
 
   const userTagIds = new Set((userTagsData ?? []).map((t: { tag_id: string }) => t.tag_id))
+  const userTagNames = new Set(
+    (userTagsData ?? []).flatMap((t: { tag_id: string; tags: { name: string } | null }) =>
+      t.tags ? [t.tags.name] : []
+    )
+  )
+  const B2C_RESTRICTED_TAGS = ['Agentes de viagens', 'Promotores']
+  const userIsB2CRestricted = B2C_RESTRICTED_TAGS.some((name) => userTagNames.has(name))
   const now = new Date()
 
   // Supabase pode retornar uuid[] como string "{uuid1,uuid2}" dependendo do cache de schema
@@ -59,6 +66,8 @@ export default async function MemberMarketingPage() {
     }
 
     if (item.expires_at && new Date(item.expires_at) < now) return false
+
+    if (item.audience === 'B2C' && userIsB2CRestricted) return false
 
     const allowed = parseAllowedTags(item.allowed_tag_ids)
     if (allowed.length === 0) return true
