@@ -143,16 +143,27 @@ export default async function RelatoriosPage({
     .sort((a, b) => b.total - a.total)
     .slice(0, 10)
 
+  // Lâminas audiência
   const laminasB2B = laminas.filter((i) => i.audience === 'B2B').length
   const laminasB2C = laminas.filter((i) => i.audience === 'B2C').length
   const laminasSemAudiencia = laminas.filter((i) => !i.audience).length
-
   const audienciaPie = [
     { name: 'B2B', value: laminasB2B, color: '#f97316' },
     { name: 'B2C', value: laminasB2C, color: '#22c55e' },
     ...(laminasSemAudiencia > 0 ? [{ name: 'Sem definir', value: laminasSemAudiencia, color: '#94a3b8' }] : []),
   ]
 
+  // Ofertas audiência
+  const ofertasB2B = ofertas.filter((i) => i.audience === 'B2B').length
+  const ofertasB2C = ofertas.filter((i) => i.audience === 'B2C').length
+  const ofertasSemAudiencia = ofertas.filter((i) => !i.audience).length
+  const ofertasAudienciaPie = [
+    { name: 'B2B', value: ofertasB2B, color: '#f97316' },
+    { name: 'B2C', value: ofertasB2C, color: '#22c55e' },
+    ...(ofertasSemAudiencia > 0 ? [{ name: 'Sem definir', value: ofertasSemAudiencia, color: '#94a3b8' }] : []),
+  ]
+
+  // Escopo (barras horizontais — mais legível em qualquer largura)
   const scopeCount: Record<string, number> = {}
   for (const item of ofertas) {
     const s = (item.scope as string | null) || 'Não informado'
@@ -311,6 +322,9 @@ export default async function RelatoriosPage({
         <RelatoriosMarketing
           totalOfertas={ofertas.length}
           activeOfertas={activeOfertas}
+          ofertasB2B={ofertasB2B}
+          ofertasB2C={ofertasB2C}
+          ofertasAudienciaPie={ofertasAudienciaPie}
           totalLaminas={laminas.length}
           laminasB2B={laminasB2B}
           laminasB2C={laminasB2C}
