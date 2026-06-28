@@ -191,7 +191,7 @@ const DEFAULTS = {
     description: 'O podcast sobre turismo e viagens para agentes de viagem.',
     image_url: '',
     spotify_url: '',
-    apple_url: '',
+    youtube_url: '',
     episodes: [],
   }),
   landing_hero_title: 'Capacitação exclusiva para agentes de viagem',

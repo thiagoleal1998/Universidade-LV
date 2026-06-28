@@ -150,7 +150,7 @@ function SidebarMagazineCard({ mag }: { mag: SidebarMagazine }) {
 // ─── Sidebar: podviajar ──────────────────────────────────────────────────────
 
 type SidebarPodEpisode = { title: string; description: string; url: string; date: string; cover_url: string; duration: string }
-type SidebarPodviajar = { active: boolean; title: string; description: string; image_url: string; spotify_url: string; apple_url: string; episodes: SidebarPodEpisode[] }
+type SidebarPodviajar = { active: boolean; title: string; description: string; image_url: string; spotify_url: string; youtube_url: string; episodes: SidebarPodEpisode[] }
 
 function SidebarPodviajarCard({ pod }: { pod: SidebarPodviajar }) {
   const latest = pod.episodes?.[0] ?? null
@@ -413,7 +413,7 @@ export default async function DashboardPage() {
 
   // PodViajar
   type PodEpisode = { title: string; description: string; url: string; date: string; cover_url: string; duration: string }
-  type PodviajarSection = { active: boolean; title: string; description: string; image_url: string; spotify_url: string; apple_url: string; episodes: PodEpisode[] }
+  type PodviajarSection = { active: boolean; title: string; description: string; image_url: string; spotify_url: string; youtube_url: string; episodes: PodEpisode[] }
   let podviajar: PodviajarSection | null = null
   try {
     const parsed = JSON.parse(settings.podviajar)

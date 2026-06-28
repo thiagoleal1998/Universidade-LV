@@ -25,7 +25,7 @@ type PodviajarData = {
   description: string
   image_url: string
   spotify_url: string
-  apple_url: string
+  youtube_url: string
   episodes: Episode[]
 }
 
@@ -40,11 +40,11 @@ function parse(raw: string): PodviajarData {
       description: p.description ?? '',
       image_url: p.image_url ?? '',
       spotify_url: p.spotify_url ?? '',
-      apple_url: p.apple_url ?? '',
+      youtube_url: p.youtube_url ?? '',
       episodes: Array.isArray(p.episodes) ? p.episodes : [],
     }
   } catch {
-    return { active: false, title: 'PodViajar', description: '', image_url: '', spotify_url: '', apple_url: '', episodes: [] }
+    return { active: false, title: 'PodViajar', description: '', image_url: '', spotify_url: '', youtube_url: '', episodes: [] }
   }
 }
 
@@ -216,12 +216,12 @@ export function PodviajarManager({ raw }: { raw: string }) {
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Link no Apple Podcasts</Label>
+            <Label className="text-xs text-muted-foreground">Link no YouTube Podcast</Label>
             <Input
               className="mt-1"
-              value={data.apple_url}
-              onChange={(e) => setData((d) => ({ ...d, apple_url: e.target.value }))}
-              placeholder="https://podcasts.apple.com/..."
+              value={data.youtube_url}
+              onChange={(e) => setData((d) => ({ ...d, youtube_url: e.target.value }))}
+              placeholder="https://youtube.com/..."
               type="url"
             />
           </div>
