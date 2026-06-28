@@ -19,7 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const adminClient = createAdminClient()
   const now = new Date().toISOString()
-  const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }, { data: aereoData }] = await Promise.all([
+  const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }, { data: aereoData }, { data: comercialData }] = await Promise.all([
     supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
     getSettings(),
     adminClient
@@ -43,11 +43,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
       .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('order_index')
       .limit(1),
+    adminClient
+      .from('marketing_items')
+      .select('url')
+      .eq('category', 'comercial')
+      .neq('status', 'draft')
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('order_index')
+      .limit(1),
   ])
 
   const profile = profileData as { full_name: string; avatar_url: string } | null
   const announcements = (announcementsData ?? []) as Announcement[]
   const aereoUrl = (aereoData?.[0] as { url?: string } | undefined)?.url ?? null
+  const comercialUrl = (comercialData?.[0] as { url?: string } | undefined)?.url ?? null
 
   return (
     <div className="flex h-screen bg-muted/30">
@@ -63,6 +72,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         memberNavOrder={settings.member_nav_order}
         podviajarActive={(() => { try { return JSON.parse(settings.podviajar)?.active === true } catch { return false } })()}
         aereoActive={!!aereoUrl}
+        comercialActive={!!comercialUrl}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         <AnnouncementTicker announcements={announcements} />

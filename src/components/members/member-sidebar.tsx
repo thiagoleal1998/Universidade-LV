@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Search, Menu, X, BookOpen,
-  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane,
+  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane, Briefcase,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -19,8 +19,8 @@ type NavLabels = Record<string, string>
 
 const DEFAULT_NAV_LABELS: NavLabels = {
   home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
-  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', podviajar: 'PodViajar',
-  comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
+  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais',
+  podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
 }
 
 function parseNavLabels(json: string): NavLabels {
@@ -29,7 +29,7 @@ function parseNavLabels(json: string): NavLabels {
 }
 
 function parseMemberNavOrder(json: string): string[] {
-  const DEFAULT = ['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'podviajar', 'comunidade', 'documentos', 'configuracoes']
+  const DEFAULT = ['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'comercial', 'podviajar', 'comunidade', 'documentos', 'configuracoes']
   try {
     const parsed = JSON.parse(json)
     if (Array.isArray(parsed) && parsed.length > 0) return parsed
@@ -48,6 +48,7 @@ type Props = {
   memberNavLabels?: string
   podviajarActive?: boolean
   aereoActive?: boolean
+  comercialActive?: boolean
   memberNavOrder?: string
 }
 
@@ -64,13 +65,14 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
   }
 }
 
-const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{ className?: string }>; exact: boolean; conditional?: 'aereo' | 'podviajar' }> = {
+const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{ className?: string }>; exact: boolean; conditional?: 'aereo' | 'podviajar' | 'comercial' }> = {
   home:          { href: '/dashboard',               icon: Home,          exact: true  },
   cursos:        { href: '/dashboard/cursos',        icon: GraduationCap, exact: false },
   treinamentos:  { href: '/dashboard/treinamentos',  icon: BookOpen,      exact: false },
   marketing:     { href: '/dashboard/marketing',     icon: Megaphone,     exact: false },
-  aereo:         { href: '/dashboard/aereo',         icon: Plane,         exact: false, conditional: 'aereo'     },
-  podviajar:     { href: '/dashboard/podviajar',     icon: Headphones,    exact: false, conditional: 'podviajar' },
+  aereo:         { href: '/dashboard/aereo',         icon: Plane,         exact: false, conditional: 'aereo'      },
+  comercial:     { href: '/dashboard/comercial',     icon: Briefcase,     exact: false, conditional: 'comercial'  },
+  podviajar:     { href: '/dashboard/podviajar',     icon: Headphones,    exact: false, conditional: 'podviajar'  },
   comunidade:    { href: '/dashboard/comunidade',    icon: MessageSquare, exact: false },
   documentos:    { href: '/dashboard/documentos',    icon: FileText,      exact: false },
   configuracoes: { href: '/dashboard/configuracoes', icon: Settings,      exact: false },
@@ -78,7 +80,7 @@ const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{
 
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, unreadCount = 0,
-  areaSubtitle = 'Área do Aluno', memberNavLabels = '', memberNavOrder = '', podviajarActive = false, aereoActive = false,
+  areaSubtitle = 'Área do Aluno', memberNavLabels = '', memberNavOrder = '', podviajarActive = false, aereoActive = false, comercialActive = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
@@ -90,6 +92,7 @@ function SidebarContent({
       const def = MEMBER_NAV_MAP[key]
       if (!def) return false
       if (def.conditional === 'aereo') return aereoActive
+      if (def.conditional === 'comercial') return comercialActive
       if (def.conditional === 'podviajar') return podviajarActive
       return true
     })

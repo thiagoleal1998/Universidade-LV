@@ -154,8 +154,8 @@ const DEFAULTS = {
   certificate_name_size: '60',
   certificate_name_color: '#1a1a1a',
   member_area_subtitle: 'Área do Aluno',
-  member_nav_labels: JSON.stringify({ home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos', marketing: 'Marketing', aereo: 'Bloqueios Aéreos', podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações' }),
-  member_nav_order: JSON.stringify(['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'podviajar', 'comunidade', 'documentos', 'configuracoes']),
+  member_nav_labels: JSON.stringify({ home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos', marketing: 'Marketing', aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações' }),
+  member_nav_order: JSON.stringify(['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'comercial', 'podviajar', 'comunidade', 'documentos', 'configuracoes']),
   dashboard_hero_tagline: 'Continue de onde parou e avance no seu aprendizado.',
   dashboard_destaque: JSON.stringify({ active: false, title: '', description: '', url: '', cover_url: '', button_text: 'Acessar' }),
   onboarding_steps: JSON.stringify([

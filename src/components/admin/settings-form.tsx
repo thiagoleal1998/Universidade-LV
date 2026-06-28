@@ -131,21 +131,22 @@ function parseNavOrder(json: string): string[] {
 }
 
 const ALL_MEMBER_NAV_ITEMS = [
-  { key: 'home',          defaultLabel: 'Início',           conditional: false },
-  { key: 'cursos',        defaultLabel: 'Meus cursos',      conditional: false },
-  { key: 'treinamentos',  defaultLabel: 'Treinamentos',     conditional: false },
-  { key: 'marketing',     defaultLabel: 'Marketing',        conditional: false },
-  { key: 'aereo',         defaultLabel: 'Bloqueios Aéreos', conditional: true  },
-  { key: 'podviajar',     defaultLabel: 'PodViajar',        conditional: true  },
-  { key: 'comunidade',    defaultLabel: 'Comunidade',       conditional: false },
-  { key: 'documentos',    defaultLabel: 'Documentos',       conditional: false },
-  { key: 'configuracoes', defaultLabel: 'Configurações',    conditional: false },
+  { key: 'home',          defaultLabel: 'Início',                conditional: false },
+  { key: 'cursos',        defaultLabel: 'Meus cursos',           conditional: false },
+  { key: 'treinamentos',  defaultLabel: 'Treinamentos',          conditional: false },
+  { key: 'marketing',     defaultLabel: 'Marketing',             conditional: false },
+  { key: 'aereo',         defaultLabel: 'Bloqueios Aéreos',      conditional: true  },
+  { key: 'comercial',     defaultLabel: 'Condições Comerciais',  conditional: true  },
+  { key: 'podviajar',     defaultLabel: 'PodViajar',             conditional: true  },
+  { key: 'comunidade',    defaultLabel: 'Comunidade',            conditional: false },
+  { key: 'documentos',    defaultLabel: 'Documentos',            conditional: false },
+  { key: 'configuracoes', defaultLabel: 'Configurações',         conditional: false },
 ]
 
 const DEFAULT_MEMBER_NAV_LABELS_FULL: Record<string, string> = {
   home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
-  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', podviajar: 'PodViajar',
-  comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
+  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais',
+  podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
 }
 
 function parseMemberNavOrder(json: string): string[] {
