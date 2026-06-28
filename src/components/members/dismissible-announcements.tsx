@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Megaphone, Bell, X } from 'lucide-react'
+import { Megaphone, X, ChevronDown, ChevronUp } from 'lucide-react'
 
 type Announcement = { id: string; title: string; body: string; created_at: string }
 
@@ -17,6 +17,59 @@ function loadDismissed(): Set<string> {
 
 function saveDismissed(ids: Set<string>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]))
+}
+
+function AnnouncementBanner({ ann, onDismiss }: { ann: Announcement; onDismiss: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasBody = ann.body && ann.body.trim().length > 0
+
+  return (
+    <div className="rounded-2xl overflow-hidden shadow-sm">
+      {/* Barra principal — cor primária da marca */}
+      <div className="bg-primary px-5 py-3.5 flex items-center gap-3">
+        <div className="w-7 h-7 rounded-lg bg-primary-foreground/15 flex items-center justify-center shrink-0">
+          <Megaphone className="w-3.5 h-3.5 text-primary-foreground" />
+        </div>
+        <p className="text-sm font-semibold text-primary-foreground flex-1 leading-snug">
+          {ann.title}
+        </p>
+        <span className="text-xs text-primary-foreground/60 shrink-0 hidden sm:block">
+          {new Date(ann.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+        </span>
+        {hasBody && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-primary-foreground/70 hover:text-primary-foreground transition-colors shrink-0 p-0.5"
+            title={expanded ? 'Recolher' : 'Ver mais'}
+          >
+            {expanded
+              ? <ChevronUp className="w-4 h-4" />
+              : <ChevronDown className="w-4 h-4" />
+            }
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-primary-foreground/60 hover:text-primary-foreground transition-colors shrink-0 p-0.5"
+          title="Dispensar"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Corpo expandível */}
+      {hasBody && expanded && (
+        <div className="bg-primary/8 border-x border-b border-primary/20 px-5 py-4">
+          <div
+            className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline"
+            dangerouslySetInnerHTML={{ __html: ann.body }}
+          />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function DismissibleAnnouncements({ announcements }: { announcements: Announcement[] }) {
@@ -43,36 +96,8 @@ export function DismissibleAnnouncements({ announcements }: { announcements: Ann
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 mb-1">
-        <Bell className="w-4 h-4 text-sky-500" />
-        <h2 className="text-sm font-semibold text-foreground">Comunicados</h2>
-      </div>
       {visible.map((ann) => (
-        <div
-          key={ann.id}
-          className="flex items-start gap-4 bg-sky-500/8 border-l-4 border-l-sky-500 border border-sky-500/20 rounded-xl px-5 py-4"
-        >
-          <div className="w-7 h-7 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0 mt-0.5">
-            <Megaphone className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-semibold text-sky-900 dark:text-sky-100 text-sm">{ann.title}</p>
-              <span className="text-xs text-sky-700/60 dark:text-sky-300/60 shrink-0">
-                {new Date(ann.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-              </span>
-            </div>
-            <div className="text-sm text-sky-800/80 dark:text-sky-200/80 mt-1 whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline" dangerouslySetInnerHTML={{ __html: ann.body }} />
-          </div>
-          <button
-            type="button"
-            onClick={() => dismiss(ann.id)}
-            className="text-sky-600/60 hover:text-sky-700 dark:text-sky-400/60 dark:hover:text-sky-300 transition-colors shrink-0 mt-0.5"
-            title="Dispensar"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <AnnouncementBanner key={ann.id} ann={ann} onDismiss={() => dismiss(ann.id)} />
       ))}
     </div>
   )

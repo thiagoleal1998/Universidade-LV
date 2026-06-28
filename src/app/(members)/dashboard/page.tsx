@@ -690,7 +690,7 @@ export default async function DashboardPage() {
 
         {/* ── Sidebar direita ── */}
         {hasSidebar && (
-          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-6 xl:bg-muted/40 xl:rounded-2xl xl:border xl:border-border xl:p-4">
+          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-6 xl:border-l xl:border-border xl:pl-6">
 
             {sidebarTrainingActive && featuredTraining && (
               <div className="space-y-2">
