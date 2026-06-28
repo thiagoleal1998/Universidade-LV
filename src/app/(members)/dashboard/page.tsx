@@ -468,6 +468,15 @@ export default async function DashboardPage() {
             )}
           </div>
 
+          {/* Quick link to courses */}
+          <div className="flex justify-end -mt-2">
+            <Link href="/dashboard/cursos" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
+              <GraduationCap className="w-3.5 h-3.5 mr-1.5" />
+              Ver meus cursos
+              <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+            </Link>
+          </div>
+
           {/* ── Destaque do Dia ── */}
           {destaque && (
             <section>
@@ -521,12 +530,8 @@ export default async function DashboardPage() {
 
           {/* ── Vencedores TamoJunto LV ── */}
           {tamojuntoWinners && (
-            <section className="rounded-2xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-yellow-400/5 to-orange-400/5 relative">
-              {/* Glow decorativo */}
-              <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-yellow-400/15 blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
-
-              <div className="relative p-5 sm:p-6">
+            <section className="rounded-2xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-yellow-400/5 to-orange-400/5">
+              <div className="p-5 sm:p-6">
                 {/* Cabeçalho */}
                 <div className="flex flex-wrap items-center gap-3 mb-5">
                   <div className="flex items-center gap-2">
@@ -550,7 +555,7 @@ export default async function DashboardPage() {
                   {tamojuntoWinners.regions
                     .filter((r) => r.agency1 || r.agency2)
                     .map((region) => (
-                      <div key={region.name} className="bg-background/60 backdrop-blur-sm border border-amber-400/20 rounded-xl p-4 space-y-3">
+                      <div key={region.name} className="bg-card border border-amber-400/20 rounded-xl p-4 space-y-3">
                         <p className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/60 uppercase tracking-widest">{region.name}</p>
                         {region.agency1 && (
                           <div className="flex items-start gap-2.5">
@@ -675,7 +680,7 @@ export default async function DashboardPage() {
 
         {/* ── Sidebar direita ── */}
         {hasSidebar && (
-          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-6 xl:border-l xl:border-border xl:pl-6">
+          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-20 xl:border-l xl:border-border xl:pl-6">
 
             {sidebarTrainingActive && featuredTraining && (
               <div className="space-y-2">
