@@ -28,6 +28,8 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
   const safeIdx = active.length > 0 ? Math.min(currentIdx, active.length - 1) : 0
   const current = active[safeIdx]
 
+  const hasBody = current?.body?.trim().length > 0
+
   // Auto-cycle between announcements
   useEffect(() => {
     if (active.length <= 1) return
@@ -65,8 +67,6 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
 
   if (!mounted || active.length === 0 || !current) return null
 
-  const hasBody = current.body?.trim().length > 0
-
   const textStyle: CSSProperties = {
     transition: 'opacity 280ms ease, transform 280ms ease',
     opacity: phase === 'visible' ? 1 : 0,
@@ -74,8 +74,9 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
   }
 
   return (
-    <div className="bg-orange-500 text-white w-full sticky top-0 z-10 border-b border-orange-600/30">
-      <div className="flex items-center px-4 sm:px-6 py-2.5 min-h-[44px] gap-0">
+    <div className="w-full sticky top-0 z-10 border-b border-orange-600/20">
+      {/* Ticker bar — alinhado em altura com a caixa da logo (min-h-[64px]) */}
+      <div className="bg-orange-500 text-white flex items-center px-4 sm:px-6 min-h-[64px]">
 
         {/* Label */}
         <div className="flex items-center gap-1.5 shrink-0 mr-3">
@@ -107,7 +108,7 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="ml-2 shrink-0 text-orange-100/80 hover:text-white transition-colors p-0.5 rounded"
+            className="ml-2 shrink-0 text-orange-100/80 hover:text-white transition-colors p-1 rounded"
             title={expanded ? 'Recolher' : 'Ler mais'}
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -118,22 +119,27 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
         <button
           type="button"
           onClick={() => dismiss(current.id)}
-          className="ml-1.5 shrink-0 text-orange-100/80 hover:text-white transition-colors p-0.5 rounded"
+          className="ml-1 shrink-0 text-orange-100/80 hover:text-white transition-colors p-1 rounded"
           title="Dispensar comunicado"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Expandable body */}
-      {expanded && hasBody && (
-        <div className="px-4 sm:px-6 pb-4 border-t border-orange-400/30">
-          <div
-            className="text-sm text-orange-50/90 pt-3 leading-relaxed whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline"
-            dangerouslySetInnerHTML={{ __html: current.body }}
-          />
+      {/* Expandable body — smooth height via grid + fundo neutro suave */}
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+        style={{ gridTemplateRows: expanded && hasBody ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          <div className="bg-orange-50 dark:bg-orange-950/40 border-t border-orange-200/60 dark:border-orange-800/40 px-4 sm:px-6 py-4">
+            <div
+              className="text-sm text-orange-900/80 dark:text-orange-100/80 leading-relaxed whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline"
+              dangerouslySetInnerHTML={{ __html: current.body }}
+            />
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
