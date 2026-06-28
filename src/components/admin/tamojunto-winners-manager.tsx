@@ -5,7 +5,6 @@ import { saveTamojuntoWinners } from '@/app/actions/marketing-settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { Trophy, Medal } from 'lucide-react'
 
@@ -74,10 +73,15 @@ export function TamoJuntoWinnersManager({ raw }: { raw: string }) {
           <p className="font-semibold text-foreground">Exibir seção na home</p>
           <p className="text-xs text-muted-foreground mt-0.5">Quando ativo, a seção de vencedores aparece na página inicial dos membros.</p>
         </div>
-        <Switch
-          checked={data.active}
-          onCheckedChange={(v) => setData((d) => ({ ...d, active: v }))}
-        />
+        <button
+          type="button"
+          role="switch"
+          aria-checked={data.active}
+          onClick={() => setData((d) => ({ ...d, active: !d.active }))}
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${data.active ? 'bg-primary' : 'bg-input'}`}
+        >
+          <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${data.active ? 'translate-x-5' : 'translate-x-0'}`} />
+        </button>
       </div>
 
       {/* Cabeçalho */}
