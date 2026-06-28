@@ -126,62 +126,10 @@ export default async function RelatoriosPage({
     return { ...m, completed, rate, initials, email: emailMap.get(m.id) ?? '' }
   }).sort((a, b) => b.rate - a.rate)
 
-  // ── Marketing stats ───────────────────────────────────────────────────────
-  const ofertas: MktItem[] = ofertasData ?? []
-  const laminas: MktItem[] = laminasData ?? []
-  const productMap = new Map((productsData ?? []).map((p: { id: string; name: string }) => [p.id, p.name]))
-
-  const activeOfertas = ofertas.filter((i) => i.status === 'published').length
-
-  const hotelCount = new Map<string, number>()
-  for (const item of ofertas) {
-    const name = (item.product_id && productMap.get(item.product_id)) || (item.title as string)
-    hotelCount.set(name, (hotelCount.get(name) ?? 0) + 1)
-  }
-  const ofertasPorHotel = [...hotelCount.entries()]
-    .map(([name, total]) => ({ name, total }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10)
-
-  // Lâminas audiência
-  const laminasB2B = laminas.filter((i) => i.audience === 'B2B').length
-  const laminasB2C = laminas.filter((i) => i.audience === 'B2C').length
-  const laminasSemAudiencia = laminas.filter((i) => !i.audience).length
-  const audienciaPie = [
-    { name: 'B2B', value: laminasB2B, color: '#f97316' },
-    { name: 'B2C', value: laminasB2C, color: '#22c55e' },
-    ...(laminasSemAudiencia > 0 ? [{ name: 'Sem definir', value: laminasSemAudiencia, color: '#94a3b8' }] : []),
-  ]
-
-  // Ofertas audiência
-  const ofertasB2B = ofertas.filter((i) => i.audience === 'B2B').length
-  const ofertasB2C = ofertas.filter((i) => i.audience === 'B2C').length
-  const ofertasSemAudiencia = ofertas.filter((i) => !i.audience).length
-  const ofertasAudienciaPie = [
-    { name: 'B2B', value: ofertasB2B, color: '#f97316' },
-    { name: 'B2C', value: ofertasB2C, color: '#22c55e' },
-    ...(ofertasSemAudiencia > 0 ? [{ name: 'Sem definir', value: ofertasSemAudiencia, color: '#94a3b8' }] : []),
-  ]
-
-  // Escopo (barras horizontais — mais legível em qualquer largura)
-  const scopeCount: Record<string, number> = {}
-  for (const item of ofertas) {
-    const s = (item.scope as string | null) || 'Não informado'
-    scopeCount[s] = (scopeCount[s] ?? 0) + 1
-  }
-  const SCOPE_COLORS: Record<string, string> = { Nacional: '#3b82f6', Internacional: '#a855f7', 'Não informado': '#94a3b8' }
-  const scopePie = Object.entries(scopeCount).map(([name, value]) => ({ name, value, color: SCOPE_COLORS[name] ?? '#94a3b8' }))
-
-  // ── Lâminas detalhadas por produto/período ────────────────────────────────
-  const laminaHotelCount = new Map<string, number>()
-  for (const item of laminas) {
-    const name = (item.product_id && productMap.get(item.product_id)) || (item.title as string)
-    laminaHotelCount.set(name, (laminaHotelCount.get(name) ?? 0) + 1)
-  }
-  const laminasPorHotel = [...laminaHotelCount.entries()]
-    .map(([name, total]) => ({ name, total }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10)
+  // ── Marketing — dados brutos (processamento feito no cliente) ────────────
+  const ofertasRaw = (ofertasData ?? []) as MktItem[]
+  const laminasRaw = (laminasData ?? []) as MktItem[]
+  const products = (productsData ?? []) as { id: string; name: string }[]
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -320,18 +268,9 @@ export default async function RelatoriosPage({
       {/* ── Aba: Ofertas & Marketing ── */}
       {tab === 'marketing' && (
         <RelatoriosMarketing
-          totalOfertas={ofertas.length}
-          activeOfertas={activeOfertas}
-          ofertasB2B={ofertasB2B}
-          ofertasB2C={ofertasB2C}
-          ofertasAudienciaPie={ofertasAudienciaPie}
-          totalLaminas={laminas.length}
-          laminasB2B={laminasB2B}
-          laminasB2C={laminasB2C}
-          ofertasPorHotel={ofertasPorHotel}
-          laminasPorHotel={laminasPorHotel}
-          audienciaPie={audienciaPie}
-          scopePie={scopePie}
+          ofertasRaw={ofertasRaw}
+          laminasRaw={laminasRaw}
+          products={products}
         />
       )}
     </div>
