@@ -8,7 +8,13 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Trophy, Medal } from 'lucide-react'
 
-type Region = { name: string; agency1: string; agency2: string }
+type Region = {
+  name: string
+  agency1: string
+  value1: string
+  agency2: string
+  value2: string
+}
 
 type WinnersData = {
   active: boolean
@@ -19,24 +25,31 @@ type WinnersData = {
 }
 
 const DEFAULT_REGIONS: Region[] = [
-  { name: 'Norte', agency1: '', agency2: '' },
-  { name: 'Nordeste', agency1: '', agency2: '' },
-  { name: 'Centro-Oeste', agency1: '', agency2: '' },
-  { name: 'Sudeste', agency1: '', agency2: '' },
-  { name: 'Sul', agency1: '', agency2: '' },
+  { name: 'Norte',        agency1: '', value1: '', agency2: '', value2: '' },
+  { name: 'Nordeste',     agency1: '', value1: '', agency2: '', value2: '' },
+  { name: 'Centro-Oeste', agency1: '', value1: '', agency2: '', value2: '' },
+  { name: 'Sudeste',      agency1: '', value1: '', agency2: '', value2: '' },
+  { name: 'Sul',          agency1: '', value1: '', agency2: '', value2: '' },
 ]
 
 function parse(raw: string): WinnersData {
   try {
     const p = JSON.parse(raw)
+    const regions: Region[] = Array.isArray(p.regions) && p.regions.length === 5
+      ? p.regions.map((r: Partial<Region>, i: number) => ({
+          name:    r.name    ?? DEFAULT_REGIONS[i].name,
+          agency1: r.agency1 ?? '',
+          value1:  r.value1  ?? '',
+          agency2: r.agency2 ?? '',
+          value2:  r.value2  ?? '',
+        }))
+      : DEFAULT_REGIONS
     return {
       active: p.active ?? false,
-      title: p.title ?? 'Vencedores do Mês',
-      badge: p.badge ?? 'TamoJunto LV',
-      month: p.month ?? '',
-      regions: Array.isArray(p.regions) && p.regions.length === 5
-        ? p.regions
-        : DEFAULT_REGIONS,
+      title:  p.title  ?? 'Vencedores do Mês',
+      badge:  p.badge  ?? 'TamoJunto LV',
+      month:  p.month  ?? '',
+      regions,
     }
   } catch {
     return { active: false, title: 'Vencedores do Mês', badge: 'TamoJunto LV', month: '', regions: DEFAULT_REGIONS }
@@ -48,10 +61,10 @@ export function TamoJuntoWinnersManager({ raw }: { raw: string }) {
   const [isPending, startTransition] = useTransition()
 
   function updateRegion(idx: number, field: keyof Region, value: string) {
-    setData((prev) => {
-      const regions = prev.regions.map((r, i) => i === idx ? { ...r, [field]: value } : r)
-      return { ...prev, regions }
-    })
+    setData((prev) => ({
+      ...prev,
+      regions: prev.regions.map((r, i) => i === idx ? { ...r, [field]: value } : r),
+    }))
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -128,30 +141,45 @@ export function TamoJuntoWinnersManager({ raw }: { raw: string }) {
           <h3 className="font-semibold text-foreground">Agências vencedoras por região</h3>
         </div>
         <p className="text-xs text-muted-foreground">Deixe em branco as regiões sem vencedores — elas não serão exibidas.</p>
+
         {data.regions.map((region, idx) => (
           <div key={region.name} className="border border-border rounded-xl p-4 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{region.name}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <span className="text-yellow-500">🥇</span> 1ª Agência
-                </Label>
+
+            {/* 1ª Agência */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <span className="text-yellow-500">🥇</span> 1ª Agência
+              </Label>
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Input
-                  className="mt-1"
                   value={region.agency1}
                   onChange={(e) => updateRegion(idx, 'agency1', e.target.value)}
                   placeholder="Nome da agência"
                 />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <span className="text-gray-400">🥈</span> 2ª Agência
-                </Label>
                 <Input
-                  className="mt-1"
+                  value={region.value1}
+                  onChange={(e) => updateRegion(idx, 'value1', e.target.value)}
+                  placeholder="Valor do prêmio (ex: R$ 500)"
+                />
+              </div>
+            </div>
+
+            {/* 2ª Agência */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <span className="text-slate-400">🥈</span> 2ª Agência
+              </Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input
                   value={region.agency2}
                   onChange={(e) => updateRegion(idx, 'agency2', e.target.value)}
                   placeholder="Nome da agência"
+                />
+                <Input
+                  value={region.value2}
+                  onChange={(e) => updateRegion(idx, 'value2', e.target.value)}
+                  placeholder="Valor do prêmio (ex: R$ 250)"
                 />
               </div>
             </div>

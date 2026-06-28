@@ -358,7 +358,7 @@ export default async function DashboardPage() {
   } catch {}
 
   // TamoJunto Winners
-  type WinnersRegion = { name: string; agency1: string; agency2: string }
+  type WinnersRegion = { name: string; agency1: string; value1: string; agency2: string; value2: string }
   type WinnersSection = { active: boolean; title: string; badge: string; month: string; regions: WinnersRegion[] }
   let tamojuntoWinners: WinnersSection | null = null
   try {
@@ -701,15 +701,21 @@ export default async function DashboardPage() {
                     <div key={region.name} className="bg-card border border-border rounded-2xl p-4 space-y-2.5 relative overflow-hidden">
                       <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{region.name}</p>
                       {region.agency1 && (
-                        <div className="flex items-center gap-2.5">
-                          <Medal className="w-4 h-4 text-yellow-500 shrink-0" />
-                          <p className="text-sm font-semibold text-foreground leading-tight">{region.agency1}</p>
+                        <div className="flex items-start gap-2.5">
+                          <Medal className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground leading-tight">{region.agency1}</p>
+                            {region.value1 && <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mt-0.5">{region.value1}</p>}
+                          </div>
                         </div>
                       )}
                       {region.agency2 && (
-                        <div className="flex items-center gap-2.5">
-                          <Medal className="w-4 h-4 text-slate-400 shrink-0" />
-                          <p className="text-sm font-medium text-foreground/80 leading-tight">{region.agency2}</p>
+                        <div className="flex items-start gap-2.5">
+                          <Medal className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground/80 leading-tight">{region.agency2}</p>
+                            {region.value2 && <p className="text-xs text-muted-foreground font-medium mt-0.5">{region.value2}</p>}
+                          </div>
                         </div>
                       )}
                       <div className="absolute -right-4 -bottom-4 w-16 h-16 rounded-full bg-yellow-500/5 blur-2xl pointer-events-none" />
