@@ -57,7 +57,7 @@ export default async function PodviajarPage() {
           <img
             src={podcast.image_url}
             alt={podcast.title}
-            className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover shadow-md shrink-0"
+            className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-contain bg-muted/30 shadow-md shrink-0"
           />
         ) : (
           <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -133,7 +133,7 @@ export default async function PodviajarPage() {
                   <img
                     src={ep.cover_url}
                     alt={ep.title}
-                    className="w-16 h-16 rounded-xl object-cover shrink-0"
+                    className="w-16 h-16 rounded-xl object-contain bg-muted/30 shrink-0"
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Headphones, Plus, Trash2, GripVertical } from 'lucide-react'
+import { Headphones, Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
 
 type Episode = {
   title: string
@@ -57,6 +57,14 @@ export function PodviajarManager({ raw }: { raw: string }) {
 
   function removeEpisode(idx: number) {
     setData((d) => ({ ...d, episodes: d.episodes.filter((_, i) => i !== idx) }))
+  }
+
+  function moveEpisode(idx: number, dir: 1 | -1) {
+    setData((d) => {
+      const next = [...d.episodes]
+      ;[next[idx], next[idx + dir]] = [next[idx + dir], next[idx]]
+      return { ...d, episodes: next }
+    })
   }
 
   function updateEpisode(idx: number, field: keyof Episode, value: string) {
@@ -184,13 +192,34 @@ export function PodviajarManager({ raw }: { raw: string }) {
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Episódio #{idx + 1}
               </span>
-              <button
-                type="button"
-                onClick={() => removeEpisode(idx)}
-                className="text-muted-foreground hover:text-red-500 transition-colors p-1 rounded"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => moveEpisode(idx, -1)}
+                  disabled={idx === 0}
+                  className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors p-1 rounded"
+                  title="Mover para cima"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveEpisode(idx, 1)}
+                  disabled={idx === data.episodes.length - 1}
+                  className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors p-1 rounded"
+                  title="Mover para baixo"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeEpisode(idx)}
+                  className="text-muted-foreground hover:text-red-500 transition-colors p-1 rounded"
+                  title="Remover episódio"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
