@@ -134,7 +134,7 @@ export default async function PodviajarPage() {
                   <img
                     src={ep.cover_url}
                     alt={ep.title}
-                    className="w-full max-h-72 object-contain bg-muted/40"
+                    className="w-full block"
                   />
                 ) : (
                   <div className="w-full h-32 bg-primary/5 flex items-center justify-center">
