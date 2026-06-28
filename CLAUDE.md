@@ -40,7 +40,7 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 ## Supabase
 - `createClient()` — cliente com sessão do usuário (respeita RLS)
 - `createAdminClient()` — usa `SUPABASE_SERVICE_ROLE_KEY`, bypassa RLS; use para operações admin
-- Projeto ID: `jfhbwnbihtdwoesjtlbz`
+- Projeto ID: definido em `NEXT_PUBLIC_SUPABASE_URL` (ver `.env.local`)
 - RLS `profiles`: usuário lê/edita apenas o próprio; admins leem todos (`profiles_select_admin`)
 - Notificações: INSERT via `adminClient` (sem política de INSERT — service role bypassa RLS)
 

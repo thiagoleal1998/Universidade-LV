@@ -29,7 +29,7 @@ O painel administrativo permite gerenciar cursos, módulos, aulas, treinamentos,
 
 - Node.js 18+
 - npm 9+
-- Acesso ao projeto Supabase `jfhbwnbihtdwoesjtlbz`
+- Acesso ao projeto Supabase (solicitar credenciais ao administrador)
 
 ## Instalação
 
@@ -51,7 +51,7 @@ cp .env.example .env.local
 Crie `.env.local` na raiz com:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://jfhbwnbihtdwoesjtlbz.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://<project-id>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<chave anon do projeto>
 SUPABASE_SERVICE_ROLE_KEY=<chave service role do projeto>
 ```
