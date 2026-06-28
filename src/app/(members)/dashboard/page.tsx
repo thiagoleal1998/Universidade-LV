@@ -9,7 +9,7 @@ import {
   ChevronRight, BookOpen, PlayCircle, ArrowRight,
   Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
-  TrendingUp, CheckCircle2, Trophy, Star, Headphones, Calendar,
+  TrendingUp, CheckCircle2, Trophy, Star, Headphones,
 } from 'lucide-react'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
@@ -645,55 +645,6 @@ export default async function DashboardPage() {
               </div>
               <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
             </div>
-          )}
-
-          {/* ── PodViajar — episódios recentes ── */}
-          {podviajar && podviajar.episodes.length > 0 && (
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Headphones className="w-5 h-5 text-primary" />
-                  <h2 className="text-base font-semibold text-foreground">{podviajar.title || 'PodViajar'}</h2>
-                </div>
-                <Link href="/dashboard/podviajar" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-                  Ver todos <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-              <div className="space-y-3">
-                {podviajar.episodes.slice(0, 3).map((ep, idx) => (
-                  <a
-                    key={idx}
-                    href={ep.url || '#'}
-                    target={ep.url ? '_blank' : undefined}
-                    rel="noreferrer"
-                    className="group flex items-center gap-4 bg-card border border-border rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all"
-                  >
-                    {ep.cover_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ep.cover_url} alt={ep.title} className="w-14 h-14 rounded-xl object-cover shrink-0" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Headphones className="w-6 h-6 text-primary/30" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors leading-snug">
-                        {ep.title}
-                      </p>
-                      {ep.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{ep.description}</p>
-                      )}
-                      {ep.date && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground/50 mt-1">
-                          <Calendar className="w-3 h-3" /> {ep.date}
-                        </span>
-                      )}
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary/50 transition-colors shrink-0" />
-                  </a>
-                ))}
-              </div>
-            </section>
           )}
 
           {courses.length === 0 && (
