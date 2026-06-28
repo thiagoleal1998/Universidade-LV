@@ -4,32 +4,33 @@ import { useState, useEffect, CSSProperties } from 'react'
 import { Megaphone, X, ChevronDown, ChevronUp } from 'lucide-react'
 
 type Announcement = { id: string; title: string; body: string; created_at: string }
-
-// html = plain title text OR html fragment (with inline tags preserved)
 type Slide = { html: string; annId: string; isTitle: boolean }
 
 const STORAGE_KEY = 'dismissed_announcements'
 type Phase = 'in' | 'visible' | 'out'
 
-const SEP = '\x00|||'
+// Unicode PUA char as separator — never appears in real text
+const SEP = ''
 
 function parseSlides(ann: Announcement): Slide[] {
   const slides: Slide[] = [{ html: ann.title, annId: ann.id, isTitle: true }]
   if (!ann.body?.trim()) return slides
 
-  // Split at block boundaries, preserving inline HTML like <strong>, <em>, <u>
   const fragments = ann.body
+    // Block boundaries → separator
     .replace(/<br\s*\/?>/gi, SEP)
-    .replace(/<\/p>/gi, SEP)
-    .replace(/<\/li>/gi, SEP)
-    .replace(/<\/h[1-6]>/gi, SEP)
-    .replace(/<p[^>]*>/gi, '')
-    .replace(/<li[^>]*>/gi, '')
-    .replace(/<h[1-6][^>]*>/gi, '')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr|td|th)>/gi, SEP)
+    // Remove opening block tags (keep inline tags like strong, em, u)
+    .replace(/<(p|div|li|h[1-6]|blockquote|tr|td|th)[^>]*>/gi, '')
+    // Also split on raw newlines (plain-text bodies)
+    .replace(/\n+/g, SEP)
     .split(SEP)
-    .map((s) => s.trim())
+    .map((s) =>
+      // Strip any stray block tags that survived, keep inline formatting
+      s.replace(/<\/?(div|p|ul|ol|h[1-6]|blockquote|table|tr|thead|tbody|td|th)[^>]*>/gi, '').trim()
+    )
     .filter((s) => {
-      const plain = s.replace(/<[^>]+>/g, '').replace(/&\w+;/g, 'x').trim()
+      const plain = s.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, 'x').trim()
       return plain.length > 2 && plain !== ann.title.trim()
     })
 
@@ -63,7 +64,7 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
   const annPosition = currentAnn ? active.indexOf(currentAnn) : 0
   const hasBody = (currentAnn?.body?.trim().length ?? 0) > 0
 
-  // Auto-cycle — title stays 3s, body phrases stay 4s
+  // Auto-cycle: title 3s, phrase 4s
   useEffect(() => {
     if (slides.length <= 1) return
     const delay = currentSlide?.isTitle ? 3000 : 4000
@@ -71,13 +72,13 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
     return () => clearTimeout(id)
   }, [slides.length, safeIdx, currentSlide?.isTitle])
 
-  // Phase: out → swap index → in → visible
+  // Transition: out → swap → in → visible
+  // NOTE: intentionally NOT resetting expanded here — user opened it on purpose
   useEffect(() => {
     if (phase === 'out') {
       const t = setTimeout(() => {
         setSlideIdx((prev) => (prev + 1) % Math.max(1, slides.length))
         setPhase('in')
-        setExpanded(false)
       }, 280)
       return () => clearTimeout(t)
     }
@@ -111,11 +112,14 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
   }
 
   return (
-    <div className="w-full sticky top-0 z-10 border-b border-orange-600/20">
-      {/* Ticker bar */}
-      <div className="bg-orange-500 text-white flex items-center px-4 sm:px-6 min-h-[64px]">
+    // Outer wrapper is NOT sticky — only the bar inside is sticky.
+    // This way the expanded body pushes page content down instead of overlapping it.
+    <div className="w-full">
 
-        {/* Label — ícone e texto em negrito, branco */}
+      {/* ── Sticky ticker bar ── */}
+      <div className="bg-orange-500 text-white flex items-center px-4 sm:px-6 min-h-[64px] sticky top-0 z-10 border-b border-orange-600/20">
+
+        {/* Label */}
         <div className="flex items-center gap-2 shrink-0 mr-3">
           <Megaphone className="w-4 h-4 text-white" strokeWidth={2.5} />
           <span className="text-xs font-extrabold uppercase tracking-wider text-white hidden sm:block">
@@ -126,18 +130,13 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
         {/* Divider */}
         <div className="w-px h-5 bg-white/30 shrink-0 mr-3" />
 
-        {/* Letreiro — cycling slide */}
+        {/* Letreiro */}
         <div className="flex-1 min-w-0 overflow-hidden">
           {currentSlide.isTitle ? (
-            /* Título: texto puro, sempre em negrito */
-            <p
-              className="text-sm font-bold truncate leading-tight"
-              style={slideStyle}
-            >
+            <p className="text-sm font-bold truncate leading-tight" style={slideStyle}>
               {currentSlide.html}
             </p>
           ) : (
-            /* Frase do corpo: HTML preservado com formatações inline */
             <p
               className="text-sm font-normal text-white/95 truncate leading-tight [&_strong]:font-bold [&_b]:font-bold [&_em]:italic [&_i]:italic [&_u]:underline [&_s]:line-through"
               style={slideStyle}
@@ -176,13 +175,13 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
         </button>
       </div>
 
-      {/* Expandable full body */}
+      {/* ── Expanded body — normal flow, empurra o conteúdo abaixo ── */}
       <div
         className="grid transition-[grid-template-rows] duration-300 ease-in-out"
         style={{ gridTemplateRows: expanded && hasBody ? '1fr' : '0fr' }}
       >
         <div className="overflow-hidden">
-          <div className="bg-orange-50 dark:bg-orange-950/40 border-t border-orange-200/60 dark:border-orange-800/40 px-4 sm:px-6 py-4">
+          <div className="bg-orange-50 dark:bg-orange-950/40 border-b border-orange-200/60 dark:border-orange-800/40 px-4 sm:px-6 py-4">
             <p className="text-xs font-extrabold text-orange-500 dark:text-orange-400 uppercase tracking-wider mb-2">
               {currentAnn.title}
             </p>
@@ -193,6 +192,7 @@ export function AnnouncementTicker({ announcements }: { announcements: Announcem
           </div>
         </div>
       </div>
+
     </div>
   )
 }
