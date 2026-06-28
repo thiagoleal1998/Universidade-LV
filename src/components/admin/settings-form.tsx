@@ -122,13 +122,43 @@ function parseNavOrder(json: string): string[] {
   try {
     const parsed = JSON.parse(json)
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Append any new items not yet in the stored order
       const known = new Set(parsed)
       const missing = ALL_NAV_ITEMS.map((n) => n.href).filter((h) => !known.has(h))
       return [...parsed, ...missing]
     }
   } catch {}
   return ALL_NAV_ITEMS.map((n) => n.href)
+}
+
+const ALL_MEMBER_NAV_ITEMS = [
+  { key: 'home',          defaultLabel: 'Início',           conditional: false },
+  { key: 'cursos',        defaultLabel: 'Meus cursos',      conditional: false },
+  { key: 'treinamentos',  defaultLabel: 'Treinamentos',     conditional: false },
+  { key: 'marketing',     defaultLabel: 'Marketing',        conditional: false },
+  { key: 'aereo',         defaultLabel: 'Bloqueios Aéreos', conditional: true  },
+  { key: 'podviajar',     defaultLabel: 'PodViajar',        conditional: true  },
+  { key: 'comunidade',    defaultLabel: 'Comunidade',       conditional: false },
+  { key: 'documentos',    defaultLabel: 'Documentos',       conditional: false },
+  { key: 'configuracoes', defaultLabel: 'Configurações',    conditional: false },
+]
+
+const DEFAULT_MEMBER_NAV_LABELS_FULL: Record<string, string> = {
+  home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
+  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', podviajar: 'PodViajar',
+  comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
+}
+
+function parseMemberNavOrder(json: string): string[] {
+  const allKeys = ALL_MEMBER_NAV_ITEMS.map((n) => n.key)
+  try {
+    const parsed = JSON.parse(json)
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const known = new Set(parsed)
+      const missing = allKeys.filter((k) => !known.has(k))
+      return [...parsed.filter((k: string) => allKeys.includes(k)), ...missing]
+    }
+  } catch {}
+  return allKeys
 }
 
 /* ── Componente principal ── */
@@ -293,11 +323,9 @@ function parseTamojunto(json: string): TamojuntoData {
   return DEFAULT_TAMOJUNTO
 }
 
-const DEFAULT_MEMBER_NAV_LABELS = { home: 'Início', community: 'Comunidade', documents: 'Documentos', settings: 'Configurações' }
-
-function parseMemberNavLabels(json: string) {
-  try { return { ...DEFAULT_MEMBER_NAV_LABELS, ...JSON.parse(json) } } catch {}
-  return DEFAULT_MEMBER_NAV_LABELS
+function parseMemberNavLabels(json: string): Record<string, string> {
+  try { return { ...DEFAULT_MEMBER_NAV_LABELS_FULL, ...JSON.parse(json) } } catch {}
+  return { ...DEFAULT_MEMBER_NAV_LABELS_FULL }
 }
 
 type DestaqueData = { active: boolean; title: string; description: string; url: string; cover_url: string; button_text: string }
@@ -343,7 +371,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [memberAreaSubtitle, setMemberAreaSubtitle] = useState(settings.member_area_subtitle)
-  const [memberNavLabels, setMemberNavLabels] = useState(() => parseMemberNavLabels(settings.member_nav_labels))
+  const [memberNavLabels, setMemberNavLabels] = useState<Record<string, string>>(() => parseMemberNavLabels(settings.member_nav_labels))
+  const [memberNavOrder, setMemberNavOrder] = useState<string[]>(() => parseMemberNavOrder(settings.member_nav_order))
   const [heroTagline, setHeroTagline] = useState(settings.dashboard_hero_tagline)
   const [destaque, setDestaque] = useState<DestaqueData>(() => parseDestaque(settings.dashboard_destaque))
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>(() => parseOnboardingSteps(settings.onboarding_steps))
@@ -469,6 +498,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     formData.set('nav_order', JSON.stringify(navOrder))
     formData.set('member_area_subtitle', memberAreaSubtitle)
     formData.set('member_nav_labels', JSON.stringify(memberNavLabels))
+    formData.set('member_nav_order', JSON.stringify(memberNavOrder))
     formData.set('dashboard_hero_tagline', heroTagline)
     formData.set('dashboard_destaque', JSON.stringify(destaque))
     formData.set('onboarding_steps', JSON.stringify(onboardingSteps))
@@ -916,23 +946,57 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           </section>
 
           <section className="rounded-xl border border-border p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Rótulos do menu lateral</h3>
-            <p className="text-xs text-muted-foreground">Nomes dos itens que aparecem no menu dos alunos.</p>
-            {([
-              { key: 'home',      label: 'Item "Início"'        },
-              { key: 'community', label: 'Item "Comunidade"'    },
-              { key: 'documents', label: 'Item "Documentos"'    },
-              { key: 'settings',  label: 'Item "Configurações"' },
-            ] as const).map(({ key, label }) => (
-              <div key={key}>
-                <Label className="text-xs text-muted-foreground">{label}</Label>
-                <Input
-                  value={memberNavLabels[key]}
-                  onChange={(e) => setMemberNavLabels((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="mt-1.5 h-8"
-                />
-              </div>
-            ))}
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Itens do menu lateral</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Renomeie e reordene os itens do menu dos alunos com as setas. Itens marcados com <span className="font-semibold text-primary">*</span> só aparecem quando ativados nas respectivas configurações.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {memberNavOrder.map((key, i) => {
+                const navItem = ALL_MEMBER_NAV_ITEMS.find((n) => n.key === key)
+                if (!navItem) return null
+                return (
+                  <div key={key} className="flex items-center gap-2 bg-muted/30 border border-border rounded-lg px-3 py-2">
+                    <Input
+                      value={memberNavLabels[key] ?? navItem.defaultLabel}
+                      onChange={(e) => setMemberNavLabels((prev) => ({ ...prev, [key]: e.target.value }))}
+                      className="flex-1 h-7 text-sm border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      placeholder={navItem.defaultLabel}
+                    />
+                    {navItem.conditional && (
+                      <span className="text-xs font-bold text-primary shrink-0">*</span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={i === 0}
+                      onClick={() => setMemberNavOrder((prev) => {
+                        const next = [...prev]
+                        ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                        return next
+                      })}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors"
+                      title="Mover para cima"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={i === memberNavOrder.length - 1}
+                      onClick={() => setMemberNavOrder((prev) => {
+                        const next = [...prev]
+                        ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                        return next
+                      })}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors"
+                      title="Mover para baixo"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
           </section>
         </div>
 

@@ -60,6 +60,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         unreadCount={unreadCount ?? 0}
         areaSubtitle={settings.member_area_subtitle}
         memberNavLabels={settings.member_nav_labels}
+        memberNavOrder={settings.member_nav_order}
         podviajarActive={(() => { try { return JSON.parse(settings.podviajar)?.active === true } catch { return false } })()}
         aereoActive={!!aereoUrl}
       />

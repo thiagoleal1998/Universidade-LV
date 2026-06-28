@@ -26,6 +26,7 @@ export type Settings = {
   nav_order: string
   member_area_subtitle: string
   member_nav_labels: string
+  member_nav_order: string
   dashboard_hero_tagline: string
   dashboard_destaque: string
   onboarding_steps: string
@@ -153,7 +154,8 @@ const DEFAULTS = {
   certificate_name_size: '60',
   certificate_name_color: '#1a1a1a',
   member_area_subtitle: 'Área do Aluno',
-  member_nav_labels: JSON.stringify({ home: 'Início', community: 'Comunidade', documents: 'Documentos', settings: 'Configurações' }),
+  member_nav_labels: JSON.stringify({ home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos', marketing: 'Marketing', aereo: 'Bloqueios Aéreos', podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações' }),
+  member_nav_order: JSON.stringify(['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'podviajar', 'comunidade', 'documentos', 'configuracoes']),
   dashboard_hero_tagline: 'Continue de onde parou e avance no seu aprendizado.',
   dashboard_destaque: JSON.stringify({ active: false, title: '', description: '', url: '', cover_url: '', button_text: 'Acessar' }),
   onboarding_steps: JSON.stringify([
@@ -339,6 +341,7 @@ export async function getSettings(): Promise<Settings> {
       nav_order: map.nav_order ?? DEFAULTS.nav_order,
       member_area_subtitle: map.member_area_subtitle ?? DEFAULTS.member_area_subtitle,
       member_nav_labels: map.member_nav_labels ?? DEFAULTS.member_nav_labels,
+      member_nav_order: map.member_nav_order ?? DEFAULTS.member_nav_order,
       dashboard_hero_tagline: map.dashboard_hero_tagline ?? DEFAULTS.dashboard_hero_tagline,
       dashboard_destaque: map.dashboard_destaque ?? DEFAULTS.dashboard_destaque,
       onboarding_steps: map.onboarding_steps ?? DEFAULTS.onboarding_steps,

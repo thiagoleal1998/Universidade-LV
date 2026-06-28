@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect, CSSProperties } from 'react'
+import React, { useState, useEffect, CSSProperties } from 'react'
 import { logout } from '@/app/actions/auth'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -15,11 +15,26 @@ import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
 import { NotificationBell } from '@/components/members/notification-bell'
 
-type NavLabels = { home: string; community: string; documents: string; settings: string }
+type NavLabels = Record<string, string>
+
+const DEFAULT_NAV_LABELS: NavLabels = {
+  home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
+  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', podviajar: 'PodViajar',
+  comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
+}
 
 function parseNavLabels(json: string): NavLabels {
-  try { return { home: 'Início', community: 'Comunidade', documents: 'Documentos', settings: 'Configurações', ...JSON.parse(json) } } catch {}
-  return { home: 'Início', community: 'Comunidade', documents: 'Documentos', settings: 'Configurações' }
+  try { return { ...DEFAULT_NAV_LABELS, ...JSON.parse(json) } } catch {}
+  return { ...DEFAULT_NAV_LABELS }
+}
+
+function parseMemberNavOrder(json: string): string[] {
+  const DEFAULT = ['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'podviajar', 'comunidade', 'documentos', 'configuracoes']
+  try {
+    const parsed = JSON.parse(json)
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed
+  } catch {}
+  return DEFAULT
 }
 
 type Props = {
@@ -33,6 +48,7 @@ type Props = {
   memberNavLabels?: string
   podviajarActive?: boolean
   aereoActive?: boolean
+  memberNavOrder?: string
 }
 
 // Smooth slide-out for text elements — max-width + opacity
@@ -48,25 +64,39 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
   }
 }
 
+const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{ className?: string }>; exact: boolean; conditional?: 'aereo' | 'podviajar' }> = {
+  home:          { href: '/dashboard',               icon: Home,          exact: true  },
+  cursos:        { href: '/dashboard/cursos',        icon: GraduationCap, exact: false },
+  treinamentos:  { href: '/dashboard/treinamentos',  icon: BookOpen,      exact: false },
+  marketing:     { href: '/dashboard/marketing',     icon: Megaphone,     exact: false },
+  aereo:         { href: '/dashboard/aereo',         icon: Plane,         exact: false, conditional: 'aereo'     },
+  podviajar:     { href: '/dashboard/podviajar',     icon: Headphones,    exact: false, conditional: 'podviajar' },
+  comunidade:    { href: '/dashboard/comunidade',    icon: MessageSquare, exact: false },
+  documentos:    { href: '/dashboard/documentos',    icon: FileText,      exact: false },
+  configuracoes: { href: '/dashboard/configuracoes', icon: Settings,      exact: false },
+}
+
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, unreadCount = 0,
-  areaSubtitle = 'Área do Aluno', memberNavLabels = '', podviajarActive = false, aereoActive = false,
+  areaSubtitle = 'Área do Aluno', memberNavLabels = '', memberNavOrder = '', podviajarActive = false, aereoActive = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
   const labels = parseNavLabels(memberNavLabels)
+  const navOrder = parseMemberNavOrder(memberNavOrder)
 
-  const NAV_ITEMS = [
-    { href: '/dashboard',               label: labels.home,      icon: Home,          exact: true  },
-    { href: '/dashboard/cursos',        label: 'Meus cursos',   icon: GraduationCap, exact: false },
-    { href: '/dashboard/treinamentos',  label: 'Treinamentos',   icon: BookOpen,      exact: false },
-    { href: '/dashboard/marketing',     label: 'Marketing',      icon: Megaphone,     exact: false },
-    ...(aereoActive ? [{ href: '/dashboard/aereo', label: 'Bloqueios Aéreos', icon: Plane, exact: false }] : []),
-    ...(podviajarActive ? [{ href: '/dashboard/podviajar', label: 'PodViajar', icon: Headphones, exact: false }] : []),
-    { href: '/dashboard/comunidade',    label: labels.community, icon: MessageSquare, exact: false },
-    { href: '/dashboard/documentos',    label: labels.documents, icon: FileText,      exact: false },
-    { href: '/dashboard/configuracoes', label: labels.settings,  icon: Settings,      exact: false },
-  ]
+  const NAV_ITEMS = navOrder
+    .filter((key) => {
+      const def = MEMBER_NAV_MAP[key]
+      if (!def) return false
+      if (def.conditional === 'aereo') return aereoActive
+      if (def.conditional === 'podviajar') return podviajarActive
+      return true
+    })
+    .map((key) => {
+      const def = MEMBER_NAV_MAP[key]
+      return { href: def.href, label: labels[key] ?? key, icon: def.icon, exact: def.exact }
+    })
 
   const initials = userName
     ? userName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
