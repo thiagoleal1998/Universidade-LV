@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react'
 
 type Partner = { name: string; logo_url: string }
 
-const ITEM_W = 180
+const ITEM_W = 140
 const SPEED  = 55 // px/s
 
 export function PartnersCarousel({ partners, title }: { partners: Partner[]; title: string }) {
@@ -70,7 +70,7 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
             <div
               key={i}
               style={{ width: ITEM_W }}
-              className="shrink-0 h-16 flex items-center justify-center px-6"
+              className="shrink-0 h-16 flex items-center justify-center px-4"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
