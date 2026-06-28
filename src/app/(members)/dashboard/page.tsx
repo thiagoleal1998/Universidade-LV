@@ -4,11 +4,12 @@ import { getSettings } from '@/lib/settings'
 import { getTrainingItems } from '@/app/actions/training'
 import { buttonVariants } from '@/components/ui/button'
 import { LiveCountdown } from '@/components/members/live-countdown'
+import { WinnersCarousel } from '@/components/members/winners-carousel'
 import {
   ChevronRight, BookOpen, PlayCircle, ArrowRight,
   Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
-  TrendingUp, CheckCircle2, Trophy, Star, Medal, Headphones, Calendar,
+  TrendingUp, CheckCircle2, Trophy, Star, Headphones, Calendar,
 } from 'lucide-react'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
@@ -550,34 +551,10 @@ export default async function DashboardPage() {
                   )}
                 </div>
 
-                {/* Grid de regiões */}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {tamojuntoWinners.regions
-                    .filter((r) => r.agency1 || r.agency2)
-                    .map((region) => (
-                      <div key={region.name} className="bg-card border border-amber-400/20 rounded-xl p-4 space-y-3">
-                        <p className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/60 uppercase tracking-widest">{region.name}</p>
-                        {region.agency1 && (
-                          <div className="flex items-start gap-2.5">
-                            <Medal className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-semibold text-foreground leading-tight">{region.agency1}</p>
-                              {region.value1 && <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-0.5">{region.value1}</p>}
-                            </div>
-                          </div>
-                        )}
-                        {region.agency2 && (
-                          <div className="flex items-start gap-2.5">
-                            <Medal className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-foreground/80 leading-tight">{region.agency2}</p>
-                              {region.value2 && <p className="text-xs text-muted-foreground font-medium mt-0.5">{region.value2}</p>}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
+                {/* Carrossel de regiões */}
+                <WinnersCarousel
+                  regions={tamojuntoWinners.regions.filter((r) => r.agency1 || r.agency2)}
+                />
               </div>
             </section>
           )}
