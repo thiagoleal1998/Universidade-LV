@@ -534,61 +534,60 @@ export default async function DashboardPage() {
             <DismissibleAnnouncements announcements={announcements} />
           )}
 
-          {/* ── Continuar estudando ── */}
-          {continueItems.length > 0 && (
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <PlayCircle className="w-5 h-5 text-primary" />
-                  <h2 className="text-base font-semibold text-foreground">Continuar estudando</h2>
-                </div>
-                <Link href="/dashboard/cursos" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-                  Ver todos <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {continueItems.map((item) => (
-                  <div key={item.courseId} className="group bg-card border border-border rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all flex flex-col gap-3">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold text-primary/70 uppercase tracking-wider truncate">{item.courseName}</p>
-                        <p className="font-semibold text-foreground text-sm mt-0.5 line-clamp-2 leading-snug">{item.lessonTitle}</p>
-                      </div>
-                      {item.pct === 100 && (
-                        <span className="shrink-0 w-6 h-6 rounded-full bg-emerald-500/15 flex items-center justify-center">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                        </span>
-                      )}
-                    </div>
-                    {/* Progress */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Progresso do curso</span>
-                        <span className="text-xs font-semibold text-foreground">{item.pct}%</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            width: `${item.pct}%`,
-                            background: item.pct === 100
-                              ? 'rgb(16 185 129)' // emerald
-                              : 'hsl(var(--primary))',
-                          }}
-                        />
-                      </div>
-                    </div>
-                    {/* CTA */}
-                    <Link
-                      href={`/dashboard/aulas/${item.lessonId}`}
-                      className="inline-flex items-center gap-2 text-xs font-semibold text-primary hover:gap-3 transition-all mt-auto"
-                    >
-                      {item.pct === 100 ? 'Revisitar aula' : 'Continuar de onde parei'}
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+          {/* ── Vencedores TamoJunto LV ── */}
+          {tamojuntoWinners && (
+            <section className="rounded-2xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-yellow-400/5 to-orange-400/5 relative">
+              {/* Glow decorativo */}
+              <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-yellow-400/15 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+
+              <div className="relative p-5 sm:p-6">
+                {/* Cabeçalho */}
+                <div className="flex flex-wrap items-center gap-3 mb-5">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-500" />
+                    <h2 className="text-base font-bold text-foreground">{tamojuntoWinners.title}</h2>
                   </div>
-                ))}
+                  {tamojuntoWinners.badge && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/15 border border-amber-500/25 rounded-full px-3 py-1">
+                      {tamojuntoWinners.badge}
+                    </span>
+                  )}
+                  {tamojuntoWinners.month && (
+                    <span className="text-xs font-semibold text-muted-foreground border border-border/60 bg-background/50 rounded-full px-3 py-1">
+                      {tamojuntoWinners.month}
+                    </span>
+                  )}
+                </div>
+
+                {/* Grid de regiões */}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {tamojuntoWinners.regions
+                    .filter((r) => r.agency1 || r.agency2)
+                    .map((region) => (
+                      <div key={region.name} className="bg-background/60 backdrop-blur-sm border border-amber-400/20 rounded-xl p-4 space-y-3">
+                        <p className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/60 uppercase tracking-widest">{region.name}</p>
+                        {region.agency1 && (
+                          <div className="flex items-start gap-2.5">
+                            <Medal className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground leading-tight">{region.agency1}</p>
+                              {region.value1 && <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-0.5">{region.value1}</p>}
+                            </div>
+                          </div>
+                        )}
+                        {region.agency2 && (
+                          <div className="flex items-start gap-2.5">
+                            <Medal className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-foreground/80 leading-tight">{region.agency2}</p>
+                              {region.value2 && <p className="text-xs text-muted-foreground font-medium mt-0.5">{region.value2}</p>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
               </div>
             </section>
           )}
@@ -675,56 +674,6 @@ export default async function DashboardPage() {
             </div>
           )}
 
-          {/* ── Vencedores TamoJunto LV ── */}
-          {tamojuntoWinners && (
-            <section>
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-yellow-500" />
-                  <h2 className="text-base font-semibold text-foreground">{tamojuntoWinners.title}</h2>
-                </div>
-                {tamojuntoWinners.badge && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
-                    {tamojuntoWinners.badge}
-                  </span>
-                )}
-                {tamojuntoWinners.month && (
-                  <span className="text-xs font-semibold text-muted-foreground border border-border rounded-full px-3 py-1">
-                    {tamojuntoWinners.month}
-                  </span>
-                )}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {tamojuntoWinners.regions
-                  .filter((r) => r.agency1 || r.agency2)
-                  .map((region) => (
-                    <div key={region.name} className="bg-card border border-border rounded-2xl p-4 space-y-2.5 relative overflow-hidden">
-                      <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{region.name}</p>
-                      {region.agency1 && (
-                        <div className="flex items-start gap-2.5">
-                          <Medal className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-semibold text-foreground leading-tight">{region.agency1}</p>
-                            {region.value1 && <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mt-0.5">{region.value1}</p>}
-                          </div>
-                        </div>
-                      )}
-                      {region.agency2 && (
-                        <div className="flex items-start gap-2.5">
-                          <Medal className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-foreground/80 leading-tight">{region.agency2}</p>
-                            {region.value2 && <p className="text-xs text-muted-foreground font-medium mt-0.5">{region.value2}</p>}
-                          </div>
-                        </div>
-                      )}
-                      <div className="absolute -right-4 -bottom-4 w-16 h-16 rounded-full bg-yellow-500/5 blur-2xl pointer-events-none" />
-                    </div>
-                  ))}
-              </div>
-            </section>
-          )}
-
           {/* ── PodViajar — episódios recentes ── */}
           {podviajar && podviajar.episodes.length > 0 && (
             <section>
@@ -789,7 +738,7 @@ export default async function DashboardPage() {
 
         {/* ── Sidebar direita ── */}
         {hasSidebar && (
-          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-6">
+          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-6 xl:bg-muted/40 xl:rounded-2xl xl:border xl:border-border xl:p-4">
 
             {sidebarTrainingActive && featuredTraining && (
               <div className="space-y-2">
