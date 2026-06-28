@@ -392,6 +392,11 @@ export default async function DashboardPage() {
         {/* ── Coluna principal ── */}
         <div className="min-w-0 w-full space-y-6">
 
+          {/* ── Comunicados ── */}
+          {announcements.length > 0 && (
+            <DismissibleAnnouncements announcements={announcements} />
+          )}
+
           {/* ── Greeting ── */}
           <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -529,11 +534,6 @@ export default async function DashboardPage() {
             </section>
           )}
 
-          {/* ── Avisos ── */}
-          {announcements.length > 0 && (
-            <DismissibleAnnouncements announcements={announcements} />
-          )}
-
           {/* ── Vencedores TamoJunto LV ── */}
           {tamojuntoWinners && (
             <section className="rounded-2xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-yellow-400/5 to-orange-400/5 relative">
@@ -591,54 +591,6 @@ export default async function DashboardPage() {
               </div>
             </section>
           )}
-
-          {/* ── Acesso rápido ── */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-base font-semibold text-foreground">Acesso rápido</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Link
-                href="/dashboard/cursos"
-                className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 hover:shadow-md hover:border-primary/40 transition-all"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-primary" />
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-primary/40 group-hover:translate-x-1 group-hover:text-primary transition-all" />
-                </div>
-                <p className="font-semibold text-foreground">Meus Cursos</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {courses.length > 0
-                    ? `${courses.length} ${courses.length === 1 ? 'curso disponível' : 'cursos disponíveis'}`
-                    : 'Nenhum curso liberado ainda'}
-                </p>
-                {courses.length > 0 && (
-                  <div className="flex items-center gap-2 mt-3">
-                    <div className="h-1.5 bg-primary/15 rounded-full flex-1 overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: `${overallPct}%` }} />
-                    </div>
-                    <span className="text-xs text-primary font-semibold">{overallPct}%</span>
-                  </div>
-                )}
-              </Link>
-
-              <Link
-                href="/dashboard/marketing"
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 hover:shadow-md hover:border-primary/25 transition-all"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                    <Megaphone className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:translate-x-1 group-hover:text-primary transition-all" />
-                </div>
-                <p className="font-semibold text-foreground">Marketing</p>
-                <p className="text-sm text-muted-foreground mt-0.5">Materiais, links e scripts prontos</p>
-              </Link>
-            </div>
-          </section>
 
           {/* ── TamoJuntoLV ── */}
           {tamojunto && (

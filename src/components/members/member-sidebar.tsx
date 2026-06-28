@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Search, Menu, X, BookOpen,
-  PanelLeftClose, PanelLeftOpen, Headphones,
+  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -59,6 +59,7 @@ function SidebarContent({
     { href: '/dashboard',               label: labels.home,      icon: Home,          exact: true  },
     { href: '/dashboard/cursos',        label: 'Meus cursos',   icon: GraduationCap, exact: false },
     { href: '/dashboard/treinamentos',  label: 'Treinamentos',   icon: BookOpen,      exact: false },
+    { href: '/dashboard/marketing',     label: 'Marketing',      icon: Megaphone,     exact: false },
     ...(podviajarActive ? [{ href: '/dashboard/podviajar', label: 'PodViajar', icon: Headphones, exact: false }] : []),
     { href: '/dashboard/comunidade',    label: labels.community, icon: MessageSquare, exact: false },
     { href: '/dashboard/documentos',    label: labels.documents, icon: FileText,      exact: false },
