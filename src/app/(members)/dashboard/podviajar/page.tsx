@@ -72,7 +72,7 @@ export default async function PodviajarPage() {
           </div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">{podcast.title}</h1>
           {podcast.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">{podcast.description}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{podcast.description}</p>
           )}
           {(podcast.spotify_url || podcast.apple_url) && (
             <div className="flex flex-wrap gap-2 pt-1">
@@ -119,50 +119,57 @@ export default async function PodviajarPage() {
             <p className="text-muted-foreground text-sm">Nenhum episódio publicado ainda.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {podcast.episodes.map((ep, idx) => (
               <a
                 key={idx}
                 href={ep.url || '#'}
                 target={ep.url ? '_blank' : undefined}
                 rel="noreferrer"
-                className="group flex items-start gap-4 bg-card border border-border rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all"
+                className="group block bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-md transition-all"
               >
+                {/* Imagem de capa em destaque */}
                 {ep.cover_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={ep.cover_url}
                     alt={ep.title}
-                    className="w-16 h-16 rounded-xl object-contain bg-muted/30 shrink-0"
+                    className="w-full max-h-72 object-contain bg-muted/40"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Headphones className="w-7 h-7 text-primary/30" />
+                  <div className="w-full h-32 bg-primary/5 flex items-center justify-center">
+                    <Headphones className="w-10 h-10 text-primary/20" />
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors leading-snug">
-                    {ep.title}
-                  </p>
+
+                {/* Conteúdo */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors leading-snug">
+                      {ep.title}
+                    </p>
+                    {ep.url && (
+                      <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary/50 transition-colors shrink-0 mt-0.5" />
+                    )}
+                  </div>
                   {ep.description && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{ep.description}</p>
+                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed whitespace-pre-wrap">{ep.description}</p>
                   )}
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {ep.date && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
-                        <Calendar className="w-3 h-3" /> {ep.date}
-                      </span>
-                    )}
-                    {ep.duration && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
-                        <Clock className="w-3 h-3" /> {ep.duration}
-                      </span>
-                    )}
-                  </div>
+                  {(ep.date || ep.duration) && (
+                    <div className="flex items-center gap-3 mt-3 flex-wrap">
+                      {ep.date && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                          <Calendar className="w-3 h-3" /> {ep.date}
+                        </span>
+                      )}
+                      {ep.duration && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                          <Clock className="w-3 h-3" /> {ep.duration}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {ep.url && (
-                  <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary/50 transition-colors shrink-0 mt-0.5" />
-                )}
               </a>
             ))}
           </div>
