@@ -3,11 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getSettings } from '@/lib/settings'
 import { getTrainingItems } from '@/app/actions/training'
 import { buttonVariants } from '@/components/ui/button'
-import { DismissibleAnnouncements } from '@/components/members/dismissible-announcements'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import {
   ChevronRight, BookOpen, PlayCircle, ArrowRight,
-  Megaphone, Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
+  Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
   TrendingUp, CheckCircle2, Trophy, Star, Medal, Headphones, Calendar,
 } from 'lucide-react'
@@ -17,7 +16,6 @@ import type { TrainingItem } from '@/app/actions/training'
 type LessonSummary = { id: string; title: string; is_published: boolean; order_index: number; module_id: string }
 type ModuleWithLessons = Module & { lessons: LessonSummary[] }
 type CourseWithModules = Course & { modules: ModuleWithLessons[] }
-type Announcement = { id: string; title: string; body: string; created_at: string }
 type ProgressRow = { lesson_id: string; completed_at: string }
 
 const TWO_HOURS = 2 * 3_600_000
@@ -258,7 +256,6 @@ export default async function DashboardPage() {
     { data: coursesData },
     { data: modulesData },
     { data: progressData },
-    { data: announcementsData },
     settings,
     allTrainings,
   ] = await Promise.all([
@@ -272,19 +269,12 @@ export default async function DashboardPage() {
       .is('course_id', null)
       .order('order_index'),
     supabase.from('member_progress').select('lesson_id, completed_at').eq('user_id', user!.id),
-    supabase
-      .from('announcements')
-      .select('id, title, body, created_at')
-      .or(`is_published.eq.true,publish_at.lte.${new Date().toISOString()}`)
-      .order('created_at', { ascending: false })
-      .limit(5),
     getSettings(),
     getTrainingItems(),
   ])
 
   const courses = (coursesData ?? []) as CourseWithModules[]
   const uncategorizedModules = (modulesData ?? []) as ModuleWithLessons[]
-  const announcements = (announcementsData ?? []) as Announcement[]
   const progressRows = (progressData ?? []) as ProgressRow[]
   const completedSet = new Set(progressRows.map((p) => p.lesson_id))
 
@@ -391,11 +381,6 @@ export default async function DashboardPage() {
 
         {/* ── Coluna principal ── */}
         <div className="min-w-0 w-full space-y-6">
-
-          {/* ── Comunicados ── */}
-          {announcements.length > 0 && (
-            <DismissibleAnnouncements announcements={announcements} />
-          )}
 
           {/* ── Greeting ── */}
           <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

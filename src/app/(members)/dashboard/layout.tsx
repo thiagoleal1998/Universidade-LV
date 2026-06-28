@@ -7,6 +7,9 @@ import { MemberSidebar } from '@/components/members/member-sidebar'
 import { FaqWidgetWrapper } from '@/components/members/faq-widget-wrapper'
 import { CommandPalette } from '@/components/members/command-palette'
 import { OnboardingModal } from '@/components/members/onboarding-modal'
+import { AnnouncementTicker } from '@/components/members/announcement-ticker'
+
+type Announcement = { id: string; title: string; body: string; created_at: string }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -15,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/login')
 
   const adminClient = createAdminClient()
-  const [{ data: profileData }, settings, { count: unreadCount }, faqItems] = await Promise.all([
+  const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }] = await Promise.all([
     supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
     getSettings(),
     adminClient
@@ -24,9 +27,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
       .eq('user_id', user.id)
       .is('read_at', null),
     getFaqItems(),
+    supabase
+      .from('announcements')
+      .select('id, title, body, created_at')
+      .or(`is_published.eq.true,publish_at.lte.${new Date().toISOString()}`)
+      .order('created_at', { ascending: false })
+      .limit(5),
   ])
 
   const profile = profileData as { full_name: string; avatar_url: string } | null
+  const announcements = (announcementsData ?? []) as Announcement[]
 
   return (
     <div className="flex h-screen bg-muted/30">
@@ -42,6 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         podviajarActive={(() => { try { return JSON.parse(settings.podviajar)?.active === true } catch { return false } })()}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
+        <AnnouncementTicker announcements={announcements} />
         {children}
       </main>
       <FaqWidgetWrapper
