@@ -519,7 +519,7 @@ export default async function LandingPage() {
             <img
               src="https://litoral-verde.s3.sa-east-1.amazonaws.com/wp-content/uploads/2023/03/10153451/reclame-aqui1.png"
               alt="Reclame Aqui"
-              className="max-w-xs sm:max-w-sm mx-auto w-full object-contain"
+              className="max-w-[400px] sm:max-w-[480px] mx-auto w-full object-contain"
             />
           </FadeIn>
         </div>
