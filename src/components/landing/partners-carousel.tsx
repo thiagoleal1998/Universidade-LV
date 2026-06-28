@@ -1,19 +1,55 @@
 'use client'
 
+import { useRef, useEffect } from 'react'
+
 type Partner = { name: string; logo_url: string }
 
-const ITEM_W = 180  // px por slot de logo
-const SPEED  = 55   // px por segundo
+const ITEM_W = 180
+const SPEED  = 55 // px/s
 
 export function PartnersCarousel({ partners, title }: { partners: Partner[]; title: string }) {
   if (!partners.length) return null
 
-  // Repetimos o suficiente para que metade da faixa preencha qualquer tela e o loop seja invisível.
-  // A animação move exatamente "halfWidth" px para a esquerda e reinicia — as duas metades são idênticas.
   const copiesHalf = partners.length < 5 ? 3 : partners.length < 9 ? 2 : 1
   const items      = Array.from({ length: copiesHalf * 2 }, () => partners).flat()
   const halfWidth  = copiesHalf * partners.length * ITEM_W
-  const duration   = Math.round(halfWidth / SPEED)
+
+  const trackRef  = useRef<HTMLDivElement>(null)
+  const posRef    = useRef(0)
+  const rafRef    = useRef<number>(0)
+  const pausedRef = useRef(false)
+  const lastTsRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+
+    function step(ts: number) {
+      if (!pausedRef.current) {
+        if (lastTsRef.current !== null) {
+          posRef.current = (posRef.current + SPEED * (ts - lastTsRef.current) / 1000) % halfWidth
+        }
+        lastTsRef.current = ts
+        if (track) track.style.transform = `translateX(-${posRef.current}px)`
+      } else {
+        lastTsRef.current = null
+      }
+      rafRef.current = requestAnimationFrame(step)
+    }
+
+    rafRef.current = requestAnimationFrame(step)
+
+    const pause  = () => { pausedRef.current = true }
+    const resume = () => { pausedRef.current = false }
+    track.addEventListener('mouseenter', pause)
+    track.addEventListener('mouseleave', resume)
+
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      track.removeEventListener('mouseenter', pause)
+      track.removeEventListener('mouseleave', resume)
+    }
+  }, [halfWidth])
 
   return (
     <div className="max-w-full mx-auto">
@@ -22,22 +58,6 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
           {title}
         </p>
       )}
-
-      <style>{`
-        @keyframes partners-scroll {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-${halfWidth}px); }
-        }
-        .partners-track {
-          animation: partners-scroll ${duration}s linear infinite;
-          will-change: transform;
-        }
-        .partners-track:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
-
-      {/* Gradiente nas bordas para fade out suave */}
       <div
         className="overflow-hidden relative"
         style={{
@@ -45,7 +65,7 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)',
         }}
       >
-        <div className="partners-track flex items-center">
+        <div ref={trackRef} className="flex items-center will-change-transform">
           {items.map((p, i) => (
             <div
               key={i}
@@ -56,7 +76,7 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
               <img
                 src={p.logo_url}
                 alt={p.name}
-                className="h-9 w-auto max-w-[140px] brightness-0 invert opacity-55 hover:brightness-100 hover:invert-0 hover:opacity-100 transition-all duration-500 ease-out"
+                className="h-9 w-auto max-w-[140px] grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500 ease-out"
                 draggable={false}
               />
             </div>
