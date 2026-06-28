@@ -1,73 +1,119 @@
 # Universidade LV
 
-Plataforma de ensino para agentes de viagem da Litoral Verde.
+> Plataforma de ensino para agentes de viagem da rede Litoral Verde.
 
-**Criador:** Thiago Leal da Silva
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38bdf8?logo=tailwindcss)
 
-## Stack
+## Sobre
 
-- **Frontend:** Next.js 16 App Router, TypeScript, Tailwind CSS, shadcn/ui, Lucide Icons, Sonner
-- **Backend:** Supabase (Postgres + Storage + Auth)
-- **Deploy:** Vercel
+A Universidade LV é uma plataforma interna de capacitação para agentes de viagem. Permite que membros acessem cursos, aulas, treinamentos ao vivo e replays, além de acompanhar seu progresso e receber comunicados da rede.
+
+O painel administrativo permite gerenciar cursos, módulos, aulas, treinamentos, comunicados, configurações do site e controle de acesso por membro.
+
+## Tecnologias
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Linguagem | TypeScript |
+| Estilização | Tailwind CSS + shadcn/ui |
+| Ícones | Lucide React |
+| Notificações | Sonner |
+| Backend / Auth | Supabase (Postgres + Storage + RLS) |
+| Deploy | Vercel |
 
 ## Pré-requisitos
 
 - Node.js 18+
-- Conta no Supabase (projeto ID: `jfhbwnbihtdwoesjtlbz`)
+- npm 9+
+- Acesso ao projeto Supabase `jfhbwnbihtdwoesjtlbz`
 
-## Configuração
+## Instalação
 
-Crie um arquivo `.env.local` na raiz com as variáveis:
+```bash
+# 1. Clone o repositório
+git clone https://github.com/thiagoleal1998/Universidade-LV.git
+cd Universidade-LV
+
+# 2. Instale as dependências
+npm install
+
+# 3. Configure as variáveis de ambiente
+cp .env.example .env.local
+# Preencha os valores no .env.local
+```
+
+## Variáveis de ambiente
+
+Crie `.env.local` na raiz com:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://jfhbwnbihtdwoesjtlbz.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<chave anon do projeto>
+SUPABASE_SERVICE_ROLE_KEY=<chave service role do projeto>
 ```
 
-## Rodando localmente
+> As chaves estão disponíveis em: Supabase Dashboard → Project Settings → API.
+
+## Scripts
 
 ```bash
-npm install
-npm run dev
+npm run dev      # Servidor de desenvolvimento (http://localhost:3000)
+npm run build    # Build de produção
+npm run start    # Inicia o build de produção localmente
+npm run lint     # Verifica erros de lint (ESLint)
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000).
-
-## Estrutura principal
+## Estrutura de pastas
 
 ```
 src/
 ├── app/
-│   ├── (members)/dashboard/   # Área do aluno
+│   ├── (members)/
+│   │   └── dashboard/         # Área do aluno (layout, página, subpáginas)
 │   ├── admin/                 # Painel administrativo
-│   └── actions/               # Server actions
+│   ├── actions/               # Server Actions (Supabase mutations)
+│   └── api/                   # API Routes (quando necessário)
 ├── components/
-│   ├── admin/                 # Componentes do painel admin
+│   ├── admin/                 # Componentes exclusivos do painel admin
 │   ├── members/               # Componentes da área do aluno
-│   └── ui/                    # Componentes reutilizáveis (shadcn)
+│   └── ui/                    # Componentes reutilizáveis (shadcn/ui)
 └── lib/
-    ├── supabase/              # Clientes Supabase (server, admin, browser)
+    ├── supabase/
+    │   ├── server.ts          # Cliente com sessão do usuário (respeita RLS)
+    │   ├── admin.ts           # Cliente com service role (bypassa RLS)
+    │   └── browser.ts         # Cliente para uso em Client Components
     ├── settings.ts            # Tipagem e defaults das configurações do site
-    └── version.ts             # Versão atual do sistema (APP_VERSION)
+    └── version.ts             # Versão atual (APP_VERSION — atualizar a cada deploy)
 ```
 
-## Tabelas principais (Supabase)
+## Banco de dados (Supabase)
 
 | Tabela | Descrição |
 |--------|-----------|
-| `profiles` | Perfis dos usuários (role, nome, avatar) |
+| `profiles` | Usuários com role (`admin` / `member`) |
 | `courses` | Cursos disponíveis |
 | `modules` | Módulos dos cursos |
-| `lessons` | Aulas |
-| `member_courses` | Acesso de membros a cursos |
-| `member_progress` | Progresso das aulas |
-| `training_items` | Treinamentos ao vivo / replay / link |
+| `lessons` | Aulas individuais |
+| `member_courses` | Controle de acesso por membro |
+| `member_progress` | Progresso de aulas concluídas |
+| `training_items` | Treinamentos ao vivo, replay e link |
 | `training_materials` | Materiais de apoio dos treinamentos |
-| `notifications` | Notificações dos usuários |
-| `announcements` | Comunicados (com agendamento e expiração) |
+| `notifications` | Notificações por usuário |
+| `announcements` | Comunicados com agendamento e expiração |
 | `site_settings` | Configurações do site (pares chave-valor) |
 
-## Versão
+Migrações ficam em `supabase/migrations/` e devem ser aplicadas via Supabase Dashboard (SQL Editor) ou CLI.
 
-A versão atual fica em `src/lib/version.ts` e é exibida no rodapé da sidebar.
+## Deploy
+
+O projeto é implantado automaticamente via **Vercel** a cada push na branch `main`.
+
+Variáveis de ambiente de produção são configuradas diretamente no painel da Vercel (Settings → Environment Variables).
+
+---
+
+**Criado por** Thiago Leal da Silva
