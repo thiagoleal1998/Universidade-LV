@@ -61,7 +61,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         areaSubtitle={settings.member_area_subtitle}
         memberNavLabels={settings.member_nav_labels}
         podviajarActive={(() => { try { return JSON.parse(settings.podviajar)?.active === true } catch { return false } })()}
-        aereoUrl={aereoUrl}
+        aereoActive={!!aereoUrl}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         <AnnouncementTicker announcements={announcements} />

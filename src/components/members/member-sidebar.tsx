@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Search, Menu, X, BookOpen,
-  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane, ExternalLink,
+  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -32,7 +32,7 @@ type Props = {
   areaSubtitle?: string
   memberNavLabels?: string
   podviajarActive?: boolean
-  aereoUrl?: string | null
+  aereoActive?: boolean
 }
 
 // Smooth slide-out for text elements — max-width + opacity
@@ -50,7 +50,7 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
 
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, unreadCount = 0,
-  areaSubtitle = 'Área do Aluno', memberNavLabels = '', podviajarActive = false, aereoUrl,
+  areaSubtitle = 'Área do Aluno', memberNavLabels = '', podviajarActive = false, aereoActive = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
@@ -61,6 +61,7 @@ function SidebarContent({
     { href: '/dashboard/cursos',        label: 'Meus cursos',   icon: GraduationCap, exact: false },
     { href: '/dashboard/treinamentos',  label: 'Treinamentos',   icon: BookOpen,      exact: false },
     { href: '/dashboard/marketing',     label: 'Marketing',      icon: Megaphone,     exact: false },
+    ...(aereoActive ? [{ href: '/dashboard/aereo', label: 'Bloqueios Aéreos', icon: Plane, exact: false }] : []),
     ...(podviajarActive ? [{ href: '/dashboard/podviajar', label: 'PodViajar', icon: Headphones, exact: false }] : []),
     { href: '/dashboard/comunidade',    label: labels.community, icon: MessageSquare, exact: false },
     { href: '/dashboard/documentos',    label: labels.documents, icon: FileText,      exact: false },
@@ -159,25 +160,6 @@ function SidebarContent({
           )
         })}
 
-        {/* Bloqueios Aéreos — link externo configurado no admin */}
-        {aereoUrl && (
-          <a
-            href={aereoUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={onClose}
-            title={collapsed ? 'Bloqueios Aéreos' : undefined}
-            className={cn(
-              'flex items-center rounded-lg font-medium transition-colors',
-              'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent',
-              collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
-            )}
-          >
-            <Plane className="w-4 h-4 shrink-0" />
-            <span style={slideText(collapsed, 120)}>Bloqueios Aéreos</span>
-            <ExternalLink style={slideText(collapsed, 16)} className="w-3 h-3 shrink-0 opacity-40" />
-          </a>
-        )}
       </nav>
 
       {/* ── Collapse toggle — fixed, never scrolls ── */}
