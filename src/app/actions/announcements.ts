@@ -13,16 +13,18 @@ export async function createAnnouncement(formData: FormData) {
   const body = formData.get('body') as string
   const publish_at_raw = (formData.get('publish_at') as string) || null
   const publish_at = publish_at_raw ? new Date(publish_at_raw).toISOString() : null
+  const expires_at_raw = (formData.get('expires_at') as string) || null
+  const expires_at = expires_at_raw ? new Date(expires_at_raw).toISOString() : null
 
   const { data, error } = await supabase
     .from('announcements')
-    .insert({ title, body, publish_at })
+    .insert({ title, body, publish_at, expires_at })
     .select()
     .single()
 
   if (error) return { error: error.message }
   revalidatePath('/admin/comunicados')
-  revalidatePath('/dashboard')
+  revalidatePath('/dashboard', 'layout')
   return { data }
 }
 
@@ -33,15 +35,17 @@ export async function updateAnnouncement(id: string, formData: FormData) {
   const is_published = formData.get('is_published') === 'true'
   const publish_at_raw = (formData.get('publish_at') as string) || null
   const publish_at = publish_at_raw ? new Date(publish_at_raw).toISOString() : null
+  const expires_at_raw = (formData.get('expires_at') as string) || null
+  const expires_at = expires_at_raw ? new Date(expires_at_raw).toISOString() : null
 
   const { error } = await supabase
     .from('announcements')
-    .update({ title, body, is_published, publish_at, updated_at: new Date().toISOString() })
+    .update({ title, body, is_published, publish_at, expires_at, updated_at: new Date().toISOString() })
     .eq('id', id)
 
   if (error) return { error: error.message }
   revalidatePath('/admin/comunicados')
-  revalidatePath('/dashboard')
+  revalidatePath('/dashboard', 'layout')
   return { success: true }
 }
 

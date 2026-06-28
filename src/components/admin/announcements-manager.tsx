@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementPublished, scheduleAnnouncement } from '@/app/actions/announcements'
+import { createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementPublished } from '@/app/actions/announcements'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -20,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, X, Check, Clock } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Clock, CalendarX } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +29,7 @@ type Announcement = {
   body: string
   is_published: boolean
   publish_at: string | null
+  expires_at: string | null
   created_at: string
 }
 
@@ -112,13 +112,18 @@ function AnnouncementForm({
 }: {
   onSubmit: (formData: FormData) => void
   isPending: boolean
-  defaultValues?: { title: string; body: string; publish_at?: string | null }
+  defaultValues?: { title: string; body: string; publish_at?: string | null; expires_at?: string | null }
   onCancel?: () => void
 }) {
   const [showSchedule, setShowSchedule] = useState(!!defaultValues?.publish_at)
+  const [showExpiry, setShowExpiry] = useState(!!defaultValues?.expires_at)
 
   const defaultDatetime = defaultValues?.publish_at
     ? new Date(defaultValues.publish_at).toISOString().slice(0, 16)
+    : ''
+
+  const defaultExpiry = defaultValues?.expires_at
+    ? new Date(defaultValues.expires_at).toISOString().slice(0, 16)
     : ''
 
   return (
@@ -131,6 +136,8 @@ function AnnouncementForm({
         <Label>Mensagem</Label>
         <RichTextArea name="body" defaultValue={defaultValues?.body} placeholder="Escreva a mensagem..." rows={4} />
       </div>
+
+      {/* Agendamento de publicação */}
       {showSchedule && (
         <div className="space-y-1.5">
           <Label className="flex items-center gap-1.5">
@@ -144,10 +151,30 @@ function AnnouncementForm({
             placeholder="Selecionar data de publicação"
           />
           <p className="text-xs text-muted-foreground">
-            O comunicado será exibido automaticamente na data/hora definida.
+            O comunicado aparecerá automaticamente na data/hora definida.
           </p>
         </div>
       )}
+
+      {/* Expiração */}
+      {showExpiry && (
+        <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5">
+            <CalendarX className="w-3.5 h-3.5" />
+            Expirar em
+          </Label>
+          <DateTimePicker
+            name="expires_at"
+            defaultValue={defaultExpiry}
+            min={new Date().toISOString().slice(0, 16)}
+            placeholder="Selecionar data de expiração"
+          />
+          <p className="text-xs text-muted-foreground">
+            O comunicado será removido automaticamente na data/hora definida.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 items-center">
         <Button type="submit" size="sm" disabled={isPending}>
           {isPending
@@ -155,29 +182,31 @@ function AnnouncementForm({
             : defaultValues ? 'Salvar' : <><Plus className="w-4 h-4 mr-1" />Criar</>
           }
         </Button>
+
         {!showSchedule && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setShowSchedule(true)}
-            className="gap-1.5"
-          >
+          <Button type="button" size="sm" variant="outline" onClick={() => setShowSchedule(true)} className="gap-1.5">
             <Clock className="w-3.5 h-3.5" />
             Agendar
           </Button>
         )}
         {showSchedule && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setShowSchedule(false)}
-            className="gap-1.5 text-muted-foreground"
-          >
+          <Button type="button" size="sm" variant="ghost" onClick={() => setShowSchedule(false)} className="gap-1.5 text-muted-foreground">
             <X className="w-3.5 h-3.5" /> Remover agendamento
           </Button>
         )}
+
+        {!showExpiry && (
+          <Button type="button" size="sm" variant="outline" onClick={() => setShowExpiry(true)} className="gap-1.5">
+            <CalendarX className="w-3.5 h-3.5" />
+            Definir expiração
+          </Button>
+        )}
+        {showExpiry && (
+          <Button type="button" size="sm" variant="ghost" onClick={() => setShowExpiry(false)} className="gap-1.5 text-muted-foreground">
+            <X className="w-3.5 h-3.5" /> Remover expiração
+          </Button>
+        )}
+
         {onCancel && (
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
             <X className="w-4 h-4 mr-1" /> Cancelar
@@ -188,7 +217,7 @@ function AnnouncementForm({
   )
 }
 
-function formatScheduledDate(isoDate: string) {
+function formatDate(isoDate: string) {
   return new Date(isoDate).toLocaleString('pt-BR', {
     day: '2-digit',
     month: 'short',
@@ -201,8 +230,11 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const isScheduled = !ann.is_published && ann.publish_at && new Date(ann.publish_at) > new Date()
-  const isAutoPublished = !ann.is_published && ann.publish_at && new Date(ann.publish_at) <= new Date()
+  const now = new Date()
+  const isScheduled   = !ann.is_published && ann.publish_at && new Date(ann.publish_at) > now
+  const isAutoPublished = !ann.is_published && ann.publish_at && new Date(ann.publish_at) <= now
+  const isExpired     = ann.expires_at && new Date(ann.expires_at) <= now
+  const willExpire    = ann.expires_at && new Date(ann.expires_at) > now
 
   function handleUpdate(formData: FormData) {
     startTransition(async () => {
@@ -235,7 +267,7 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
         <AnnouncementForm
           onSubmit={handleUpdate}
           isPending={isPending}
-          defaultValues={{ title: ann.title, body: ann.body, publish_at: ann.publish_at }}
+          defaultValues={{ title: ann.title, body: ann.body, publish_at: ann.publish_at, expires_at: ann.expires_at }}
           onCancel={() => setEditing(false)}
         />
       </div>
@@ -248,22 +280,43 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-medium text-foreground">{ann.title}</span>
+
+            {/* Status de publicação */}
             {ann.is_published || isAutoPublished ? (
               <Badge variant="default">Publicado</Badge>
             ) : isScheduled ? (
               <Badge variant="outline" className="text-amber-600 border-amber-400 gap-1">
                 <Clock className="w-3 h-3" />
-                Agendado · {formatScheduledDate(ann.publish_at!)}
+                Agendado · {formatDate(ann.publish_at!)}
               </Badge>
             ) : (
               <Badge variant="secondary">Rascunho</Badge>
             )}
+
+            {/* Status de expiração */}
+            {isExpired && (
+              <Badge variant="outline" className="text-red-500 border-red-400 gap-1">
+                <CalendarX className="w-3 h-3" />
+                Expirado
+              </Badge>
+            )}
+            {willExpire && (
+              <Badge variant="outline" className="text-muted-foreground gap-1">
+                <CalendarX className="w-3 h-3" />
+                Expira · {formatDate(ann.expires_at!)}
+              </Badge>
+            )}
           </div>
-          <div className="text-sm text-muted-foreground whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline" dangerouslySetInnerHTML={{ __html: ann.body }} />
+
+          <div
+            className="text-sm text-muted-foreground whitespace-pre-wrap [&_strong]:font-bold [&_em]:italic [&_u]:underline"
+            dangerouslySetInnerHTML={{ __html: ann.body }}
+          />
           <p className="text-xs text-muted-foreground mt-2">
             {new Date(ann.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>
         </div>
+
         <div className="flex items-center gap-1 shrink-0">
           <Button
             variant="ghost"

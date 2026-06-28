@@ -31,6 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       .from('announcements')
       .select('id, title, body, created_at')
       .or(`is_published.eq.true,publish_at.lte.${new Date().toISOString()}`)
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order('created_at', { ascending: false })
       .limit(5),
   ])
