@@ -127,7 +127,7 @@ export function TamoJuntoWinnersManager({ raw }: { raw: string }) {
           <Medal className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-foreground">Agências vencedoras por região</h3>
         </div>
-        <p className="text-xs text-muted-foreground -mt-3">Deixe em branco as regiões sem vencedores — elas não serão exibidas.</p>
+        <p className="text-xs text-muted-foreground">Deixe em branco as regiões sem vencedores — elas não serão exibidas.</p>
         {data.regions.map((region, idx) => (
           <div key={region.name} className="border border-border rounded-xl p-4 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{region.name}</p>
