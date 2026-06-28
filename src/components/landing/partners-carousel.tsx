@@ -4,8 +4,8 @@ import { useRef, useEffect } from 'react'
 
 type Partner = { name: string; logo_url: string }
 
-const ITEM_W = 140
-const SPEED  = 55 // px/s
+const ITEM_W = 120 // px por slot
+const SPEED  = 50  // px/s
 
 export function PartnersCarousel({ partners, title }: { partners: Partner[]; title: string }) {
   if (!partners.length) return null
@@ -61,8 +61,8 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
       <div
         className="overflow-hidden relative"
         style={{
-          maskImage: 'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
         }}
       >
         <div ref={trackRef} className="flex items-center will-change-transform">
@@ -70,13 +70,14 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
             <div
               key={i}
               style={{ width: ITEM_W }}
-              className="shrink-0 h-16 flex items-center justify-center px-4"
+              className="shrink-0 h-14 flex items-center justify-center px-3"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={p.logo_url}
                 alt={p.name}
-                className="h-9 w-auto max-w-[140px] grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500 ease-out"
+                style={{ width: ITEM_W - 24, height: 32 }}
+                className="object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500 ease-out"
                 draggable={false}
               />
             </div>
