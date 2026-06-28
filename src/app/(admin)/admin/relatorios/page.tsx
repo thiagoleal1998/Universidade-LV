@@ -4,8 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { buttonVariants } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download } from 'lucide-react'
+import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { RelatoriosMarketing } from '@/components/admin/relatorios-marketing'
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -46,12 +47,18 @@ export default async function RelatoriosPage() {
     { data: modulesData },
     { data: lessonsData },
     { data: progressData },
+    { data: ofertasData },
+    { data: laminasData },
+    { data: productsData },
   ] = await Promise.all([
     supabase.from('profiles').select('id, full_name, role, active, avatar_url').order('full_name'),
     adminClient.auth.admin.listUsers(),
     supabase.from('modules').select('id, title, is_published').order('order_index'),
     supabase.from('lessons').select('id, module_id, is_published'),
     supabase.from('member_progress').select('user_id, lesson_id'),
+    adminClient.from('marketing_items').select('title, product_id, audience, scope, status, created_at').eq('category', 'ofertas_diarias'),
+    adminClient.from('marketing_items').select('title, audience, scope, status, created_at').eq('category', 'laminas'),
+    adminClient.from('marketing_products').select('id, name'),
   ])
 
   const emailMap = new Map((usersData?.users ?? []).map((u) => [u.id, u.email ?? '']))
@@ -99,7 +106,42 @@ export default async function RelatoriosPage() {
     }
   })
 
-  // Per-member stats
+  // ── Marketing / Ofertas Diárias stats ────────────────────────────────────
+  const ofertas = ofertasData ?? []
+  const laminas = laminasData ?? []
+  const productMap = new Map((productsData ?? []).map((p: { id: string; name: string }) => [p.id, p.name]))
+
+  const activeOfertas = ofertas.filter((i: { status?: string | null }) => i.status === 'published').length
+
+  // Hotéis mais divulgados (group by product name or title)
+  const hotelCount = new Map<string, number>()
+  for (const item of ofertas) {
+    const name = (item.product_id && productMap.get(item.product_id)) || (item.title as string)
+    hotelCount.set(name, (hotelCount.get(name) ?? 0) + 1)
+  }
+  const ofertasPorHotel = [...hotelCount.entries()]
+    .map(([name, total]) => ({ name, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+
+  // Lâminas por audiência
+  const laminasB2B = laminas.filter((i: { audience?: string | null }) => i.audience === 'B2B').length
+  const laminasB2C = laminas.filter((i: { audience?: string | null }) => i.audience === 'B2C').length
+  const audienciaPie = [
+    { name: 'B2B', value: laminasB2B, color: '#f97316' },
+    { name: 'B2C', value: laminasB2C, color: '#22c55e' },
+  ]
+
+  // Escopo Nacional vs Internacional (ofertas_diarias)
+  const scopeCount: Record<string, number> = {}
+  for (const item of ofertas) {
+    const s = (item.scope as string | null) || 'Não informado'
+    scopeCount[s] = (scopeCount[s] ?? 0) + 1
+  }
+  const SCOPE_COLORS: Record<string, string> = { Nacional: '#3b82f6', Internacional: '#a855f7', 'Não informado': '#94a3b8' }
+  const scopePie = Object.entries(scopeCount).map(([name, value]) => ({ name, value, color: SCOPE_COLORS[name] ?? '#94a3b8' }))
+
+  // ── Per-member stats
   const memberStats = activeMembers.map((m) => {
     const done = completedByUser.get(m.id)
     const completed = done ? publishedLessons.filter((l) => done.has(l.id)).length : 0
@@ -128,6 +170,26 @@ export default async function RelatoriosPage() {
           Exportar CSV
         </Link>
       </div>
+
+      {/* ── Ofertas Diárias & Marketing ── */}
+      <div className="mb-10">
+        <div className="flex items-center gap-2 mb-5">
+          <ShoppingBag className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold text-foreground">Ofertas Diárias & Marketing</h3>
+        </div>
+        <RelatoriosMarketing
+          totalOfertas={ofertas.length}
+          activeOfertas={activeOfertas}
+          totalLaminas={laminas.length}
+          laminasB2B={laminasB2B}
+          laminasB2C={laminasB2C}
+          ofertasPorHotel={ofertasPorHotel}
+          audienciaPie={audienciaPie}
+          scopePie={scopePie}
+        />
+      </div>
+
+      <div className="border-t border-border mb-10" />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
