@@ -18,7 +18,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/login')
 
   const adminClient = createAdminClient()
-  const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }] = await Promise.all([
+  const now = new Date().toISOString()
+  const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }, { data: aereoData }] = await Promise.all([
     supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
     getSettings(),
     adminClient
@@ -30,14 +31,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
     supabase
       .from('announcements')
       .select('id, title, body, created_at')
-      .or(`is_published.eq.true,publish_at.lte.${new Date().toISOString()}`)
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .or(`is_published.eq.true,publish_at.lte.${now}`)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('created_at', { ascending: false })
       .limit(5),
+    adminClient
+      .from('marketing_items')
+      .select('url')
+      .eq('category', 'aereo')
+      .neq('status', 'draft')
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('order_index')
+      .limit(1),
   ])
 
   const profile = profileData as { full_name: string; avatar_url: string } | null
   const announcements = (announcementsData ?? []) as Announcement[]
+  const aereoUrl = (aereoData?.[0] as { url?: string } | undefined)?.url ?? null
 
   return (
     <div className="flex h-screen bg-muted/30">
@@ -51,6 +61,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         areaSubtitle={settings.member_area_subtitle}
         memberNavLabels={settings.member_nav_labels}
         podviajarActive={(() => { try { return JSON.parse(settings.podviajar)?.active === true } catch { return false } })()}
+        aereoUrl={aereoUrl}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         <AnnouncementTicker announcements={announcements} />
