@@ -59,7 +59,7 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
         </p>
       )}
       <div
-        className="overflow-hidden relative"
+        className="overflow-hidden relative bg-zinc-100 dark:bg-zinc-800 rounded-xl py-2"
         style={{
           maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
