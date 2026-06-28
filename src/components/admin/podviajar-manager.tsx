@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { savePodviajar } from '@/app/actions/marketing-settings'
+import { uploadMarketingFile } from '@/app/actions/marketing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Headphones, Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
+import { Headphones, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Upload, X } from 'lucide-react'
 
 type Episode = {
   title: string
@@ -50,6 +51,20 @@ function parse(raw: string): PodviajarData {
 export function PodviajarManager({ raw }: { raw: string }) {
   const [data, setData] = useState<PodviajarData>(() => parse(raw))
   const [isPending, startTransition] = useTransition()
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleImageUpload(file: File) {
+    setIsUploading(true)
+    const result = await uploadMarketingFile(file)
+    setIsUploading(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else if (result.url) {
+      setData((d) => ({ ...d, image_url: result.url! }))
+      toast.success('Imagem enviada!')
+    }
+  }
 
   function addEpisode() {
     setData((d) => ({ ...d, episodes: [{ ...EMPTY_EPISODE }, ...d.episodes] }))
@@ -131,15 +146,64 @@ export function PodviajarManager({ raw }: { raw: string }) {
               placeholder="O podcast sobre turismo e viagens para agentes de viagem."
             />
           </div>
-          <div className="sm:col-span-2">
-            <Label className="text-xs text-muted-foreground">URL da imagem de capa</Label>
-            <Input
-              className="mt-1"
-              value={data.image_url}
-              onChange={(e) => setData((d) => ({ ...d, image_url: e.target.value }))}
-              placeholder="https://..."
-              type="url"
+          <div className="sm:col-span-2 space-y-2">
+            <Label className="text-xs text-muted-foreground">Imagem de capa do podcast</Label>
+
+            {/* Preview */}
+            {data.image_url && (
+              <div className="relative w-fit">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={data.image_url}
+                  alt="Capa do podcast"
+                  className="h-32 w-32 rounded-xl object-contain bg-muted/30 border"
+                />
+                <button
+                  type="button"
+                  onClick={() => setData((d) => ({ ...d, image_url: '' }))}
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
+                  title="Remover imagem"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            {/* Botão de upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleImageUpload(file)
+                e.target.value = ''
+              }}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-2"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {isUploading ? 'Enviando...' : data.image_url ? 'Trocar imagem' : 'Fazer upload da imagem'}
+            </Button>
+
+            {/* URL manual como alternativa */}
+            <div>
+              <Label className="text-xs text-muted-foreground">Ou cole uma URL</Label>
+              <Input
+                className="mt-1"
+                value={data.image_url}
+                onChange={(e) => setData((d) => ({ ...d, image_url: e.target.value }))}
+                placeholder="https://..."
+                type="url"
+              />
+            </div>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Link no Spotify</Label>
