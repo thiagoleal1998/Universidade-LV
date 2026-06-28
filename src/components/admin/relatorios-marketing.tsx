@@ -27,15 +27,20 @@ type Props = {
   products: Product[]
 }
 
-type Period = 'all' | 'today' | 'month' | 'year'
+type Period = 'all' | 'month' | 'year'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function matchPeriod(item: RawItem, period: Period): boolean {
-  if (period === 'all' || !item.created_at) return true
+function matchPeriod(item: RawItem, period: Period, selectedDate: string): boolean {
+  if (!item.created_at) return true
+  // data específica tem prioridade sobre period
+  if (selectedDate) {
+    const itemDate = new Date(item.created_at).toISOString().split('T')[0]
+    return itemDate === selectedDate
+  }
+  if (period === 'all') return true
   const d = new Date(item.created_at)
   const now = new Date()
-  if (period === 'today') return d.toDateString() === now.toDateString()
   if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   if (period === 'year') return d.getFullYear() === now.getFullYear()
   return true
@@ -189,13 +194,14 @@ function DonutAudiencia({ data, label }: { data: { name: string; value: number; 
 // ─── filtros ─────────────────────────────────────────────────────────────────
 
 const PERIOD_LABELS: Record<Period, string> = {
-  all: 'Todos', today: 'Hoje', month: 'Este mês', year: 'Este ano',
+  all: 'Todos', month: 'Este mês', year: 'Este ano',
 }
 
 // ─── componente principal ─────────────────────────────────────────────────────
 
 export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props) {
   const [period, setPeriod] = useState<Period>('all')
+  const [selectedDate, setSelectedDate] = useState<string>('')
   const [productId, setProductId] = useState<string>('all')
 
   const productMap = useMemo(
@@ -203,17 +209,22 @@ export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props)
     [products],
   )
 
+  const sortedProducts = useMemo(
+    () => [...products].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })),
+    [products],
+  )
+
   const ofertas = useMemo(() => {
-    let items = ofertasRaw.filter((i) => matchPeriod(i, period))
+    let items = ofertasRaw.filter((i) => matchPeriod(i, period, selectedDate))
     if (productId !== 'all') items = items.filter((i) => i.product_id === productId)
     return items
-  }, [ofertasRaw, period, productId])
+  }, [ofertasRaw, period, selectedDate, productId])
 
   const laminas = useMemo(() => {
-    let items = laminasRaw.filter((i) => matchPeriod(i, period))
+    let items = laminasRaw.filter((i) => matchPeriod(i, period, selectedDate))
     if (productId !== 'all') items = items.filter((i) => i.product_id === productId)
     return items
-  }, [laminasRaw, period, productId])
+  }, [laminasRaw, period, selectedDate, productId])
 
   const ofertasPorHotel = useMemo(() => groupByName(ofertas, productMap), [ofertas, productMap])
   const laminasPorHotel = useMemo(() => groupByName(laminas, productMap), [laminas, productMap])
@@ -234,19 +245,19 @@ export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props)
     <div className="space-y-8">
 
       {/* ── Filtros ── */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-card border rounded-lg">
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-card border rounded-lg">
         <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
 
-        {/* Período */}
+        {/* Período — botões */}
         <div className="flex gap-1 flex-wrap">
           {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
             <button
               key={p}
               type="button"
-              onClick={() => setPeriod(p)}
+              onClick={() => { setPeriod(p); setSelectedDate('') }}
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                period === p
+                period === p && !selectedDate
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:text-foreground',
               )}
@@ -256,15 +267,43 @@ export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props)
           ))}
         </div>
 
-        {/* Produto */}
-        {products.length > 0 && (
+        {/* Dia específico — date picker nativo */}
+        <div className="flex items-center gap-1">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              setSelectedDate(e.target.value)
+              if (e.target.value) setPeriod('all')
+            }}
+            className={cn(
+              'text-xs border rounded-lg px-3 py-1.5 bg-card focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors',
+              selectedDate
+                ? 'border-primary text-primary font-medium'
+                : 'border-border text-muted-foreground',
+            )}
+          />
+          {selectedDate && (
+            <button
+              type="button"
+              onClick={() => setSelectedDate('')}
+              className="text-xs text-muted-foreground hover:text-foreground px-1.5"
+              title="Limpar data"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Produto — ordenado alfabeticamente */}
+        {sortedProducts.length > 0 && (
           <select
             value={productId}
             onChange={(e) => setProductId(e.target.value)}
             className="text-xs border border-border rounded-lg px-3 py-1.5 bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="all">Todos os produtos</option>
-            {products.map((p) => (
+            {sortedProducts.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
