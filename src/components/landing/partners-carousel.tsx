@@ -59,7 +59,7 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
         </p>
       )}
       <div
-        className="overflow-hidden relative bg-zinc-100 dark:bg-zinc-800 rounded-xl py-2"
+        className="overflow-hidden relative"
         style={{
           maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
@@ -77,7 +77,7 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
                 src={p.logo_url}
                 alt={p.name}
                 style={{ width: ITEM_W - 24, height: 32 }}
-                className="object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500 ease-out"
+                className="object-contain brightness-0 opacity-50 hover:brightness-100 hover:opacity-100 transition-all duration-500 ease-out"
                 draggable={false}
               />
             </div>
