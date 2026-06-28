@@ -510,6 +510,21 @@ export default async function LandingPage() {
       {/* ══ Seções ordenáveis ══ */}
       {sectionOrder.map(key => sectionMap[key])}
 
+      {/* ══ Reclame Aqui ══ */}
+      <section className="py-10 px-4 sm:px-6 border-t border-border bg-muted/20">
+        <div className="max-w-4xl mx-auto text-center">
+          <FadeIn>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-5">Reputação comprovada</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://litoral-verde.s3.sa-east-1.amazonaws.com/wp-content/uploads/2023/03/10153451/reclame-aqui1.png"
+              alt="Reclame Aqui"
+              className="max-w-xs sm:max-w-sm mx-auto w-full object-contain"
+            />
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ══ Selos (fixos, sempre antes do footer) ══ */}
       {seals.length > 0 && (
         <section className="py-10 px-4 sm:px-6 bg-muted/30 border-t border-border">
