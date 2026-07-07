@@ -243,119 +243,72 @@ function AudienceBadge({ audience, hideB2B }: { audience: string | null | undefi
   return null
 }
 
-function OfertaLightbox({ item, products, periods, onClose, hideB2BBadge }: {
-  item: MarketingItem
-  products: MarketingProduct[]
-  periods: MarketingPeriod[]
-  onClose: () => void
-  hideB2BBadge?: boolean
-}) {
-  const product = products.find((p) => p.id === item.product_id)
-  const period  = periods.find((p) => p.id === item.period_id)
-  const isImage = !!item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
-  const dateStr = formatDate(item.publish_at ?? item.created_at)
+function OfertaLightbox({ item, onClose }: { item: MarketingItem; onClose: () => void }) {
+  const [zoomed, setZoomed] = useState(false)
 
   const close = useCallback(() => onClose(), [onClose])
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
-    window.addEventListener('keydown', handler)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { if (zoomed) setZoomed(false); else close() }
+    }
+    window.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
-      window.removeEventListener('keydown', handler)
+      window.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
     }
-  }, [close])
+  }, [close, zoomed])
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-      onClick={close}
+      className="fixed inset-0 z-50 bg-black/92"
+      onClick={() => { if (zoomed) setZoomed(false); else close() }}
     >
-      <div
-        className="bg-card rounded-2xl overflow-hidden w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+      {/* Botão fechar */}
+      <button
+        className="absolute top-3 right-3 z-10 text-white/70 hover:text-white bg-black/40 hover:bg-black/70 rounded-full p-1.5 transition-colors"
+        onClick={(e) => { e.stopPropagation(); close() }}
       >
-        {/* Cabeçalho */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-          <p className="font-semibold text-foreground text-sm leading-snug pr-4">{item.title}</p>
-          <button
-            onClick={close}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <X className="w-5 h-5" />
+      </button>
+
+      {/* Hint */}
+      <p className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 text-white/35 text-xs select-none pointer-events-none whitespace-nowrap">
+        {zoomed ? 'Clique para sair do zoom · ESC para fechar' : 'Clique na imagem para ampliar · ESC para fechar'}
+      </p>
+
+      {/* Imagem normal — centralizada */}
+      {!zoomed && (
+        <div className="w-full h-full flex items-center justify-center p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.url}
+            alt={item.title}
+            className="max-w-full max-h-[92vh] object-contain cursor-zoom-in select-none"
+            onClick={(e) => { e.stopPropagation(); setZoomed(true) }}
+            draggable={false}
+          />
         </div>
+      )}
 
-        {/* Imagem */}
-        {isImage && (
-          <div className="bg-black shrink-0 flex items-center justify-center max-h-[55vh] overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={item.url}
-              alt={item.title}
-              className="max-w-full max-h-[55vh] object-contain"
-            />
-          </div>
-        )}
-
-        {/* Corpo */}
-        <div className="overflow-y-auto flex-1 p-4 space-y-3">
-          {/* Badges */}
-          <div className="flex flex-wrap gap-1.5">
-            <AudienceBadge audience={item.audience} hideB2B={hideB2BBadge} />
-            {product && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                {product.name}
-              </span>
-            )}
-            {period && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                <CalendarRange className="w-2.5 h-2.5" />{period.name}
-              </span>
-            )}
-            {dateStr && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
-                <Calendar className="w-2.5 h-2.5" />{dateStr}
-              </span>
-            )}
-          </div>
-
-          {/* Descrição */}
-          {item.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{item.description}</p>
-          )}
-
-          {/* Botões de ação */}
-          {item.url && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              <a
-                href={item.url}
-                download
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" /> Baixar
-              </a>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> Abrir
-              </a>
-            </div>
-          )}
-
-          {/* Compartilhar */}
-          {item.url && (
-            <div className="pt-1 border-t border-border/40">
-              <p className="text-xs text-muted-foreground mb-2">Compartilhar</p>
-              <ShareButtons title={item.title} description={item.description} url={item.url} />
-            </div>
-          )}
+      {/* Imagem ampliada — scrollável */}
+      {zoomed && (
+        <div
+          className="w-full h-full overflow-auto"
+          onClick={(e) => { e.stopPropagation(); setZoomed(false) }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.url}
+            alt={item.title}
+            style={{ width: '280vw', maxWidth: 'none', height: 'auto' }}
+            className="cursor-zoom-out select-none"
+            onClick={(e) => e.stopPropagation()}
+            draggable={false}
+          />
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -405,16 +358,14 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }:
         <div className="aspect-video bg-muted overflow-hidden relative group/img">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
-          {onOpen && (
-            <button
-              type="button"
-              onClick={() => onOpen(item)}
-              className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors opacity-0 group-hover/img:opacity-100"
-              title="Ver detalhes"
-            >
-              <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onOpen?.(item)}
+            className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors opacity-0 group-hover/img:opacity-100 cursor-zoom-in"
+            title="Ampliar imagem"
+          >
+            <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+          </button>
         </div>
       )}
 
@@ -442,12 +393,7 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }:
       </div>
 
       <div className="px-3 pt-2.5 pb-1 flex-1">
-        <p
-          className={cn('font-semibold text-xs text-foreground leading-snug', onOpen && 'cursor-pointer hover:text-primary transition-colors')}
-          onClick={() => onOpen?.(item)}
-        >
-          {item.title}
-        </p>
+        <p className="font-semibold text-xs text-foreground leading-snug">{item.title}</p>
         {item.description && <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{item.description}</p>}
       </div>
 
@@ -571,16 +517,14 @@ function VisualGrid({ items, products, periods, hideB2BBadge, onOpen }: { items:
               <div className="aspect-video bg-muted overflow-hidden relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                {onOpen && (
-                  <button
-                    type="button"
-                    onClick={() => onOpen(item)}
-                    className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors opacity-0 group-hover:opacity-100"
-                    title="Ver detalhes"
-                  >
-                    <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onOpen?.(item)}
+                  className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors opacity-0 group-hover:opacity-100 cursor-zoom-in"
+                  title="Ampliar imagem"
+                >
+                  <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+                </button>
               </div>
             )}
             <div className="flex items-center gap-2 px-4 pt-3 flex-wrap">
@@ -604,12 +548,7 @@ function VisualGrid({ items, products, periods, hideB2BBadge, onOpen }: { items:
               )}
             </div>
             <div className="px-4 pt-2 pb-1 flex-1">
-              <p
-                className={cn('font-medium text-foreground text-sm', onOpen && 'cursor-pointer hover:text-primary transition-colors')}
-                onClick={() => onOpen?.(item)}
-              >
-                {item.title}
-              </p>
+              <p className="font-medium text-foreground text-sm">{item.title}</p>
               {item.description && <p className="text-xs text-muted-foreground mt-1">{item.description}</p>}
             </div>
             {item.url && (
@@ -783,9 +722,6 @@ export function MemberMarketingView({
       {selectedItem && (
         <OfertaLightbox
           item={selectedItem}
-          products={products}
-          periods={periods}
-          hideB2BBadge={hideB2BBadge}
           onClose={() => setSelectedItem(null)}
         />
       )}
