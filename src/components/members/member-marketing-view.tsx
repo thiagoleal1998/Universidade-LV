@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange } from 'lucide-react'
+import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange, X, Maximize2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 type Section = { key: string; label: string; type: string }
@@ -243,7 +243,124 @@ function AudienceBadge({ audience, hideB2B }: { audience: string | null | undefi
   return null
 }
 
-function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null; hideB2BBadge?: boolean }) {
+function OfertaLightbox({ item, products, periods, onClose, hideB2BBadge }: {
+  item: MarketingItem
+  products: MarketingProduct[]
+  periods: MarketingPeriod[]
+  onClose: () => void
+  hideB2BBadge?: boolean
+}) {
+  const product = products.find((p) => p.id === item.product_id)
+  const period  = periods.find((p) => p.id === item.period_id)
+  const isImage = !!item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
+  const dateStr = formatDate(item.publish_at ?? item.created_at)
+
+  const close = useCallback(() => onClose(), [onClose])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    window.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handler)
+      document.body.style.overflow = ''
+    }
+  }, [close])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={close}
+    >
+      <div
+        className="bg-card rounded-2xl overflow-hidden w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <p className="font-semibold text-foreground text-sm leading-snug pr-4">{item.title}</p>
+          <button
+            onClick={close}
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Imagem */}
+        {isImage && (
+          <div className="bg-black shrink-0 flex items-center justify-center max-h-[55vh] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.url}
+              alt={item.title}
+              className="max-w-full max-h-[55vh] object-contain"
+            />
+          </div>
+        )}
+
+        {/* Corpo */}
+        <div className="overflow-y-auto flex-1 p-4 space-y-3">
+          {/* Badges */}
+          <div className="flex flex-wrap gap-1.5">
+            <AudienceBadge audience={item.audience} hideB2B={hideB2BBadge} />
+            {product && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                {product.name}
+              </span>
+            )}
+            {period && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                <CalendarRange className="w-2.5 h-2.5" />{period.name}
+              </span>
+            )}
+            {dateStr && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
+                <Calendar className="w-2.5 h-2.5" />{dateStr}
+              </span>
+            )}
+          </div>
+
+          {/* Descrição */}
+          {item.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{item.description}</p>
+          )}
+
+          {/* Botões de ação */}
+          {item.url && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              <a
+                href={item.url}
+                download
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" /> Baixar
+              </a>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Abrir
+              </a>
+            </div>
+          )}
+
+          {/* Compartilhar */}
+          {item.url && (
+            <div className="pt-1 border-t border-border/40">
+              <p className="text-xs text-muted-foreground mb-2">Compartilhar</p>
+              <ShareButtons title={item.title} description={item.description} url={item.url} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null; hideB2BBadge?: boolean; onOpen?: (item: MarketingItem) => void }) {
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
   const periodTheme = getSpecialPeriodTheme(period?.name, item.title, item.description, item.content, product?.name)
@@ -285,9 +402,19 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge }: { item:
       )}
 
       {item.url && isImage && (
-        <div className="aspect-video bg-muted overflow-hidden">
+        <div className="aspect-video bg-muted overflow-hidden relative group/img">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
+          {onOpen && (
+            <button
+              type="button"
+              onClick={() => onOpen(item)}
+              className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors opacity-0 group-hover/img:opacity-100"
+              title="Ver detalhes"
+            >
+              <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+            </button>
+          )}
         </div>
       )}
 
@@ -315,7 +442,12 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge }: { item:
       </div>
 
       <div className="px-3 pt-2.5 pb-1 flex-1">
-        <p className="font-semibold text-xs text-foreground leading-snug">{item.title}</p>
+        <p
+          className={cn('font-semibold text-xs text-foreground leading-snug', onOpen && 'cursor-pointer hover:text-primary transition-colors')}
+          onClick={() => onOpen?.(item)}
+        >
+          {item.title}
+        </p>
         {item.description && <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{item.description}</p>}
       </div>
 
@@ -345,7 +477,7 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge }: { item:
   )
 }
 
-function OfertasDiariasLayout({ items, products, periods, hideB2BBadge }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[]; hideB2BBadge?: boolean }) {
+function OfertasDiariasLayout({ items, products, periods, hideB2BBadge, onOpen }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[]; hideB2BBadge?: boolean; onOpen?: (item: MarketingItem) => void }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.publish_at ? new Date(a.publish_at).getTime() : 0
     const db = b.publish_at ? new Date(b.publish_at).getTime() : 0
@@ -408,6 +540,7 @@ function OfertasDiariasLayout({ items, products, periods, hideB2BBadge }: { item
               periods={periods}
               dayLabel={getDayLabel(item.publish_at ?? item.created_at)}
               hideB2BBadge={hideB2BBadge}
+              onOpen={onOpen}
             />
           ) : (
             <div key={`empty-${idx}`} />
@@ -418,7 +551,7 @@ function OfertasDiariasLayout({ items, products, periods, hideB2BBadge }: { item
   )
 }
 
-function VisualGrid({ items, products, periods, hideB2BBadge }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[]; hideB2BBadge?: boolean }) {
+function VisualGrid({ items, products, periods, hideB2BBadge, onOpen }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[]; hideB2BBadge?: boolean; onOpen?: (item: MarketingItem) => void }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.publish_at ? new Date(a.publish_at).getTime() : 0
     const db = b.publish_at ? new Date(b.publish_at).getTime() : 0
@@ -435,9 +568,19 @@ function VisualGrid({ items, products, periods, hideB2BBadge }: { items: Marketi
         return (
           <div key={item.id} className="bg-card border rounded-xl overflow-hidden group flex flex-col">
             {item.url && isImage && (
-              <div className="aspect-video bg-muted overflow-hidden">
+              <div className="aspect-video bg-muted overflow-hidden relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                {onOpen && (
+                  <button
+                    type="button"
+                    onClick={() => onOpen(item)}
+                    className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Ver detalhes"
+                  >
+                    <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+                  </button>
+                )}
               </div>
             )}
             <div className="flex items-center gap-2 px-4 pt-3 flex-wrap">
@@ -461,7 +604,12 @@ function VisualGrid({ items, products, periods, hideB2BBadge }: { items: Marketi
               )}
             </div>
             <div className="px-4 pt-2 pb-1 flex-1">
-              <p className="font-medium text-foreground text-sm">{item.title}</p>
+              <p
+                className={cn('font-medium text-foreground text-sm', onOpen && 'cursor-pointer hover:text-primary transition-colors')}
+                onClick={() => onOpen?.(item)}
+              >
+                {item.title}
+              </p>
               {item.description && <p className="text-xs text-muted-foreground mt-1">{item.description}</p>}
             </div>
             {item.url && (
@@ -507,6 +655,7 @@ export function MemberMarketingView({
 }) {
   const [activeKey, setActiveKey] = useState(sections[0]?.key ?? '')
   const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
+  const [selectedItem, setSelectedItem] = useState<MarketingItem | null>(null)
 
   const activeSection = sections.find((s) => s.key === activeKey)
   const isVisual = activeSection?.type === 'visual'
@@ -522,7 +671,7 @@ export function MemberMarketingView({
   }
 
   return (
-    <div>
+    <div className="relative">
       {/* Tabs principais */}
       <div className="flex flex-wrap gap-1 border-b border-border mb-0">
         {sections.map((s) => {
@@ -569,13 +718,13 @@ export function MemberMarketingView({
 
       {/* Conteúdo */}
       {isVisual && effectiveCategory === 'ofertas_diarias' && (
-        <OfertasDiariasLayout items={activeItems} products={products} periods={periods} hideB2BBadge={hideB2BBadge} />
+        <OfertasDiariasLayout items={activeItems} products={products} periods={periods} hideB2BBadge={hideB2BBadge} onOpen={setSelectedItem} />
       )}
 
       {isVisual && effectiveCategory !== 'ofertas_diarias' && (
         activeItems.length === 0
           ? <div className="text-center py-16 bg-card border rounded-xl"><p className="text-muted-foreground">Nenhum material nesta categoria.</p></div>
-          : <VisualGrid items={activeItems} products={products} periods={periods} hideB2BBadge={hideB2BBadge} />
+          : <VisualGrid items={activeItems} products={products} periods={periods} hideB2BBadge={hideB2BBadge} onOpen={setSelectedItem} />
       )}
 
       {activeSection?.type === 'link' && (
@@ -628,6 +777,17 @@ export function MemberMarketingView({
               ))}
             </div>
           )
+      )}
+
+      {/* Lightbox */}
+      {selectedItem && (
+        <OfertaLightbox
+          item={selectedItem}
+          products={products}
+          periods={periods}
+          hideB2BBadge={hideB2BBadge}
+          onClose={() => setSelectedItem(null)}
+        />
       )}
     </div>
   )
