@@ -52,6 +52,7 @@ type MarketingItem = {
   scope?: string | null
   product_id?: string | null
   period_id?: string | null
+  travel_period?: string | null
   status?: ItemStatus | null
   publish_at?: string | null
   expires_at?: string | null
@@ -68,6 +69,7 @@ type SubmitData = {
   scope?: string
   product_id?: string
   period_id?: string
+  travel_period?: string
   status: ItemStatus
   publish_at?: string
   expires_at?: string
@@ -167,6 +169,7 @@ function ItemForm({
   const [scope, setScope] = useState(defaultValues?.scope ?? '')
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
   const [periodId, setPeriodId] = useState(defaultValues?.period_id ?? '')
+  const [travelPeriod, setTravelPeriod] = useState(defaultValues?.travel_period ?? '')
   const [publishAt, setPublishAt] = useState(toLocalDatetimeValue(defaultValues?.publish_at))
   const [expiresAt, setExpiresAt] = useState(toLocalDatetimeValue(defaultValues?.expires_at))
   const [allowedTagIds, setAllowedTagIds] = useState<string[]>(parseAllowedTagIds(defaultValues?.allowed_tag_ids))
@@ -219,6 +222,7 @@ function ItemForm({
       scope: scope || undefined,
       product_id: productId || undefined,
       period_id: periodId || undefined,
+      travel_period: travelPeriod || undefined,
       status,
       publish_at: publishAtIso,
       expires_at: expiresAt ? new Date(expiresAt).toISOString() : undefined,
@@ -347,7 +351,7 @@ function ItemForm({
       {isVisual && (
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Produto</Label>
+            <Label className="text-xs text-muted-foreground">Produto / Hotel</Label>
             <select
               value={productId ?? ''}
               onChange={(e) => setProductId(e.target.value)}
@@ -360,7 +364,7 @@ function ItemForm({
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Período</Label>
+            <Label className="text-xs text-muted-foreground">Campanha / Temporada</Label>
             <select
               value={periodId ?? ''}
               onChange={(e) => setPeriodId(e.target.value)}
@@ -372,6 +376,17 @@ function ItemForm({
               ))}
             </select>
           </div>
+        </div>
+      )}
+
+      {isVisual && (
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Período da viagem</Label>
+          <Input
+            value={travelPeriod}
+            onChange={(e) => setTravelPeriod(e.target.value)}
+            placeholder="Ex: 10 a 17 de julho · 15/01 a 22/01/2026"
+          />
         </div>
       )}
 

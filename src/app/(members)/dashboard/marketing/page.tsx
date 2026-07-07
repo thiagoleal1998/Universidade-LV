@@ -21,6 +21,7 @@ type MarketingItem = {
   scope?: string | null
   product_id?: string | null
   period_id?: string | null
+  travel_period?: string | null
   expires_at?: string | null
 }
 

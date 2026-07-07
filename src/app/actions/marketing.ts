@@ -84,6 +84,7 @@ export async function createMarketingItem(data: {
   scope?: string
   product_id?: string
   period_id?: string
+  travel_period?: string
   status?: string
   publish_at?: string
   expires_at?: string
@@ -111,6 +112,7 @@ export async function createMarketingItem(data: {
     scope: data.scope || null,
     product_id: data.product_id || null,
     period_id: data.period_id || null,
+    travel_period: data.travel_period?.trim() || null,
     status: data.status || 'published',
     publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
     expires_at: data.expires_at || null,
@@ -134,6 +136,7 @@ export async function updateMarketingItem(
     scope?: string
     product_id?: string
     period_id?: string
+    travel_period?: string
     status?: string
     publish_at?: string
     expires_at?: string
@@ -154,6 +157,7 @@ export async function updateMarketingItem(
       scope: data.scope || null,
       product_id: data.product_id || null,
       period_id: data.period_id || null,
+      travel_period: data.travel_period?.trim() || null,
       status: data.status || 'published',
       publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
       expires_at: data.expires_at || null,

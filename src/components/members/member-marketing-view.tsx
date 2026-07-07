@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange, X, Maximize2 } from 'lucide-react'
+import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange, X, Maximize2, Building2, Plane } from 'lucide-react'
 import { toast } from 'sonner'
 
 type Section = { key: string; label: string; type: string }
@@ -19,6 +19,7 @@ type MarketingItem = {
   scope?: string | null
   product_id?: string | null
   period_id?: string | null
+  travel_period?: string | null
   publish_at?: string | null
   created_at?: string | null
 }
@@ -412,21 +413,26 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }:
         </div>
       )}
 
-      {/* Date bar */}
-      <div className="flex items-center gap-1.5 px-3 pt-3">
-        <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
-        <span className="text-[11px] text-muted-foreground">
-          <span className="font-semibold text-foreground">{dateStr ?? '—'}</span>
-        </span>
-      </div>
+      {/* Hotel / produto em destaque */}
+      {product && (
+        <div className="flex items-center gap-2 px-3 pt-3 pb-0.5">
+          <Building2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+          <span className="text-sm font-bold text-foreground leading-tight truncate">{product.name}</span>
+        </div>
+      )}
+
+      {/* Período da viagem */}
+      {item.travel_period && (
+        <div className="flex items-center gap-2 px-3 pt-1 pb-0.5">
+          <Plane className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+          <span className="text-xs font-semibold text-sky-700 dark:text-sky-400">{item.travel_period}</span>
+        </div>
+      )}
 
       <div className="flex items-center gap-1.5 px-3 pt-2 flex-wrap">
+        <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
+        <span className="text-[11px] text-muted-foreground font-medium">{dateStr ?? '—'}</span>
         <AudienceBadge audience={item.audience} hideB2B={hideB2BBadge} />
-        {product && (
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-            {product.name}
-          </span>
-        )}
         {period && (
           <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
             <CalendarRange className="w-2.5 h-2.5" />
@@ -435,7 +441,7 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }:
         )}
       </div>
 
-      <div className="px-3 pt-2.5 pb-1 flex-1">
+      <div className="px-3 pt-2 pb-1 flex-1">
         <p className="font-semibold text-xs text-foreground leading-snug">{item.title}</p>
         {item.description && <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{item.description}</p>}
       </div>
