@@ -249,6 +249,7 @@ function OfertaLightbox({ item, onClose }: { item: MarketingItem; onClose: () =>
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const lastPos = useRef({ x: 0, y: 0 })
+  const draggingRef = useRef(false) // ref síncrono — evita closure stale no mousemove
 
   // Fecha com ESC
   useEffect(() => {
@@ -274,23 +275,24 @@ function OfertaLightbox({ item, onClose }: { item: MarketingItem; onClose: () =>
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
-  // Pan por drag
+  // Pan por drag — listeners registrados UMA VEZ, leem draggingRef (sempre atual)
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (!isDragging) return
+      if (!draggingRef.current) return
       setPan(p => ({ x: p.x + e.clientX - lastPos.current.x, y: p.y + e.clientY - lastPos.current.y }))
       lastPos.current = { x: e.clientX, y: e.clientY }
     }
-    const onUp = () => setIsDragging(false)
+    const onUp = () => { draggingRef.current = false; setIsDragging(false) }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
-  }, [isDragging])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (zoom <= 1) return
     e.preventDefault()
-    setIsDragging(true)
+    draggingRef.current = true  // atualização síncrona — já disponível no próximo mousemove
+    setIsDragging(true)         // só para atualizar o cursor via re-render
     lastPos.current = { x: e.clientX, y: e.clientY }
   }
 
