@@ -46,6 +46,7 @@ export default async function MemberMarketingPage() {
   )
   const B2C_RESTRICTED_TAGS = ['Agentes de viagens', 'Promotores']
   const userIsB2CRestricted = B2C_RESTRICTED_TAGS.some((name) => userTagNames.has(name))
+  const hideB2BBadge = userTagNames.has('Agente de viagem')
   const now = new Date()
 
   // Supabase pode retornar uuid[] como string "{uuid1,uuid2}" dependendo do cache de schema
@@ -92,7 +93,7 @@ export default async function MemberMarketingPage() {
         </p>
       </div>
 
-      <MemberMarketingView sections={sections} items={items} products={productsData ?? []} periods={periodsData ?? []} />
+      <MemberMarketingView sections={sections} items={items} products={productsData ?? []} periods={periodsData ?? []} hideB2BBadge={hideB2BBadge} />
     </div>
   )
 }

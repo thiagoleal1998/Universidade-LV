@@ -228,14 +228,14 @@ function getSpecialPeriodTheme(periodName: string | undefined, itemTitle?: strin
   return null
 }
 
-function AudienceBadge({ audience }: { audience: string | null | undefined }) {
+function AudienceBadge({ audience, hideB2B }: { audience: string | null | undefined; hideB2B?: boolean }) {
   if (!audience) return null
   if (audience === 'B2C') return (
     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
       B2C
     </span>
   )
-  if (audience === 'B2B') return (
+  if (audience === 'B2B' && !hideB2B) return (
     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
       B2B
     </span>
@@ -243,13 +243,13 @@ function AudienceBadge({ audience }: { audience: string | null | undefined }) {
   return null
 }
 
-function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null }) {
+function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge }: { item: MarketingItem; products: MarketingProduct[]; periods: MarketingPeriod[]; dayLabel?: string | null; hideB2BBadge?: boolean }) {
   const product = products.find((p) => p.id === item.product_id)
   const period = periods.find((p) => p.id === item.period_id)
   const periodTheme = getSpecialPeriodTheme(period?.name, item.title, item.description, item.content, product?.name)
   const dateStr = formatDate(item.publish_at ?? item.created_at)
   const isImage = item.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
-  const isB2B = item.audience === 'B2B'
+  const isB2B = item.audience === 'B2B' && !hideB2BBadge
   const isLastMinute = /last minute/i.test(item.title ?? '')
 
   return (
@@ -300,7 +300,7 @@ function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem
       </div>
 
       <div className="flex items-center gap-1.5 px-3 pt-2 flex-wrap">
-        <AudienceBadge audience={item.audience} />
+        <AudienceBadge audience={item.audience} hideB2B={hideB2BBadge} />
         {product && (
           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
             {product.name}
@@ -345,7 +345,7 @@ function OfertaCard({ item, products, periods, dayLabel }: { item: MarketingItem
   )
 }
 
-function OfertasDiariasLayout({ items, products, periods }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[] }) {
+function OfertasDiariasLayout({ items, products, periods, hideB2BBadge }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[]; hideB2BBadge?: boolean }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.publish_at ? new Date(a.publish_at).getTime() : 0
     const db = b.publish_at ? new Date(b.publish_at).getTime() : 0
@@ -407,6 +407,7 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
               products={products}
               periods={periods}
               dayLabel={getDayLabel(item.publish_at ?? item.created_at)}
+              hideB2BBadge={hideB2BBadge}
             />
           ) : (
             <div key={`empty-${idx}`} />
@@ -417,7 +418,7 @@ function OfertasDiariasLayout({ items, products, periods }: { items: MarketingIt
   )
 }
 
-function VisualGrid({ items, products, periods }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[] }) {
+function VisualGrid({ items, products, periods, hideB2BBadge }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[]; hideB2BBadge?: boolean }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.publish_at ? new Date(a.publish_at).getTime() : 0
     const db = b.publish_at ? new Date(b.publish_at).getTime() : 0
@@ -440,7 +441,7 @@ function VisualGrid({ items, products, periods }: { items: MarketingItem[]; prod
               </div>
             )}
             <div className="flex items-center gap-2 px-4 pt-3 flex-wrap">
-              <AudienceBadge audience={item.audience} />
+              <AudienceBadge audience={item.audience} hideB2B={hideB2BBadge} />
               {product && (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                   {product.name}
@@ -496,11 +497,13 @@ export function MemberMarketingView({
   items,
   products = [],
   periods = [],
+  hideB2BBadge = false,
 }: {
   sections: Section[]
   items: MarketingItem[]
   products?: MarketingProduct[]
   periods?: MarketingPeriod[]
+  hideB2BBadge?: boolean
 }) {
   const [activeKey, setActiveKey] = useState(sections[0]?.key ?? '')
   const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
@@ -566,13 +569,13 @@ export function MemberMarketingView({
 
       {/* Conteúdo */}
       {isVisual && effectiveCategory === 'ofertas_diarias' && (
-        <OfertasDiariasLayout items={activeItems} products={products} periods={periods} />
+        <OfertasDiariasLayout items={activeItems} products={products} periods={periods} hideB2BBadge={hideB2BBadge} />
       )}
 
       {isVisual && effectiveCategory !== 'ofertas_diarias' && (
         activeItems.length === 0
           ? <div className="text-center py-16 bg-card border rounded-xl"><p className="text-muted-foreground">Nenhum material nesta categoria.</p></div>
-          : <VisualGrid items={activeItems} products={products} periods={periods} />
+          : <VisualGrid items={activeItems} products={products} periods={periods} hideB2BBadge={hideB2BBadge} />
       )}
 
       {activeSection?.type === 'link' && (
