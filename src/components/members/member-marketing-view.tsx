@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange, X, Maximize2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -244,71 +244,112 @@ function AudienceBadge({ audience, hideB2B }: { audience: string | null | undefi
 }
 
 function OfertaLightbox({ item, onClose }: { item: MarketingItem; onClose: () => void }) {
-  const [zoomed, setZoomed] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const lastPos = useRef({ x: 0, y: 0 })
 
-  const close = useCallback(() => onClose(), [onClose])
-
+  // Fecha com ESC
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { if (zoomed) setZoomed(false); else close() }
-    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = '' }
+  }, [onClose])
+
+  // Zoom pelo scroll
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      setZoom(prev => {
+        const next = Math.max(1, Math.min(6, prev - e.deltaY * 0.003))
+        if (next === 1) setPan({ x: 0, y: 0 })
+        return next
+      })
     }
-  }, [close, zoomed])
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  // Pan por drag
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging) return
+      setPan(p => ({ x: p.x + e.clientX - lastPos.current.x, y: p.y + e.clientY - lastPos.current.y }))
+      lastPos.current = { x: e.clientX, y: e.clientY }
+    }
+    const onUp = () => setIsDragging(false)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [isDragging])
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return
+    e.preventDefault()
+    setIsDragging(true)
+    lastPos.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handleBackdropClick = () => {
+    if (zoom > 1) { setZoom(1); setPan({ x: 0, y: 0 }) } else onClose()
+  }
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/92"
-      onClick={() => { if (zoomed) setZoomed(false); else close() }}
+      ref={containerRef}
+      className="fixed inset-0 z-50 bg-black/92 overflow-hidden"
+      onClick={handleBackdropClick}
     >
-      {/* Botão fechar */}
+      {/* Fechar */}
       <button
         className="absolute top-3 right-3 z-10 text-white/70 hover:text-white bg-black/40 hover:bg-black/70 rounded-full p-1.5 transition-colors"
-        onClick={(e) => { e.stopPropagation(); close() }}
+        onClick={(e) => { e.stopPropagation(); onClose() }}
       >
         <X className="w-5 h-5" />
       </button>
 
-      {/* Hint */}
+      {/* Indicador de zoom */}
+      {zoom > 1.01 && (
+        <div className="absolute top-3 left-3 z-10 text-white/60 text-xs bg-black/40 px-2 py-1 rounded-full tabular-nums select-none">
+          {Math.round(zoom * 100)}%
+        </div>
+      )}
+
+      {/* Dica */}
       <p className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 text-white/35 text-xs select-none pointer-events-none whitespace-nowrap">
-        {zoomed ? 'Clique para sair do zoom · ESC para fechar' : 'Clique na imagem para ampliar · ESC para fechar'}
+        {zoom > 1 ? 'Scroll para zoom · Arraste para mover · ESC para fechar' : 'Scroll para ampliar · ESC para fechar'}
       </p>
 
-      {/* Imagem normal — centralizada */}
-      {!zoomed && (
-        <div className="w-full h-full flex items-center justify-center p-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.url}
-            alt={item.title}
-            className="max-w-full max-h-[92vh] object-contain cursor-zoom-in select-none"
-            onClick={(e) => { e.stopPropagation(); setZoomed(true) }}
-            draggable={false}
-          />
-        </div>
-      )}
-
-      {/* Imagem ampliada — scrollável */}
-      {zoomed && (
-        <div
-          className="w-full h-full overflow-auto"
-          onClick={(e) => { e.stopPropagation(); setZoomed(false) }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.url}
-            alt={item.title}
-            style={{ width: '280vw', maxWidth: 'none', height: 'auto' }}
-            className="cursor-zoom-out select-none"
-            onClick={(e) => e.stopPropagation()}
-            draggable={false}
-          />
-        </div>
-      )}
+      {/* Imagem */}
+      <div
+        className="w-full h-full relative overflow-hidden"
+        onMouseDown={handleMouseDown}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.url}
+          alt={item.title}
+          draggable={false}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            left: `calc(50% + ${pan.x}px)`,
+            top: `calc(50% + ${pan.y}px)`,
+            transform: `translate(-50%, -50%) scale(${zoom})`,
+            maxWidth: '100vw',
+            maxHeight: '92vh',
+            objectFit: 'contain',
+            userSelect: 'none',
+            cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+          }}
+        />
+      </div>
     </div>
   )
 }
