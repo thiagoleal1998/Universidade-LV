@@ -17,6 +17,8 @@ function toEmbedUrl(url: string): string {
 
 type CorridaData = {
   tipo: 'nacional' | 'internacional'
+  titulo: string
+  descricao: string
   destino: string
   premiacao: string[]
   regras: string
@@ -28,13 +30,15 @@ function parseCorridaData(raw: string): CorridaData {
     const p = JSON.parse(raw)
     return {
       tipo: p.tipo === 'internacional' ? 'internacional' : 'nacional',
+      titulo: typeof p.titulo === 'string' ? p.titulo : '',
+      descricao: typeof p.descricao === 'string' ? p.descricao : '',
       destino: typeof p.destino === 'string' ? p.destino : '',
       premiacao: Array.isArray(p.premiacao) ? p.premiacao : [],
       regras: typeof p.regras === 'string' ? p.regras : '',
       lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
     }
   } catch {
-    return { tipo: 'nacional', destino: '', premiacao: [], regras: '', lamina_url: '' }
+    return { tipo: 'nacional', titulo: '', descricao: '', destino: '', premiacao: [], regras: '', lamina_url: '' }
   }
 }
 
@@ -68,7 +72,7 @@ export default async function ComercialPage({
 
   const comercialItem = itemsData?.[0] as { url: string; title: string } | undefined
   const corrida = parseCorridaData(settings.corrida_vendas)
-  const corridaEmpty = !corrida.destino.trim() && corrida.premiacao.length === 0 && !corrida.regras.trim() && !corrida.lamina_url
+  const corridaEmpty = !corrida.titulo.trim() && !corrida.descricao.trim() && !corrida.destino.trim() && corrida.premiacao.length === 0 && !corrida.regras.trim() && !corrida.lamina_url
   const corridaIso = detectIso(corrida.destino)
 
   return (
@@ -119,6 +123,11 @@ export default async function ComercialPage({
         ) : (
           <div className="flex-1 overflow-y-auto p-4 md:p-8">
             <div className="max-w-2xl space-y-6">
+              {/* Título */}
+              {corrida.titulo && (
+                <h1 className="text-2xl font-bold text-foreground">{corrida.titulo}</h1>
+              )}
+
               {/* Tipo + Destino */}
               <div className="flex items-center gap-3 flex-wrap">
                 {corrida.tipo === 'nacional' ? (
@@ -148,6 +157,13 @@ export default async function ComercialPage({
                   </span>
                 )}
               </div>
+
+              {/* Descrição */}
+              {corrida.descricao && (
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {corrida.descricao}
+                </p>
+              )}
 
               {/* Lâmina */}
               {corrida.lamina_url && (

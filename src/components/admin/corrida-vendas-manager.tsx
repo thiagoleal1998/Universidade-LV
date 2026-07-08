@@ -14,6 +14,8 @@ import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 
 type CorridaData = {
   tipo: 'nacional' | 'internacional'
+  titulo: string
+  descricao: string
   destino: string
   premiacao: string[]
   regras: string
@@ -25,13 +27,15 @@ function parse(raw: string): CorridaData {
     const p = JSON.parse(raw)
     return {
       tipo: p.tipo === 'internacional' ? 'internacional' : 'nacional',
+      titulo: typeof p.titulo === 'string' ? p.titulo : '',
+      descricao: typeof p.descricao === 'string' ? p.descricao : '',
       destino: typeof p.destino === 'string' ? p.destino : '',
       premiacao: Array.isArray(p.premiacao) ? p.premiacao : [],
       regras: typeof p.regras === 'string' ? p.regras : '',
       lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
     }
   } catch {
-    return { tipo: 'nacional', destino: '', premiacao: [], regras: '', lamina_url: '' }
+    return { tipo: 'nacional', titulo: '', descricao: '', destino: '', premiacao: [], regras: '', lamina_url: '' }
   }
 }
 
@@ -110,6 +114,33 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
             )
           })}
         </div>
+      </div>
+
+      {/* Título */}
+      <div className="bg-card border rounded-xl p-6 space-y-3">
+        <div className="flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-primary" />
+          <h3 className="font-semibold text-foreground">Título da corrida</h3>
+        </div>
+        <Input
+          value={data.titulo}
+          onChange={(e) => setData((d) => ({ ...d, titulo: e.target.value }))}
+          placeholder="Ex: Corrida de Vendas — Julho 2026"
+        />
+      </div>
+
+      {/* Descrição */}
+      <div className="bg-card border rounded-xl p-6 space-y-3">
+        <div className="flex items-center gap-2">
+          <ScrollText className="w-4 h-4 text-muted-foreground" />
+          <h3 className="font-semibold text-foreground">Descrição</h3>
+        </div>
+        <Textarea
+          value={data.descricao}
+          onChange={(e) => setData((d) => ({ ...d, descricao: e.target.value }))}
+          placeholder="Breve descrição da corrida de vendas…"
+          className="min-h-[100px]"
+        />
       </div>
 
       {/* Produto / Destino */}
