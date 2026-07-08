@@ -55,6 +55,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] 
 
 const COMERCIAL_SECTIONS: MarketingSection[] = [
   { key: 'comercial', label: 'Links Comercial', type: 'link' },
+  { key: 'corrida_vendas', label: 'Corrida de vendas', type: 'link' },
 ]
 
 const AEREO_SECTIONS: MarketingSection[] = [
