@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones } from 'lucide-react'
+import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap } from 'lucide-react'
 import { MarketingManager } from '@/components/admin/marketing-manager'
 import { TrainingsManager } from '@/components/admin/trainings-manager'
 import { TamoJuntoWinnersManager } from '@/components/admin/tamojunto-winners-manager'
 import { PodviajarManager } from '@/components/admin/podviajar-manager'
+import { CorridaVendasManager } from '@/components/admin/corrida-vendas-manager'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import type { TrainingItem } from '@/app/actions/training'
 import type { MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
@@ -13,6 +14,7 @@ import type { Tag } from '@/components/admin/marketing-manager'
 import { cn } from '@/lib/utils'
 
 type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'premiacao' | 'podviajar'
+type ComercialSubTab = 'links' | 'corrida'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] = [
   {
@@ -53,13 +55,17 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] 
   },
 ]
 
-const COMERCIAL_SECTIONS: MarketingSection[] = [
+const COMERCIAL_LINKS_SECTIONS: MarketingSection[] = [
   { key: 'comercial', label: 'Links Comercial', type: 'link' },
-  { key: 'corrida_vendas', label: 'Corrida de vendas', type: 'link' },
 ]
 
 const AEREO_SECTIONS: MarketingSection[] = [
   { key: 'aereo', label: 'Links Aéreo', type: 'link' },
+]
+
+const COMERCIAL_SUBTABS: { id: ComercialSubTab; label: string; icon: React.ElementType }[] = [
+  { id: 'links',   label: 'Links Comercial',   icon: Link2 },
+  { id: 'corrida', label: 'Corrida de vendas', icon: Zap   },
 ]
 
 export function MarketingTabs({
@@ -71,6 +77,7 @@ export function MarketingTabs({
   tags = [],
   tamojuntoWinnersRaw = '{}',
   podviajarRaw = '{}',
+  corridaVendasRaw = '{}',
 }: {
   marketingItems: object[]
   sections: MarketingSection[]
@@ -80,8 +87,10 @@ export function MarketingTabs({
   tags?: Tag[]
   tamojuntoWinnersRaw?: string
   podviajarRaw?: string
+  corridaVendasRaw?: string
 }) {
   const [tab, setTab] = useState<Tab>('marketing')
+  const [comercialSubTab, setComercialSubTab] = useState<ComercialSubTab>('links')
 
   const current = TABS.find((t) => t.id === tab)!
   const Icon = current.icon
@@ -95,7 +104,7 @@ export function MarketingTabs({
       </div>
       <p className="text-muted-foreground mb-6">{current.desc}</p>
 
-      {/* Tabs */}
+      {/* Tabs principais */}
       <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit mb-8 flex-wrap">
         {TABS.map(({ id, label, icon: TabIcon }) => (
           <button
@@ -122,8 +131,35 @@ export function MarketingTabs({
         <TrainingsManager items={trainingItems} />
       )}
       {tab === 'comercial' && (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <MarketingManager items={marketingItems as any} sections={COMERCIAL_SECTIONS} />
+        <>
+          {/* Sub-abas do Comercial */}
+          <div className="flex gap-0 border-b border-border mb-6">
+            {COMERCIAL_SUBTABS.map(({ id, label, icon: SubIcon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setComercialSubTab(id)}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+                  comercialSubTab === id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <SubIcon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {comercialSubTab === 'links' && (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            <MarketingManager items={marketingItems as any} sections={COMERCIAL_LINKS_SECTIONS} />
+          )}
+          {comercialSubTab === 'corrida' && (
+            <CorridaVendasManager raw={corridaVendasRaw} />
+          )}
+        </>
       )}
       {tab === 'aereo' && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

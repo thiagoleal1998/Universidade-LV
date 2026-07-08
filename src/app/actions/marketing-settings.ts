@@ -22,3 +22,8 @@ export async function savePodviajar(formData: FormData) {
   const value = (formData.get('podviajar') as string) || '{}'
   return upsertSetting('podviajar', value)
 }
+
+export async function saveCorridaVendas(formData: FormData) {
+  const value = (formData.get('corrida_vendas') as string) || '{}'
+  return upsertSetting('corrida_vendas', value)
+}
