@@ -17,6 +17,7 @@ type CorridaData = {
   titulo: string
   descricao: string
   destino: string
+  premiacao_titulo: string
   premiacao: string[]
   regras: string
   lamina_url: string
@@ -30,12 +31,13 @@ function parse(raw: string): CorridaData {
       titulo: typeof p.titulo === 'string' ? p.titulo : '',
       descricao: typeof p.descricao === 'string' ? p.descricao : '',
       destino: typeof p.destino === 'string' ? p.destino : '',
+      premiacao_titulo: typeof p.premiacao_titulo === 'string' ? p.premiacao_titulo : '',
       premiacao: Array.isArray(p.premiacao) ? p.premiacao : [],
       regras: typeof p.regras === 'string' ? p.regras : '',
       lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
     }
   } catch {
-    return { tipo: 'nacional', titulo: '', descricao: '', destino: '', premiacao: [], regras: '', lamina_url: '' }
+    return { tipo: 'nacional', titulo: '', descricao: '', destino: '', premiacao_titulo: '', premiacao: [], regras: '', lamina_url: '' }
   }
 }
 
@@ -178,6 +180,15 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
           <Trophy className="w-4 h-4 text-yellow-500" />
           <h3 className="font-semibold text-foreground">Premiação</h3>
         </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Título da premiação</Label>
+          <Input
+            value={data.premiacao_titulo}
+            onChange={(e) => setData((d) => ({ ...d, premiacao_titulo: e.target.value }))}
+            placeholder="Ex: Prêmio para o 1º lugar"
+          />
+        </div>
+
         <p className="text-xs text-muted-foreground">
           Adicione cada item do prêmio separadamente — ex: Transfer In/Out, Hotel, Passeio.
         </p>

@@ -20,6 +20,7 @@ type CorridaData = {
   titulo: string
   descricao: string
   destino: string
+  premiacao_titulo: string
   premiacao: string[]
   regras: string
   lamina_url: string
@@ -33,12 +34,13 @@ function parseCorridaData(raw: string): CorridaData {
       titulo: typeof p.titulo === 'string' ? p.titulo : '',
       descricao: typeof p.descricao === 'string' ? p.descricao : '',
       destino: typeof p.destino === 'string' ? p.destino : '',
+      premiacao_titulo: typeof p.premiacao_titulo === 'string' ? p.premiacao_titulo : '',
       premiacao: Array.isArray(p.premiacao) ? p.premiacao : [],
       regras: typeof p.regras === 'string' ? p.regras : '',
       lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
     }
   } catch {
-    return { tipo: 'nacional', titulo: '', descricao: '', destino: '', premiacao: [], regras: '', lamina_url: '' }
+    return { tipo: 'nacional', titulo: '', descricao: '', destino: '', premiacao_titulo: '', premiacao: [], regras: '', lamina_url: '' }
   }
 }
 
@@ -185,7 +187,9 @@ export default async function ComercialPage({
                 <div className="bg-card border rounded-xl p-5 space-y-3">
                   <div className="flex items-center gap-2">
                     <Gift className="w-4 h-4 text-yellow-500" />
-                    <h2 className="font-semibold text-foreground">Premiação</h2>
+                    <h2 className="font-semibold text-foreground">
+                      {corrida.premiacao_titulo || 'Premiação'}
+                    </h2>
                   </div>
                   <ul className="space-y-2">
                     {corrida.premiacao.map((item, idx) => (
