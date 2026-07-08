@@ -10,104 +10,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Trophy, Globe, MapPin, Plus, X, ScrollText, Paperclip, Upload, ExternalLink, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-// ISO 2-letter code → flag emoji
-function isoToFlag(iso: string): string {
-  return [...iso.toUpperCase()].map((c) => String.fromCodePoint(127397 + c.charCodeAt(0))).join('')
-}
-
-// Keywords → ISO code (PT-BR focus, with cities/resorts)
-const COUNTRY_MAP: [string[], string][] = [
-  [['brasil', 'brazil', 'rio de janeiro', 'são paulo', 'fortaleza', 'florianopolis', 'florianópolis', 'natal', 'salvador', 'recife', 'maceio', 'maceió', 'porto seguro', 'foz do iguacu', 'foz do iguaçu'], 'BR'],
-  [['argentina', 'buenos aires', 'bariloche', 'mendoza', 'patagonia', 'patagônia', 'calafate', 'ushuaia'], 'AR'],
-  [['chile', 'santiago', 'atacama', 'valparaiso', 'torres del paine'], 'CL'],
-  [['uruguai', 'uruguay', 'montevideo', 'montevidéu', 'punta del este'], 'UY'],
-  [['paraguai', 'paraguay', 'assuncao', 'assunção'], 'PY'],
-  [['peru', 'lima', 'machu picchu', 'cusco', 'cuzco', 'arequipa'], 'PE'],
-  [['bolivia', 'bolívia', 'la paz', 'salar de uyuni', 'uyuni'], 'BO'],
-  [['colombia', 'colômbia', 'bogota', 'bogotá', 'cartagena', 'medellin', 'medellín'], 'CO'],
-  [['venezuela', 'caracas', 'isla margarita'], 'VE'],
-  [['equador', 'ecuador', 'galápagos', 'galapagos', 'quito'], 'EC'],
-  [['mexico', 'méxico', 'cancun', 'cancún', 'riviera maya', 'tulum', 'playa del carmen', 'cozumel', 'los cabos', 'puerto vallarta', 'guadalajara'], 'MX'],
-  [['estados unidos', 'usa', 'eua', 'orlando', 'miami', 'nova york', 'new york', 'las vegas', 'los angeles', 'chicago', 'san francisco', 'boston', 'washington', 'disney'], 'US'],
-  [['canada', 'canadá', 'toronto', 'vancouver', 'montreal', 'quebec'], 'CA'],
-  [['reino unido', 'uk', 'england', 'inglaterra', 'london', 'londres', 'edinburgo', 'edinburgh'], 'GB'],
-  [['espanha', 'spain', 'barcelona', 'madri', 'madrid', 'ibiza', 'mallorca', 'sevilha', 'sevilla', 'granada', 'valência', 'valencia'], 'ES'],
-  [['portugal', 'lisboa', 'porto', 'algarve', 'açores', 'madeira', 'sintra'], 'PT'],
-  [['franca', 'france', 'paris', 'nice', 'bordeaux', 'lyon', 'côte d\'azur', 'monte carlo', 'versailles'], 'FR'],
-  [['italia', 'itália', 'italy', 'roma', 'rome', 'veneza', 'venice', 'florença', 'florence', 'milao', 'milão', 'milan', 'nápoles', 'naples', 'sicilia', 'sicília', 'amalfi', 'toscana', 'tuscany'], 'IT'],
-  [['alemanha', 'germany', 'berlin', 'berlim', 'munique', 'munich', 'frankfurt', 'hamburgo'], 'DE'],
-  [['holanda', 'netherlands', 'amsterdam', 'rotterdam'], 'NL'],
-  [['belgica', 'bélgica', 'belgium', 'bruxelas', 'brussels', 'bruges'], 'BE'],
-  [['suica', 'suíça', 'switzerland', 'zurique', 'zurich', 'genebra', 'geneva', 'interlaken', 'berna', 'bern', 'lucerna'], 'CH'],
-  [['austria', 'áustria', 'viena', 'vienna', 'salzburgo', 'salzburg', 'innsbruck'], 'AT'],
-  [['grecia', 'grécia', 'greece', 'atenas', 'athens', 'mykonos', 'santorini', 'rodes', 'rhodes', 'creta', 'crete', 'tessalonica'], 'GR'],
-  [['turquia', 'turkey', 'istanbul', 'capadocia', 'capadócia', 'cappadocia', 'antalya', 'bodrum', 'izmir', 'efeso', 'ephesus'], 'TR'],
-  [['emirados árabes', 'emirados arabes', 'uae', 'dubai', 'abu dhabi', 'abu dabi', 'sharjah'], 'AE'],
-  [['egito', 'egypt', 'cairo', 'hurghada', 'sharm', 'luxor', 'assuã', 'assuan', 'aswan'], 'EG'],
-  [['marrocos', 'morocco', 'marrakech', 'casablanca', 'fez', 'rabat'], 'MA'],
-  [['africa do sul', 'áfrica do sul', 'south africa', 'cape town', 'cidade do cabo', 'joanesburgo', 'johannesburg', 'kruger', 'safari'], 'ZA'],
-  [['japao', 'japão', 'japan', 'tokyo', 'tóquio', 'osaka', 'kyoto', 'hiroshima', 'nara'], 'JP'],
-  [['china', 'pequim', 'beijing', 'xangai', 'shanghai'], 'CN'],
-  [['coreia', 'korea', 'seoul', 'seul', 'busan', 'jeju'], 'KR'],
-  [['tailandia', 'tailândia', 'thailand', 'bangkok', 'phuket', 'koh samui', 'chiang mai', 'chiang rai', 'krabi'], 'TH'],
-  [['indonesia', 'indonésia', 'bali', 'lombok', 'jakarta', 'java', 'komodo'], 'ID'],
-  [['filipinas', 'philippines', 'manila', 'palawan', 'boracay', 'cebu', 'bohol'], 'PH'],
-  [['india', 'índia', 'nova deli', 'new delhi', 'mumbai', 'goa', 'agra', 'taj mahal', 'kerala', 'jaipur'], 'IN'],
-  [['australia', 'austrália', 'sydney', 'melbourne', 'cairns', 'grande barreira', 'great barrier', 'brisbane', 'gold coast'], 'AU'],
-  [['nova zelandia', 'nova zelândia', 'new zealand', 'auckland', 'queenstown', 'rotorua'], 'NZ'],
-  [['cuba', 'havana', 'varadero', 'trinidad', 'santiago de cuba'], 'CU'],
-  [['republica dominicana', 'república dominicana', 'punta cana', 'la romana', 'bavaro', 'bávaro', 'santo domingo'], 'DO'],
-  [['panama', 'panamá', 'cidade do panama'], 'PA'],
-  [['costa rica', 'san jose', 'são josé'], 'CR'],
-  [['israel', 'tel aviv', 'jerusalem', 'jerusalém', 'terra santa', 'nazareth', 'nazaré'], 'IL'],
-  [['jordania', 'jordânia', 'petra', 'amman', 'wadi rum', 'mar morto', 'dead sea'], 'JO'],
-  [['croacia', 'croácia', 'croatia', 'dubrovnik', 'split', 'zagreb', 'istria', 'ístria', 'hvar'], 'HR'],
-  [['hungria', 'hungary', 'budapest'], 'HU'],
-  [['polonia', 'polônia', 'poland', 'cracow', 'cracovia', 'varsóvia', 'warsaw'], 'PL'],
-  [['republica tcheca', 'república tcheca', 'czech', 'praga', 'prague', 'brno'], 'CZ'],
-  [['singapura', 'singapore'], 'SG'],
-  [['malasia', 'malásia', 'malaysia', 'kuala lumpur', 'kl', 'langkawi', 'penang'], 'MY'],
-  [['vietna', 'vietnã', 'vietnam', 'hanoi', 'ho chi minh', 'hoi an', 'halong', 'danang'], 'VN'],
-  [['maldivas', 'maldives'], 'MV'],
-  [['sri lanka', 'colombo', 'kandy'], 'LK'],
-  [['nepal', 'kathmandu', 'katmandu', 'everest', 'pokhara'], 'NP'],
-  [['noruega', 'norway', 'oslo', 'bergen', 'fiordos', 'fjords', 'tromso', 'tromsø'], 'NO'],
-  [['suecia', 'suécia', 'sweden', 'estocolmo', 'stockholm', 'gotemburgo', 'gothenburg'], 'SE'],
-  [['dinamarca', 'denmark', 'copenhague', 'copenhagen'], 'DK'],
-  [['finlandia', 'finlândia', 'finland', 'helsinki', 'laponia', 'lapônia', 'lapland', 'rovaniemi'], 'FI'],
-  [['russia', 'rússia', 'moscou', 'moscow', 'são petersburgo', 'saint petersburg'], 'RU'],
-  [['irlanda', 'ireland', 'dublin', 'galway', 'cork'], 'IE'],
-  [['monaco', 'mônaco'], 'MC'],
-  [['kenya', 'quênia', 'nairobi', 'masai mara', 'amboseli', 'mombasa'], 'KE'],
-  [['tanzania', 'tanzânia', 'serengeti', 'zanzibar', 'kilimanjaro', 'dar es salaam'], 'TZ'],
-  [['bahamas', 'nassau', 'paradise island'], 'BS'],
-  [['jamaica', 'kingston', 'montego bay', 'negril', 'ocho rios'], 'JM'],
-  [['aruba', 'oranjestad'], 'AW'],
-  [['curacao', 'curaçao', 'willemstad'], 'CW'],
-  [['barbados', 'bridgetown'], 'BB'],
-  [['cambodja', 'camboja', 'cambodia', 'siem reap', 'angkor', 'phnom penh'], 'KH'],
-  [['eslovenia', 'eslovênia', 'slovenia', 'liubliana', 'ljubjana', 'bled'], 'SI'],
-  [['albania', 'albânia', 'tirana'], 'AL'],
-  [['malta', 'valletta', 'valetta'], 'MT'],
-  [['chipre', 'cyprus', 'nicosia', 'paphos'], 'CY'],
-  [['luxemburgo', 'luxembourg'], 'LU'],
-  [['suedeia', 'suécia'], 'SE'],
-]
-
-function detectFlag(text: string): string | null {
-  if (!text.trim()) return null
-  const normalized = text.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
-  for (const [keywords, iso] of COUNTRY_MAP) {
-    for (const kw of keywords) {
-      const kwNorm = kw.normalize('NFD').replace(/\p{Diacritic}/gu, '')
-      if (normalized.includes(kwNorm) || kwNorm.includes(normalized)) {
-        return isoToFlag(iso)
-      }
-    }
-  }
-  return null
-}
+import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 
 type CorridaData = {
   tipo: 'nacional' | 'internacional'
@@ -138,7 +41,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
   const [isUploading, startUpload] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const flag = detectFlag(data.destino)
+  const iso = detectIso(data.destino)
 
   function addItem() {
     setData((d) => ({ ...d, premiacao: [...d.premiacao, ''] }))
@@ -224,12 +127,17 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
               value={data.destino}
               onChange={(e) => setData((d) => ({ ...d, destino: e.target.value }))}
               placeholder="Ex: Cancún, Maldivas, Cruzeiro Europa…"
-              className={flag ? 'pr-12' : ''}
+              className={iso ? 'pr-14' : ''}
             />
-            {flag && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-2xl select-none leading-none">
-                {flag}
-              </span>
+            {iso && (
+              <img
+                src={flagImgUrl(iso, '32x24')}
+                srcSet={`${flagImgUrl(iso, '48x36')} 2x`}
+                width={32}
+                height={24}
+                alt="Bandeira"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm object-cover pointer-events-none"
+              />
             )}
           </div>
         </div>
