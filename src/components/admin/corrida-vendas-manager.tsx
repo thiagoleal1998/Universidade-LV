@@ -5,12 +5,12 @@ import { saveCorridaVendas } from '@/app/actions/marketing-settings'
 import { uploadMarketingFile } from '@/app/actions/marketing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Trophy, Globe, MapPin, Plus, X, ScrollText, Paperclip, Upload, ExternalLink, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
+import { RichTextEditor } from '@/components/admin/rich-text-editor'
 
 type CorridaData = {
   tipo: 'nacional' | 'internacional'
@@ -135,11 +135,9 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
           <ScrollText className="w-4 h-4 text-muted-foreground" />
           <h3 className="font-semibold text-foreground">Descrição</h3>
         </div>
-        <Textarea
-          value={data.descricao}
-          onChange={(e) => setData((d) => ({ ...d, descricao: e.target.value }))}
-          placeholder="Breve descrição da corrida de vendas…"
-          className="min-h-[100px]"
+        <RichTextEditor
+          content={data.descricao}
+          onChange={(html) => setData((d) => ({ ...d, descricao: html }))}
         />
       </div>
 
@@ -276,11 +274,9 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
           <ScrollText className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-foreground">Regras</h3>
         </div>
-        <Textarea
-          value={data.regras}
-          onChange={(e) => setData((d) => ({ ...d, regras: e.target.value }))}
-          placeholder="Descreva as regras da corrida de vendas..."
-          className="min-h-[180px]"
+        <RichTextEditor
+          content={data.regras}
+          onChange={(html) => setData((d) => ({ ...d, regras: html }))}
         />
       </div>
 

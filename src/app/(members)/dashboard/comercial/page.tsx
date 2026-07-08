@@ -159,10 +159,11 @@ export default async function ComercialPage({
               </div>
 
               {/* Descrição */}
-              {corrida.descricao && (
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {corrida.descricao}
-                </p>
+              {corrida.descricao && corrida.descricao !== '<p></p>' && (
+                <div
+                  className="rich-text text-muted-foreground"
+                  dangerouslySetInnerHTML={{ __html: corrida.descricao }}
+                />
               )}
 
               {/* Lâmina */}
@@ -200,15 +201,16 @@ export default async function ComercialPage({
               )}
 
               {/* Regras */}
-              {corrida.regras.trim() && (
+              {corrida.regras && corrida.regras !== '<p></p>' && (
                 <div className="bg-card border rounded-xl p-5 space-y-3">
                   <div className="flex items-center gap-2">
                     <ScrollText className="w-4 h-4 text-primary" />
                     <h2 className="font-semibold text-foreground">Regras</h2>
                   </div>
-                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                    {corrida.regras}
-                  </p>
+                  <div
+                    className="rich-text"
+                    dangerouslySetInnerHTML={{ __html: corrida.regras }}
+                  />
                 </div>
               )}
             </div>

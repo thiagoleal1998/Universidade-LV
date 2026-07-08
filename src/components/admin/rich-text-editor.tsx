@@ -5,11 +5,13 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import TiptapImage from '@tiptap/extension-image'
+import Underline from '@tiptap/extension-underline'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import {
   Bold,
   Italic,
+  Underline as UnderlineIcon,
   List,
   ListOrdered,
   Heading2,
@@ -35,6 +37,7 @@ export function RichTextEditor({ content, onChange, onImageUpload }: RichTextEdi
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Underline,
       Link.configure({ openOnClick: false }),
       TiptapImage.configure({
         inline: false,
@@ -70,8 +73,9 @@ export function RichTextEditor({ content, onChange, onImageUpload }: RichTextEdi
   }
 
   const toolbar = [
-    { icon: Bold,         action: () => editor.chain().focus().toggleBold().run(),              active: editor.isActive('bold'),                 label: 'Negrito' },
-    { icon: Italic,       action: () => editor.chain().focus().toggleItalic().run(),            active: editor.isActive('italic'),               label: 'Itálico' },
+    { icon: Bold,          action: () => editor.chain().focus().toggleBold().run(),              active: editor.isActive('bold'),                 label: 'Negrito' },
+    { icon: Italic,        action: () => editor.chain().focus().toggleItalic().run(),            active: editor.isActive('italic'),               label: 'Itálico' },
+    { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(),         active: editor.isActive('underline'),             label: 'Sublinhado' },
     { icon: Heading2,     action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive('heading', { level: 2 }), label: 'Título 2' },
     { icon: Heading3,     action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: editor.isActive('heading', { level: 3 }), label: 'Título 3' },
     { icon: List,         action: () => editor.chain().focus().toggleBulletList().run(),        active: editor.isActive('bulletList'),           label: 'Lista' },
