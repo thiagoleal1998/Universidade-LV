@@ -45,7 +45,7 @@ export default async function MemberMarketingPage() {
       t.tags ? [t.tags.name] : []
     )
   )
-  const B2C_RESTRICTED_TAGS = ['Agentes de viagens', 'Promotores']
+  const B2C_RESTRICTED_TAGS = ['Agentes de viagens', 'Promotores', 'Agente de Viagem']
   const userIsB2CRestricted = B2C_RESTRICTED_TAGS.some((name) => userTagNames.has(name))
   const hideB2BBadge = userTagNames.has('Agente de Viagem')
   const now = new Date()
