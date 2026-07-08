@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const adminClient = createAdminClient()
   const now = new Date().toISOString()
   const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }, { data: aereoData }, { data: comercialData }] = await Promise.all([
-    supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
+    adminClient.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
     getSettings(),
     adminClient
       .from('notifications')

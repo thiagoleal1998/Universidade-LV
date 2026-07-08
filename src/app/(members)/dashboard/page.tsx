@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getTrainingItems } from '@/app/actions/training'
 import { buttonVariants } from '@/components/ui/button'
@@ -280,7 +281,8 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: profileData } = await supabase
+  const adminClient = createAdminClient()
+  const { data: profileData } = await adminClient
     .from('profiles')
     .select('role, full_name')
     .eq('id', user!.id)

@@ -21,7 +21,9 @@ export async function login(_state: unknown, formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Erro ao autenticar.' }
 
-  const { data: profile } = await supabase
+  // Usa adminClient para leitura do perfil pós-login — RLS não deve bloquear operação server-side de autenticação
+  const adminClient = createAdminClient()
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('role, active')
     .eq('id', user.id)

@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const adminClient = createAdminClient()
   const [{ data: profileData }, settings, { count: unreadCount }] = await Promise.all([
-    supabase.from('profiles').select('full_name, avatar_url, role').eq('id', user.id).single(),
+    adminClient.from('profiles').select('full_name, avatar_url, role').eq('id', user.id).single(),
     getSettings(),
     adminClient
       .from('notifications')
