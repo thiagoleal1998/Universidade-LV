@@ -417,7 +417,7 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }:
       {product && (
         <div className="flex items-center gap-2 px-3 pt-3 pb-0.5">
           <Building2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-          <span className="text-sm font-bold text-foreground leading-tight truncate">{product.name}</span>
+          <span className="text-sm font-bold text-foreground leading-tight">{product.name}</span>
         </div>
       )}
 
