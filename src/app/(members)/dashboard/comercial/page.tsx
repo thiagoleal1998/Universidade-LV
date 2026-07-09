@@ -199,13 +199,17 @@ export default async function ComercialPage({
 
               {/* Premiação */}
               {corrida.premiacao.length > 0 && (
+                <div className="space-y-3">
+                  <h2 className="text-base font-bold text-foreground">Premiação</h2>
                 <div className="bg-card border rounded-xl p-5 space-y-4">
+                  {corrida.premiacao_titulo && (
                   <div className="flex items-center gap-2">
                     <Gift className="w-4 h-4 text-yellow-500" />
-                    <h2 className="font-semibold text-foreground">
-                      {corrida.premiacao_titulo || 'Premiação'}
-                    </h2>
+                    <h3 className="font-semibold text-foreground">
+                      {corrida.premiacao_titulo}
+                    </h3>
                   </div>
+                  )}
                   <ul className="space-y-3">
                     {corrida.premiacao.map((item, idx) => {
                       const Icon = detectPremiacaoIcon(item.texto)
@@ -226,6 +230,7 @@ export default async function ComercialPage({
                       )
                     })}
                   </ul>
+                </div>
                 </div>
               )}
 
