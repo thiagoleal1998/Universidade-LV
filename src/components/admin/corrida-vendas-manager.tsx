@@ -6,11 +6,20 @@ import { uploadMarketingFile } from '@/app/actions/marketing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Trophy, Globe, MapPin, Plus, X, ScrollText, Paperclip, Upload, ExternalLink, Loader2 } from 'lucide-react'
+import {
+  Trophy, Globe, MapPin, Plus, X, ScrollText, Paperclip, Upload,
+  ExternalLink, Loader2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { RichTextEditor } from '@/components/admin/rich-text-editor'
+import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
+
+// ── Tipos ────────────────────────────────────────────────────────────────────
+
+type PremiacaoItem = { texto: string; especificacoes: string }
 
 type CorridaData = {
   tipo: 'nacional' | 'internacional'
@@ -18,9 +27,23 @@ type CorridaData = {
   descricao: string
   destino: string
   premiacao_titulo: string
-  premiacao: string[]
+  premiacao: PremiacaoItem[]
   regras: string
   lamina_url: string
+}
+
+// ── Parser ───────────────────────────────────────────────────────────────────
+
+function parseItem(raw: unknown): PremiacaoItem {
+  if (typeof raw === 'string') return { texto: raw, especificacoes: '' }
+  if (raw && typeof raw === 'object') {
+    const r = raw as Record<string, unknown>
+    return {
+      texto: typeof r.texto === 'string' ? r.texto : '',
+      especificacoes: typeof r.especificacoes === 'string' ? r.especificacoes : '',
+    }
+  }
+  return { texto: '', especificacoes: '' }
 }
 
 function parse(raw: string): CorridaData {
@@ -32,7 +55,7 @@ function parse(raw: string): CorridaData {
       descricao: typeof p.descricao === 'string' ? p.descricao : '',
       destino: typeof p.destino === 'string' ? p.destino : '',
       premiacao_titulo: typeof p.premiacao_titulo === 'string' ? p.premiacao_titulo : '',
-      premiacao: Array.isArray(p.premiacao) ? p.premiacao : [],
+      premiacao: Array.isArray(p.premiacao) ? p.premiacao.map(parseItem) : [],
       regras: typeof p.regras === 'string' ? p.regras : '',
       lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
     }
@@ -40,6 +63,8 @@ function parse(raw: string): CorridaData {
     return { tipo: 'nacional', titulo: '', descricao: '', destino: '', premiacao_titulo: '', premiacao: [], regras: '', lamina_url: '' }
   }
 }
+
+// ── Componente ───────────────────────────────────────────────────────────────
 
 export function CorridaVendasManager({ raw }: { raw: string }) {
   const [data, setData] = useState<CorridaData>(() => parse(raw))
@@ -50,13 +75,13 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
   const iso = detectIso(data.destino)
 
   function addItem() {
-    setData((d) => ({ ...d, premiacao: [...d.premiacao, ''] }))
+    setData((d) => ({ ...d, premiacao: [...d.premiacao, { texto: '', especificacoes: '' }] }))
   }
 
-  function updateItem(idx: number, value: string) {
+  function updateItem(idx: number, field: keyof PremiacaoItem, value: string) {
     setData((d) => ({
       ...d,
-      premiacao: d.premiacao.map((item, i) => (i === idx ? value : item)),
+      premiacao: d.premiacao.map((item, i) => i === idx ? { ...item, [field]: value } : item),
     }))
   }
 
@@ -97,7 +122,6 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
         <div className="flex gap-2">
           {(['nacional', 'internacional'] as const).map((tipo) => {
             const Icon = tipo === 'nacional' ? MapPin : Globe
-            const label = tipo === 'nacional' ? 'Nacional' : 'Internacional'
             return (
               <button
                 key={tipo}
@@ -111,7 +135,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                 )}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {label}
+                {tipo === 'nacional' ? 'Nacional' : 'Internacional'}
               </button>
             )
           })}
@@ -180,6 +204,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
           <Trophy className="w-4 h-4 text-yellow-500" />
           <h3 className="font-semibold text-foreground">Premiação</h3>
         </div>
+
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Título da premiação</Label>
           <Input
@@ -190,30 +215,42 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Adicione cada item do prêmio separadamente — ex: Transfer In/Out, Hotel, Passeio.
+          O ícone é detectado automaticamente pelo nome do item — ex: "Hotel", "Transfer", "Voo".
         </p>
 
-        <div className="space-y-2">
-          {data.premiacao.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-primary">{idx + 1}</span>
+        <div className="space-y-3">
+          {data.premiacao.map((item, idx) => {
+            const Icon = detectPremiacaoIcon(item.texto)
+            return (
+              <div key={idx} className="border border-border rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                    <Icon className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
+                  </div>
+                  <Input
+                    value={item.texto}
+                    onChange={(e) => updateItem(idx, 'texto', e.target.value)}
+                    placeholder="Ex: Transfer In/Out, Hotel 5 noites, Voo…"
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeItem(idx)}
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <Textarea
+                  value={item.especificacoes}
+                  onChange={(e) => updateItem(idx, 'especificacoes', e.target.value)}
+                  placeholder="Especificações (opcional) — ex: check-in 14h, café incluído, 2 pax..."
+                  className="min-h-[60px] text-xs resize-none ml-9"
+                  rows={2}
+                />
               </div>
-              <Input
-                value={item}
-                onChange={(e) => updateItem(idx, e.target.value)}
-                placeholder={`Item ${idx + 1} do prêmio`}
-                className="flex-1"
-              />
-              <button
-                type="button"
-                onClick={() => removeItem(idx)}
-                className="text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+            )
+          })}
           {data.premiacao.length === 0 && (
             <p className="text-xs text-muted-foreground italic py-1">Nenhum item adicionado ainda.</p>
           )}
@@ -234,7 +271,6 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
         <p className="text-xs text-muted-foreground">
           Anexe a lâmina da corrida de vendas (PDF ou imagem).
         </p>
-
         <div className="flex items-center gap-3 flex-wrap">
           <Button
             type="button"
@@ -247,7 +283,6 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
             {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
             {isUploading ? 'Enviando…' : data.lamina_url ? 'Trocar arquivo' : 'Anexar arquivo'}
           </Button>
-
           {data.lamina_url && (
             <>
               <a
@@ -269,7 +304,6 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
             </>
           )}
         </div>
-
         <input
           ref={fileRef}
           type="file"

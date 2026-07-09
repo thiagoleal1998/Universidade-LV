@@ -4,6 +4,7 @@ import { Briefcase, Trophy, MapPin, Globe, Gift, ScrollText, Paperclip, External
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
+import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 
 export const metadata = { title: 'Condições Comerciais' }
 
@@ -15,15 +16,29 @@ function toEmbedUrl(url: string): string {
   return url
 }
 
+type PremiacaoItem = { texto: string; especificacoes: string }
+
 type CorridaData = {
   tipo: 'nacional' | 'internacional'
   titulo: string
   descricao: string
   destino: string
   premiacao_titulo: string
-  premiacao: string[]
+  premiacao: PremiacaoItem[]
   regras: string
   lamina_url: string
+}
+
+function parseItem(raw: unknown): PremiacaoItem {
+  if (typeof raw === 'string') return { texto: raw, especificacoes: '' }
+  if (raw && typeof raw === 'object') {
+    const r = raw as Record<string, unknown>
+    return {
+      texto: typeof r.texto === 'string' ? r.texto : '',
+      especificacoes: typeof r.especificacoes === 'string' ? r.especificacoes : '',
+    }
+  }
+  return { texto: '', especificacoes: '' }
 }
 
 function parseCorridaData(raw: string): CorridaData {
@@ -35,7 +50,7 @@ function parseCorridaData(raw: string): CorridaData {
       descricao: typeof p.descricao === 'string' ? p.descricao : '',
       destino: typeof p.destino === 'string' ? p.destino : '',
       premiacao_titulo: typeof p.premiacao_titulo === 'string' ? p.premiacao_titulo : '',
-      premiacao: Array.isArray(p.premiacao) ? p.premiacao : [],
+      premiacao: Array.isArray(p.premiacao) ? p.premiacao.map(parseItem) : [],
       regras: typeof p.regras === 'string' ? p.regras : '',
       lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
     }
@@ -184,22 +199,32 @@ export default async function ComercialPage({
 
               {/* Premiação */}
               {corrida.premiacao.length > 0 && (
-                <div className="bg-card border rounded-xl p-5 space-y-3">
+                <div className="bg-card border rounded-xl p-5 space-y-4">
                   <div className="flex items-center gap-2">
                     <Gift className="w-4 h-4 text-yellow-500" />
                     <h2 className="font-semibold text-foreground">
                       {corrida.premiacao_titulo || 'Premiação'}
                     </h2>
                   </div>
-                  <ul className="space-y-2">
-                    {corrida.premiacao.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <span className="w-5 h-5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
-                          {idx + 1}
-                        </span>
-                        <span className="text-sm text-foreground">{item}</span>
-                      </li>
-                    ))}
+                  <ul className="space-y-3">
+                    {corrida.premiacao.map((item, idx) => {
+                      const Icon = detectPremiacaoIcon(item.texto)
+                      return (
+                        <li key={idx} className="space-y-1.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                              <Icon className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <span className="text-sm font-medium text-foreground">{item.texto}</span>
+                          </div>
+                          {item.especificacoes && (
+                            <p className="text-xs text-muted-foreground ml-10 leading-relaxed">
+                              {item.especificacoes}
+                            </p>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
               )}
