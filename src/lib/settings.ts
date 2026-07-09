@@ -196,7 +196,7 @@ const DEFAULTS = {
     youtube_url: '',
     episodes: [],
   }),
-  corrida_vendas: JSON.stringify({ tipo: 'nacional', premiacao: [], regras: '' }),
+  corrida_vendas: JSON.stringify([]),
   landing_hero_title: 'Capacitação exclusiva para agentes de viagem',
   landing_hero_subtitle: 'Treinamentos ao vivo, cursos completos, comunidade e certificados — tudo que você precisa para se destacar no mercado.',
   landing_hero_image_url: '',
