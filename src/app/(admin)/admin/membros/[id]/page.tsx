@@ -7,7 +7,16 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, CheckCircle2, BookOpen, Clock, Flame, BarChart2, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type ProgressRow = { lesson_id: string; completed_at: string; lessons: { title: string; modules: { title: string } | null } | null }
+type ProgressRow = {
+  lesson_id: string
+  completed_at: string
+  lessons: {
+    title: string
+    modules: {
+      title: string
+    }[]
+  }[]
+}
 type CourseRow = { id: string; name: string; modules: { id: string; title: string; lessons: { id: string; is_published: boolean }[] }[] }
 
 function calcStreak(rows: { completed_at: string }[]) {
