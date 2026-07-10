@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import {
   Briefcase, Trophy, MapPin, Globe, Gift, ScrollText,
-  Paperclip, ExternalLink, Clock, PlayCircle, CheckCircle2, Award,
+  Paperclip, ExternalLink, Clock, PlayCircle, CheckCircle2, Award, Calendar,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,7 @@ type CorridaData = {
   titulo: string
   descricao: string
   destino: string
+  periodo: string
   parceiro_logo_url: string
   premiacoes: PremiacaoSection[]
   vencedores: Vencedor[]
@@ -91,6 +92,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
+    periodo: typeof p.periodo === 'string' ? p.periodo : '',
     parceiro_logo_url: typeof p.parceiro_logo_url === 'string' ? p.parceiro_logo_url : '',
     premiacoes,
     vencedores: Array.isArray(p.vencedores) ? p.vencedores.map(parseVencedor) : [],
@@ -179,6 +181,23 @@ function CorridaCard({ corrida }: { corrida: CorridaData }) {
         )}
       </div>
 
+      {corrida.periodo && (
+        corrida.status === 'proxima' ? (
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+            <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Data prevista</p>
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">{corrida.periodo}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="w-4 h-4 shrink-0" />
+            <span>{corrida.periodo}</span>
+          </div>
+        )
+      )}
+
       {corrida.descricao && corrida.descricao !== '<p></p>' && (
         <div className="rich-text text-muted-foreground" dangerouslySetInnerHTML={{ __html: corrida.descricao }} />
       )}
@@ -266,17 +285,24 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
       {corridas.map((corrida, cIdx) => (
         <div key={cIdx} className="bg-card border rounded-xl overflow-hidden">
 
-          {/* ── Cabeçalho: título + logo do parceiro ── */}
-          <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border">
+          {/* ── Cabeçalho: fundo colorido da logo + título + logo ── */}
+          <div className="relative flex items-center justify-between gap-4 px-5 py-5 border-b border-border overflow-hidden">
+            {corrida.parceiro_logo_url && (
+              <img
+                src={corrida.parceiro_logo_url}
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover scale-150 blur-3xl opacity-25 dark:opacity-15 pointer-events-none select-none"
+              />
+            )}
             {corrida.titulo
-              ? <h2 className="text-base font-bold text-foreground leading-snug">{corrida.titulo}</h2>
-              : <span />
+              ? <h2 className="relative z-10 text-base font-bold text-foreground leading-snug">{corrida.titulo}</h2>
+              : <span className="relative z-10" />
             }
             {corrida.parceiro_logo_url && (
               <img
                 src={corrida.parceiro_logo_url}
                 alt="Parceiro"
-                className="shrink-0 object-contain"
+                className="relative z-10 shrink-0 object-contain"
                 style={{ maxHeight: 48, maxWidth: 140, width: 'auto', height: 'auto' }}
               />
             )}

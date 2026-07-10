@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import {
   Trophy, Globe, MapPin, Plus, X, ScrollText, Paperclip, Upload,
   ExternalLink, Loader2, ChevronDown, Trash2, Clock, PlayCircle,
-  CheckCircle2, Award,
+  CheckCircle2, Award, Calendar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
@@ -31,6 +31,7 @@ type CorridaData = {
   titulo: string
   descricao: string
   destino: string
+  periodo: string
   parceiro_logo_url: string
   premiacoes: PremiacaoSection[]
   vencedores: Vencedor[]
@@ -54,7 +55,7 @@ function emptyVencedor(): Vencedor { return { posicao: '', nome: '', agencia: ''
 
 function emptyCorida(): CorridaData {
   return {
-    status: 'proxima', tipo: 'nacional', titulo: '', descricao: '', destino: '',
+    status: 'proxima', tipo: 'nacional', titulo: '', descricao: '', destino: '', periodo: '',
     parceiro_logo_url: '', premiacoes: [emptySection()], vencedores: [], regras: '', lamina_url: '',
   }
 }
@@ -118,6 +119,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
+    periodo: typeof p.periodo === 'string' ? p.periodo : '',
     parceiro_logo_url: typeof p.parceiro_logo_url === 'string' ? p.parceiro_logo_url : '',
     premiacoes,
     vencedores: Array.isArray(p.vencedores) ? p.vencedores.map(parseVencedor) : [],
@@ -363,6 +365,22 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                         className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm object-cover pointer-events-none" />
                     )}
                   </div>
+                </div>
+
+                {/* Período / Data */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-primary" />
+                    <Label className="text-xs text-muted-foreground font-medium">
+                      Período / Data
+                      {corrida.status === 'proxima' && <span className="ml-1 text-blue-500">(obrigatório para corridas futuras)</span>}
+                    </Label>
+                  </div>
+                  <Input
+                    value={corrida.periodo}
+                    onChange={(e) => updateAt(cIdx, { periodo: e.target.value })}
+                    placeholder="Ex: 01/07/2026 a 30/09/2026, Julho a Setembro 2026…"
+                  />
                 </div>
 
                 {/* Premiação */}
