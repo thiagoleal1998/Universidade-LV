@@ -430,11 +430,12 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                       {/* Cabeçalho da seção */}
                       <div className="flex items-center gap-2 bg-muted/40 px-3 py-2 border-b">
                         <Trophy className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
-                        <Input
+                        <input
+                          type="text"
                           value={section.titulo}
                           onChange={(e) => updateSection(cIdx, sIdx, { titulo: e.target.value })}
                           placeholder={`Título da seção ${sIdx + 1} — ex: Prêmio para o 1º lugar`}
-                          className="flex-1 h-7 text-sm border-0 bg-transparent focus-visible:ring-0 px-1"
+                          className="flex-1 min-w-0 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
                         />
                         {corrida.premiacoes.length > 1 && (
                           <button
