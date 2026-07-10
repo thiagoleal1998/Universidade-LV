@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import {
   Briefcase, Trophy, MapPin, Globe, Gift, ScrollText,
-  Paperclip, ExternalLink, Clock, PlayCircle, CheckCircle2,
+  Paperclip, ExternalLink, Clock, PlayCircle, CheckCircle2, Award,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -22,6 +22,7 @@ function toEmbedUrl(url: string): string {
 type Status = 'proxima' | 'em_andamento' | 'finalizada'
 type PremiacaoItem = { texto: string; especificacoes: string }
 type PremiacaoSection = { titulo: string; itens: PremiacaoItem[] }
+type Vencedor = { posicao: string; nome: string; agencia: string; descricao: string }
 
 type CorridaData = {
   status: Status
@@ -30,18 +31,18 @@ type CorridaData = {
   descricao: string
   destino: string
   premiacoes: PremiacaoSection[]
+  vencedores: Vencedor[]
   regras: string
   lamina_url: string
 }
+
+// ── Parsers ────────────────────────────────────────────────────────────────
 
 function parseItem(raw: unknown): PremiacaoItem {
   if (typeof raw === 'string') return { texto: raw, especificacoes: '' }
   if (raw && typeof raw === 'object') {
     const r = raw as Record<string, unknown>
-    return {
-      texto: typeof r.texto === 'string' ? r.texto : '',
-      especificacoes: typeof r.especificacoes === 'string' ? r.especificacoes : '',
-    }
+    return { texto: typeof r.texto === 'string' ? r.texto : '', especificacoes: typeof r.especificacoes === 'string' ? r.especificacoes : '' }
   }
   return { texto: '', especificacoes: '' }
 }
@@ -49,12 +50,22 @@ function parseItem(raw: unknown): PremiacaoItem {
 function parseSection(raw: unknown): PremiacaoSection {
   if (raw && typeof raw === 'object') {
     const r = raw as Record<string, unknown>
-    return {
-      titulo: typeof r.titulo === 'string' ? r.titulo : '',
-      itens: Array.isArray(r.itens) ? r.itens.map(parseItem) : [],
-    }
+    return { titulo: typeof r.titulo === 'string' ? r.titulo : '', itens: Array.isArray(r.itens) ? r.itens.map(parseItem) : [] }
   }
   return { titulo: '', itens: [] }
+}
+
+function parseVencedor(raw: unknown): Vencedor {
+  if (raw && typeof raw === 'object') {
+    const r = raw as Record<string, unknown>
+    return {
+      posicao:  typeof r.posicao  === 'string' ? r.posicao  : '',
+      nome:     typeof r.nome     === 'string' ? r.nome     : '',
+      agencia:  typeof r.agencia  === 'string' ? r.agencia  : '',
+      descricao: typeof r.descricao === 'string' ? r.descricao : '',
+    }
+  }
+  return { posicao: '', nome: '', agencia: '', descricao: '' }
 }
 
 function parseSingle(p: Record<string, unknown>): CorridaData {
@@ -78,6 +89,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
     premiacoes,
+    vencedores: Array.isArray(p.vencedores) ? p.vencedores.map(parseVencedor) : [],
     regras: typeof p.regras === 'string' ? p.regras : '',
     lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
   }
@@ -97,6 +109,15 @@ function parseList(raw: string): CorridaData[] {
 // ── Sub-tabs config ────────────────────────────────────────────────────────
 
 const SUBTABS = [
+  {
+    key: 'vencedores',
+    label: 'Vencedores',
+    filter: (c: CorridaData) => c.vencedores.length > 0,
+    icon: Award,
+    emptyMsg: 'Nenhum vencedor anunciado ainda.',
+    activeClass: 'bg-yellow-500 text-white border-yellow-500',
+    inactiveClass: 'border-border text-muted-foreground hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200 dark:hover:bg-yellow-950/40 dark:hover:text-yellow-300 dark:hover:border-yellow-800',
+  },
   {
     key: 'proximas',
     label: 'Próximas',
@@ -128,7 +149,7 @@ const SUBTABS = [
 
 type SubtabKey = typeof SUBTABS[number]['key']
 
-// ── Componente de uma corrida ─────────────────────────────────────────────
+// ── CorridaCard ────────────────────────────────────────────────────────────
 
 function CorridaCard({ corrida }: { corrida: CorridaData }) {
   const iso = detectIso(corrida.destino)
@@ -139,27 +160,16 @@ function CorridaCard({ corrida }: { corrida: CorridaData }) {
       <div className="flex items-center gap-3 flex-wrap">
         {corrida.tipo === 'nacional' ? (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-semibold">
-            <MapPin className="w-3.5 h-3.5" />
-            Nacional
+            <MapPin className="w-3.5 h-3.5" />Nacional
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm font-semibold">
-            <Globe className="w-3.5 h-3.5" />
-            Internacional
+            <Globe className="w-3.5 h-3.5" />Internacional
           </span>
         )}
         {corrida.destino && (
           <span className="flex items-center gap-2 text-lg font-bold text-foreground">
-            {iso && (
-              <img
-                src={flagImgUrl(iso, '32x24')}
-                srcSet={`${flagImgUrl(iso, '48x36')} 2x`}
-                width={32}
-                height={24}
-                alt="Bandeira"
-                className="rounded-sm object-cover"
-              />
-            )}
+            {iso && <img src={flagImgUrl(iso, '32x24')} srcSet={`${flagImgUrl(iso, '48x36')} 2x`} width={32} height={24} alt="Bandeira" className="rounded-sm object-cover" />}
             {corrida.destino}
           </span>
         )}
@@ -170,12 +180,8 @@ function CorridaCard({ corrida }: { corrida: CorridaData }) {
       )}
 
       {corrida.lamina_url && (
-        <a
-          href={corrida.lamina_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-primary/40 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
-        >
+        <a href={corrida.lamina_url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-primary/40 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors">
           <Paperclip className="w-4 h-4" />
           Ver lâmina da corrida
           <ExternalLink className="w-3.5 h-3.5 opacity-60" />
@@ -205,9 +211,7 @@ function CorridaCard({ corrida }: { corrida: CorridaData }) {
                           </div>
                           <span className="text-sm font-medium text-foreground">{item.texto}</span>
                         </div>
-                        {item.especificacoes && (
-                          <p className="text-xs text-muted-foreground ml-10 leading-relaxed">{item.especificacoes}</p>
-                        )}
+                        {item.especificacoes && <p className="text-xs text-muted-foreground ml-10 leading-relaxed">{item.especificacoes}</p>}
                       </li>
                     )
                   })}
@@ -231,7 +235,68 @@ function CorridaCard({ corrida }: { corrida: CorridaData }) {
   )
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────
+// ── VencedoresView ─────────────────────────────────────────────────────────
+
+function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
+  if (corridas.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-3 text-muted-foreground">
+        <Award className="w-10 h-10 opacity-30" />
+        <p className="text-sm">Nenhum vencedor anunciado ainda.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      {corridas.map((corrida, cIdx) => (
+        <div key={cIdx} className="space-y-4">
+          {corrida.titulo && (
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-foreground">{corrida.titulo}</h2>
+              {corrida.destino && <span className="text-sm text-muted-foreground">{corrida.destino}</span>}
+            </div>
+          )}
+          <div className="space-y-3">
+            {corrida.vencedores.map((v, vIdx) => {
+              const pos = v.posicao.trim()
+              const isGold   = /1[°º]|1\s*lugar|ouro|gold/i.test(pos)
+              const isSilver = /2[°º]|2\s*lugar|prata|silver/i.test(pos)
+              const isBronze = /3[°º]|3\s*lugar|bronze/i.test(pos)
+
+              const badgeClass = isGold
+                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
+                : isSilver
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                : isBronze
+                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700'
+                : 'bg-muted text-muted-foreground border-border'
+
+              return (
+                <div key={vIdx} className="flex items-start gap-3 bg-card border rounded-xl p-4">
+                  <div className={cn('w-8 h-8 rounded-full border flex items-center justify-center shrink-0 mt-0.5', badgeClass)}>
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {pos && <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full border', badgeClass)}>{pos}</span>}
+                      <span className="font-semibold text-foreground">{v.nome}</span>
+                    </div>
+                    {v.agencia && <p className="text-sm text-muted-foreground mt-0.5">{v.agencia}</p>}
+                    {v.descricao && <p className="text-xs text-muted-foreground mt-1">{v.descricao}</p>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {cIdx < corridas.length - 1 && <hr className="border-border" />}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
 
 const MAIN_TABS = [
   { key: 'comercial',      label: 'Condições Comerciais', icon: Briefcase },
@@ -245,7 +310,7 @@ export default async function ComercialPage({
 }) {
   const { tab, subtab } = await searchParams
   const activeTab = MAIN_TABS.find((t) => t.key === tab)?.key ?? 'comercial'
-  const activeSubtab: SubtabKey = (['proximas', 'em_andamento', 'finalizadas'] as const).includes(subtab as SubtabKey)
+  const activeSubtab: SubtabKey = (['vencedores', 'proximas', 'em_andamento', 'finalizadas'] as const).includes(subtab as SubtabKey)
     ? (subtab as SubtabKey)
     : 'em_andamento'
 
@@ -280,9 +345,7 @@ export default async function ComercialPage({
             href={key === 'corrida_vendas' ? `?tab=${key}&subtab=${activeSubtab}` : `?tab=${key}`}
             className={cn(
               'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
-              activeTab === key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
+              activeTab === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
             <Icon className="w-4 h-4" />
@@ -299,12 +362,7 @@ export default async function ComercialPage({
             <p className="text-sm">Nenhuma condição comercial disponível no momento.</p>
           </div>
         ) : (
-          <iframe
-            src={toEmbedUrl(comercialItem.url)}
-            className="flex-1 w-full border-0"
-            title="Condições Comerciais"
-            allow="clipboard-read; clipboard-write"
-          />
+          <iframe src={toEmbedUrl(comercialItem.url)} className="flex-1 w-full border-0" title="Condições Comerciais" allow="clipboard-read; clipboard-write" />
         )
       )}
 
@@ -328,9 +386,11 @@ export default async function ComercialPage({
             ))}
           </div>
 
-          {/* Conteúdo filtrado */}
+          {/* Conteúdo */}
           <div className="flex-1 overflow-y-auto p-4 md:p-8">
-            {filteredCorridas.length === 0 ? (
+            {activeSubtab === 'vencedores' ? (
+              <VencedoresView corridas={filteredCorridas} />
+            ) : filteredCorridas.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-3 text-muted-foreground">
                 <Trophy className="w-10 h-10 opacity-30" />
                 <p className="text-sm">{subtabData.emptyMsg}</p>
