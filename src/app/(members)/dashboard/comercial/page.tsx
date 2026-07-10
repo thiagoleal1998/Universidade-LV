@@ -21,6 +21,7 @@ function toEmbedUrl(url: string): string {
 
 type Status = 'proxima' | 'em_andamento' | 'finalizada'
 type PremiacaoItem = { texto: string; especificacoes: string }
+type PremiacaoSection = { titulo: string; itens: PremiacaoItem[] }
 
 type CorridaData = {
   status: Status
@@ -28,8 +29,7 @@ type CorridaData = {
   titulo: string
   descricao: string
   destino: string
-  premiacao_titulo: string
-  premiacao: PremiacaoItem[]
+  premiacoes: PremiacaoSection[]
   regras: string
   lamina_url: string
 }
@@ -46,17 +46,38 @@ function parseItem(raw: unknown): PremiacaoItem {
   return { texto: '', especificacoes: '' }
 }
 
+function parseSection(raw: unknown): PremiacaoSection {
+  if (raw && typeof raw === 'object') {
+    const r = raw as Record<string, unknown>
+    return {
+      titulo: typeof r.titulo === 'string' ? r.titulo : '',
+      itens: Array.isArray(r.itens) ? r.itens.map(parseItem) : [],
+    }
+  }
+  return { titulo: '', itens: [] }
+}
+
 function parseSingle(p: Record<string, unknown>): CorridaData {
   const s = p.status as string
   const status: Status = ['proxima', 'em_andamento', 'finalizada'].includes(s) ? (s as Status) : 'em_andamento'
+
+  let premiacoes: PremiacaoSection[]
+  if (Array.isArray(p.premiacoes)) {
+    premiacoes = p.premiacoes.map(parseSection)
+  } else {
+    premiacoes = [{
+      titulo: typeof p.premiacao_titulo === 'string' ? p.premiacao_titulo : '',
+      itens: Array.isArray(p.premiacao) ? p.premiacao.map(parseItem) : [],
+    }]
+  }
+
   return {
     status,
     tipo: p.tipo === 'internacional' ? 'internacional' : 'nacional',
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
-    premiacao_titulo: typeof p.premiacao_titulo === 'string' ? p.premiacao_titulo : '',
-    premiacao: Array.isArray(p.premiacao) ? p.premiacao.map(parseItem) : [],
+    premiacoes,
     regras: typeof p.regras === 'string' ? p.regras : '',
     lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
   }
@@ -161,35 +182,39 @@ function CorridaCard({ corrida }: { corrida: CorridaData }) {
         </a>
       )}
 
-      {corrida.premiacao.length > 0 && (
+      {corrida.premiacoes.some((s) => s.itens.length > 0) && (
         <div className="space-y-3">
           <h3 className="text-base font-bold text-foreground">Premiação</h3>
-          <div className="bg-card border rounded-xl p-5 space-y-4">
-            {corrida.premiacao_titulo && (
-              <div className="flex items-center gap-2">
-                <Gift className="w-4 h-4 text-yellow-500" />
-                <span className="font-semibold text-foreground">{corrida.premiacao_titulo}</span>
+          {corrida.premiacoes.map((section, sIdx) =>
+            section.itens.length === 0 ? null : (
+              <div key={sIdx} className="bg-card border rounded-xl p-5 space-y-4">
+                {section.titulo && (
+                  <div className="flex items-center gap-2">
+                    <Gift className="w-4 h-4 text-yellow-500" />
+                    <span className="font-semibold text-foreground">{section.titulo}</span>
+                  </div>
+                )}
+                <ul className="space-y-3">
+                  {section.itens.map((item, idx) => {
+                    const Icon = detectPremiacaoIcon(item.texto)
+                    return (
+                      <li key={idx} className="space-y-1.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                            <Icon className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
+                          </div>
+                          <span className="text-sm font-medium text-foreground">{item.texto}</span>
+                        </div>
+                        {item.especificacoes && (
+                          <p className="text-xs text-muted-foreground ml-10 leading-relaxed">{item.especificacoes}</p>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
               </div>
-            )}
-            <ul className="space-y-3">
-              {corrida.premiacao.map((item, idx) => {
-                const Icon = detectPremiacaoIcon(item.texto)
-                return (
-                  <li key={idx} className="space-y-1.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
-                        <Icon className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
-                      </div>
-                      <span className="text-sm font-medium text-foreground">{item.texto}</span>
-                    </div>
-                    {item.especificacoes && (
-                      <p className="text-xs text-muted-foreground ml-10 leading-relaxed">{item.especificacoes}</p>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
+            ),
+          )}
         </div>
       )}
 
