@@ -651,21 +651,22 @@ export default async function DashboardPage() {
               <div className="space-y-3">
                 {corridaPreview.map((corrida, idx) => {
                   const iso = detectIso(corrida.destino)
-                  const isAtiva = corrida.status === 'em_andamento'
-                  const accentBar = isAtiva ? 'bg-green-500' : 'bg-blue-500'
-                  const badgeClass = isAtiva
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
-                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                  const st = corrida.status
+                  const statusCfg = st === 'em_andamento'
+                    ? { bar: 'bg-green-500', badge: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800', icon: <PlayCircle className="w-2.5 h-2.5" />, label: 'Em andamento', fallbackBg: 'bg-green-500/10', fallbackIcon: 'text-green-500', subtab: 'em_andamento' }
+                    : st === 'proxima'
+                    ? { bar: 'bg-blue-500',  badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',   icon: <Clock className="w-2.5 h-2.5" />,       label: 'Próxima',       fallbackBg: 'bg-blue-500/10',  fallbackIcon: 'text-blue-500',  subtab: 'proximas' }
+                    : { bar: 'bg-yellow-500', badge: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700', icon: <Trophy className="w-2.5 h-2.5" />, label: 'Finalizada', fallbackBg: 'bg-yellow-500/10', fallbackIcon: 'text-yellow-500', subtab: 'vencedores' }
 
                   return (
                     <Link
                       key={idx}
-                      href={`/dashboard/comercial?tab=corrida_vendas&subtab=${isAtiva ? 'em_andamento' : corrida.status === 'proxima' ? 'proximas' : 'vencedores'}`}
+                      href={`/dashboard/comercial?tab=corrida_vendas&subtab=${statusCfg.subtab}`}
                       className="group block rounded-2xl border overflow-hidden bg-card hover:shadow-md transition-all"
                     >
                       {/* Linha principal */}
                       <div className="flex items-center gap-4">
-                        <div className={`w-1.5 self-stretch shrink-0 ${accentBar}`} />
+                        <div className={`w-1.5 self-stretch shrink-0 ${statusCfg.bar}`} />
 
                         {corrida.parceiro_logo_url ? (
                           <div className="shrink-0 flex items-center justify-center py-4 pl-1" style={{ width: 64 }}>
@@ -673,16 +674,16 @@ export default async function DashboardPage() {
                               style={{ maxHeight: 48, maxWidth: 64, width: 'auto', height: 'auto' }} />
                           </div>
                         ) : (
-                          <div className={`w-14 h-14 m-3 rounded-xl flex items-center justify-center shrink-0 ${isAtiva ? 'bg-green-500/10' : 'bg-blue-500/10'}`}>
-                            <Trophy className={`w-6 h-6 ${isAtiva ? 'text-green-500' : 'text-blue-500'}`} />
+                          <div className={`w-14 h-14 m-3 rounded-xl flex items-center justify-center shrink-0 ${statusCfg.fallbackBg}`}>
+                            <Trophy className={`w-6 h-6 ${statusCfg.fallbackIcon}`} />
                           </div>
                         )}
 
                         <div className="flex-1 min-w-0 py-4 pr-2">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${badgeClass}`}>
-                              {isAtiva ? <PlayCircle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
-                              {isAtiva ? 'Em andamento' : 'Próxima'}
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusCfg.badge}`}>
+                              {statusCfg.icon}
+                              {statusCfg.label}
                             </span>
                           </div>
                           <p className="font-semibold text-foreground text-sm leading-snug truncate group-hover:text-primary transition-colors">
