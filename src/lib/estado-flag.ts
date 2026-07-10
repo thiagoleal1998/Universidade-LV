@@ -27,12 +27,70 @@ const ESTADO_FILES: Record<string, string> = {
   TO: 'Bandeira_do_Tocantins.svg',
 }
 
-/** Extrai a sigla do estado de strings como "Guarujá, SP" ou "SP". */
+// Normaliza removendo acentos e colocando em minúsculas
+function norm(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').trim()
+}
+
+// Mapeamento de nomes completos de estados (normalizados) → sigla
+const NOME_PARA_SIGLA: Record<string, string> = {
+  'acre': 'AC',
+  'alagoas': 'AL',
+  'amapa': 'AP',
+  'amazonas': 'AM',
+  'bahia': 'BA',
+  'ceara': 'CE',
+  'distrito federal': 'DF',
+  'espirito santo': 'ES',
+  'goias': 'GO',
+  'maranhao': 'MA',
+  'mato grosso do sul': 'MS',
+  'mato grosso': 'MT',
+  'minas gerais': 'MG',
+  'para': 'PA',
+  'paraiba': 'PB',
+  'parana': 'PR',
+  'pernambuco': 'PE',
+  'piaui': 'PI',
+  'rio grande do norte': 'RN',
+  'rio grande do sul': 'RS',
+  'rondonia': 'RO',
+  'roraima': 'RR',
+  'santa catarina': 'SC',
+  'sao paulo': 'SP',
+  'sergipe': 'SE',
+  'tocantins': 'TO',
+}
+
+/**
+ * Detecta a sigla do estado BR a partir de strings como:
+ * "Guarujá, SP" · "Santos-SP" · "Santos / SP" · "SP" · "São Paulo" · "Paraná"
+ */
 export function detectEstadoBR(text: string): string | null {
-  const m = text.match(/,\s*([A-Za-z]{2})\s*$/) ?? text.match(/^\s*([A-Za-z]{2})\s*$/)
-  if (!m) return null
-  const sigla = m[1].toUpperCase()
-  return ESTADO_FILES[sigla] ? sigla : null
+  const trimmed = text.trim()
+  const n = norm(trimmed)
+
+  // 1. Nome completo do estado — testa os mais longos primeiro (evita "para" colidir com "parana")
+  const nomes = Object.keys(NOME_PARA_SIGLA).sort((a, b) => b.length - a.length)
+  for (const nome of nomes) {
+    if (n === nome || n.endsWith(nome)) {
+      return NOME_PARA_SIGLA[nome]
+    }
+  }
+
+  // 2. Sigla de 2 letras separada por vírgula, traço, barra ou espaço no fim
+  //    ex: "Santos, SP" · "Santos-SP" · "Santos/SP" · "Santos SP"
+  const m = trimmed.match(/[,\-/\s]\s*([A-Za-z]{2})\s*$/)
+  if (m) {
+    const sigla = m[1].toUpperCase()
+    if (ESTADO_FILES[sigla]) return sigla
+  }
+
+  // 3. Apenas a sigla (texto inteiro)
+  const upper = trimmed.toUpperCase()
+  if (/^[A-Z]{2}$/.test(upper) && ESTADO_FILES[upper]) return upper
+
+  return null
 }
 
 /** URL da bandeira do estado via Wikimedia Commons. */
