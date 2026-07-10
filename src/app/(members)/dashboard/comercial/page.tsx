@@ -30,6 +30,7 @@ type CorridaData = {
   titulo: string
   descricao: string
   destino: string
+  parceiro_logo_url: string
   premiacoes: PremiacaoSection[]
   vencedores: Vencedor[]
   regras: string
@@ -88,6 +89,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
+    parceiro_logo_url: typeof p.parceiro_logo_url === 'string' ? p.parceiro_logo_url : '',
     premiacoes,
     vencedores: Array.isArray(p.vencedores) ? p.vencedores.map(parseVencedor) : [],
     regras: typeof p.regras === 'string' ? p.regras : '',
@@ -248,22 +250,67 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
   }
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-10">
       {corridas.map((corrida, cIdx) => (
-        <div key={cIdx} className="space-y-4">
-          {corrida.titulo && (
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-foreground">{corrida.titulo}</h2>
-              {corrida.destino && <span className="text-sm text-muted-foreground">{corrida.destino}</span>}
+        <div key={cIdx} className="space-y-5">
+          {/* Cabeçalho: logo + título */}
+          <div className="flex items-center gap-4">
+            {corrida.parceiro_logo_url && (
+              <img
+                src={corrida.parceiro_logo_url}
+                alt="Logo do parceiro"
+                className="h-12 w-auto max-w-[140px] object-contain"
+              />
+            )}
+            <div>
+              {corrida.titulo && <h2 className="text-lg font-bold text-foreground">{corrida.titulo}</h2>}
+              {corrida.destino && <p className="text-sm text-muted-foreground">{corrida.destino}</p>}
+            </div>
+          </div>
+
+          {/* Premiação */}
+          {corrida.premiacoes.some((s) => s.itens.length > 0) && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Premiação</h3>
+              {corrida.premiacoes.map((section, sIdx) =>
+                section.itens.length === 0 ? null : (
+                  <div key={sIdx} className="bg-card border rounded-xl p-4 space-y-3">
+                    {section.titulo && (
+                      <div className="flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-yellow-500" />
+                        <span className="font-semibold text-foreground text-sm">{section.titulo}</span>
+                      </div>
+                    )}
+                    <ul className="space-y-2">
+                      {section.itens.map((item, idx) => {
+                        const Icon = detectPremiacaoIcon(item.texto)
+                        return (
+                          <li key={idx} className="space-y-1">
+                            <div className="flex items-center gap-3">
+                              <div className="w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                                <Icon className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                              </div>
+                              <span className="text-sm text-foreground">{item.texto}</span>
+                            </div>
+                            {item.especificacoes && <p className="text-xs text-muted-foreground ml-9">{item.especificacoes}</p>}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                ),
+              )}
             </div>
           )}
+
+          {/* Vencedores */}
           <div className="space-y-3">
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Vencedores</h3>
             {corrida.vencedores.map((v, vIdx) => {
               const pos = v.posicao.trim()
               const isGold   = /1[°º]|1\s*lugar|ouro|gold/i.test(pos)
               const isSilver = /2[°º]|2\s*lugar|prata|silver/i.test(pos)
               const isBronze = /3[°º]|3\s*lugar|bronze/i.test(pos)
-
               const badgeClass = isGold
                 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
                 : isSilver
@@ -289,6 +336,7 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
               )
             })}
           </div>
+
           {cIdx < corridas.length - 1 && <hr className="border-border" />}
         </div>
       ))}

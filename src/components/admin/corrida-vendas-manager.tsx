@@ -31,6 +31,7 @@ type CorridaData = {
   titulo: string
   descricao: string
   destino: string
+  parceiro_logo_url: string
   premiacoes: PremiacaoSection[]
   vencedores: Vencedor[]
   regras: string
@@ -54,7 +55,7 @@ function emptyVencedor(): Vencedor { return { posicao: '', nome: '', agencia: ''
 function emptyCorida(): CorridaData {
   return {
     status: 'proxima', tipo: 'nacional', titulo: '', descricao: '', destino: '',
-    premiacoes: [emptySection()], vencedores: [], regras: '', lamina_url: '',
+    parceiro_logo_url: '', premiacoes: [emptySection()], vencedores: [], regras: '', lamina_url: '',
   }
 }
 
@@ -116,6 +117,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
+    parceiro_logo_url: typeof p.parceiro_logo_url === 'string' ? p.parceiro_logo_url : '',
     premiacoes,
     vencedores: Array.isArray(p.vencedores) ? p.vencedores.map(parseVencedor) : [],
     regras: typeof p.regras === 'string' ? p.regras : '',
@@ -141,8 +143,9 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
   const [openSet, setOpenSet] = useState<number[]>(() => (parseList(raw).length === 1 ? [0] : []))
   const [isPending, startTransition] = useTransition()
   const [isUploading, startUpload] = useTransition()
-  const pendingUploadIdx = useRef<number | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const pendingUpload = useRef<{ idx: number; field: 'lamina_url' | 'parceiro_logo_url' } | null>(null)
+  const laminaRef = useRef<HTMLInputElement>(null)
+  const logoRef = useRef<HTMLInputElement>(null)
 
   // ── List helpers ──────────────────────────────────────────────────────────
 
@@ -213,19 +216,24 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
 
   // ── Upload ────────────────────────────────────────────────────────────────
 
-  function clickUpload(idx: number) {
-    pendingUploadIdx.current = idx
-    fileRef.current?.click()
+  function clickUpload(idx: number, field: 'lamina_url' | 'parceiro_logo_url') {
+    pendingUpload.current = { idx, field }
+    if (field === 'parceiro_logo_url') logoRef.current?.click()
+    else laminaRef.current?.click()
   }
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+
+  function handleUploadChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    const idx = pendingUploadIdx.current
-    if (!file || idx === null) return
+    const pending = pendingUpload.current
+    if (!file || !pending) return
     e.target.value = ''
     startUpload(async () => {
       const r = await uploadMarketingFile(file)
       if (r?.error) toast.error(r.error)
-      else if (r.url) { updateAt(idx, { lamina_url: r.url }); toast.success('Lâmina enviada!') }
+      else if (r.url) {
+        updateAt(pending.idx, { [pending.field]: r.url })
+        toast.success(pending.field === 'parceiro_logo_url' ? 'Logo enviado!' : 'Lâmina enviada!')
+      }
     })
   }
 
@@ -434,6 +442,27 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                   ))}
                 </div>
 
+                {/* Logo do parceiro/hotel */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground font-medium">Logo do hotel / parceiro</Label>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {corrida.parceiro_logo_url && (
+                      <div className="border border-border rounded-lg p-2 bg-muted/30">
+                        <img src={corrida.parceiro_logo_url} alt="Logo" className="h-10 w-auto object-contain max-w-[160px]" />
+                      </div>
+                    )}
+                    <Button type="button" variant="outline" size="sm" onClick={() => clickUpload(cIdx, 'parceiro_logo_url')} disabled={isUploading} className="gap-1.5">
+                      {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      {corrida.parceiro_logo_url ? 'Trocar logo' : 'Enviar logo'}
+                    </Button>
+                    {corrida.parceiro_logo_url && (
+                      <button type="button" onClick={() => updateAt(cIdx, { parceiro_logo_url: '' })} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Lâmina */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -441,7 +470,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                     <Label className="text-xs text-muted-foreground font-medium">Lâmina (PDF ou imagem)</Label>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
-                    <Button type="button" variant="outline" size="sm" onClick={() => clickUpload(cIdx)} disabled={isUploading} className="gap-1.5">
+                    <Button type="button" variant="outline" size="sm" onClick={() => clickUpload(cIdx, 'lamina_url')} disabled={isUploading} className="gap-1.5">
                       {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                       {corrida.lamina_url ? 'Trocar arquivo' : 'Anexar arquivo'}
                     </Button>
@@ -473,7 +502,8 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
         )
       })}
 
-      <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileChange} />
+      <input ref={logoRef}   type="file" accept="image/*" className="hidden" onChange={handleUploadChange} />
+      <input ref={laminaRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUploadChange} />
 
       {list.length > 0 && (
         <div className="flex justify-end pt-2">
