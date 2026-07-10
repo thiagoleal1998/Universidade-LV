@@ -442,7 +442,9 @@ export default async function DashboardPage() {
 
   // Corrida de Vendas
   const corridaPreviewAll = parseCorridasPreview(settings.corrida_vendas)
-  const corridaPreview = corridaPreviewAll.filter((c) => c.status === 'em_andamento' || c.status === 'proxima')
+  const corridaPreview = corridaPreviewAll.filter(
+    (c) => c.status === 'em_andamento' || c.status === 'proxima' || c.vencedores.length > 0,
+  )
 
   // TamoJunto
   type TamojuntoSection = { active: boolean; title: string; description: string; url: string; image_url: string; button_text: string; badge: string }
@@ -658,7 +660,7 @@ export default async function DashboardPage() {
                   return (
                     <Link
                       key={idx}
-                      href={`/dashboard/comercial?tab=corrida_vendas&subtab=${isAtiva ? 'em_andamento' : 'proximas'}`}
+                      href={`/dashboard/comercial?tab=corrida_vendas&subtab=${isAtiva ? 'em_andamento' : corrida.status === 'proxima' ? 'proximas' : 'vencedores'}`}
                       className="group block rounded-2xl border overflow-hidden bg-card hover:shadow-md transition-all"
                     >
                       {/* Linha principal */}
