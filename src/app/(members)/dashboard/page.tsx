@@ -11,14 +11,48 @@ import {
   Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
   TrendingUp, CheckCircle2, Trophy, Star, Headphones,
+  MapPin, Calendar,
 } from 'lucide-react'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
+import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 
 type LessonSummary = { id: string; title: string; is_published: boolean; order_index: number; module_id: string }
 type ModuleWithLessons = Module & { lessons: LessonSummary[] }
 type CourseWithModules = Course & { modules: ModuleWithLessons[] }
 type ProgressRow = { lesson_id: string; completed_at: string }
+
+// ── Corrida de Vendas ────────────────────────────────────────────────────────
+type CorridaStatus = 'proxima' | 'em_andamento' | 'finalizada'
+type CorridaPreview = {
+  status: CorridaStatus
+  titulo: string
+  destino: string
+  periodo: string
+  parceiro_logo_url: string
+  vencedores: number
+}
+
+function parseCorridaPreview(p: Record<string, unknown>): CorridaPreview {
+  const s = p.status as string
+  return {
+    status: (['proxima', 'em_andamento', 'finalizada'] as const).includes(s as CorridaStatus) ? (s as CorridaStatus) : 'em_andamento',
+    titulo: typeof p.titulo === 'string' ? p.titulo : '',
+    destino: typeof p.destino === 'string' ? p.destino : '',
+    periodo: typeof p.periodo === 'string' ? p.periodo : '',
+    parceiro_logo_url: typeof p.parceiro_logo_url === 'string' ? p.parceiro_logo_url : '',
+    vencedores: Array.isArray(p.vencedores) ? p.vencedores.length : 0,
+  }
+}
+
+function parseCorridasPreview(raw: string): CorridaPreview[] {
+  try {
+    const p = JSON.parse(raw)
+    if (Array.isArray(p)) return p.map((x) => parseCorridaPreview(x as Record<string, unknown>))
+    if (p && typeof p === 'object') return [parseCorridaPreview(p as Record<string, unknown>)]
+    return []
+  } catch { return [] }
+}
 
 const TWO_HOURS = 2 * 3_600_000
 
@@ -396,6 +430,10 @@ export default async function DashboardPage() {
   let sidebarSocials: SidebarSocials = { instagram: '', facebook: '', youtube: '', whatsapp: '', twitter: '', linkedin: '' }
   try { sidebarSocials = { ...sidebarSocials, ...JSON.parse(settings.sidebar_social_links) } } catch {}
 
+  // Corrida de Vendas
+  const corridaPreviewAll = parseCorridasPreview(settings.corrida_vendas)
+  const corridaPreview = corridaPreviewAll.filter((c) => c.status === 'em_andamento' || c.status === 'proxima')
+
   // TamoJunto
   type TamojuntoSection = { active: boolean; title: string; description: string; url: string; image_url: string; button_text: string; badge: string }
   let tamojunto: TamojuntoSection | null = null
@@ -582,6 +620,86 @@ export default async function DashboardPage() {
                   </span>
                 </Link>
               )}
+            </section>
+          )}
+
+          {/* ── Corrida de Vendas ── */}
+          {corridaPreview.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  <h2 className="text-base font-semibold text-foreground">Corrida de Vendas</h2>
+                </div>
+                <Link href="/dashboard/comercial?tab=corrida_vendas" className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                  Ver tudo <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                {corridaPreview.map((corrida, idx) => {
+                  const iso = detectIso(corrida.destino)
+                  const isAtiva = corrida.status === 'em_andamento'
+                  return (
+                    <Link
+                      key={idx}
+                      href={`/dashboard/comercial?tab=corrida_vendas&subtab=${corrida.status === 'em_andamento' ? 'em_andamento' : 'proximas'}`}
+                      className="group flex items-center gap-4 rounded-2xl border overflow-hidden bg-card hover:shadow-md transition-all"
+                    >
+                      {/* Faixa colorida lateral */}
+                      <div className={`w-1.5 self-stretch shrink-0 ${isAtiva ? 'bg-green-500' : 'bg-blue-500'}`} />
+
+                      {/* Logo do parceiro */}
+                      {corrida.parceiro_logo_url ? (
+                        <div className="shrink-0 flex items-center justify-center py-4 pl-1" style={{ width: 64 }}>
+                          <img
+                            src={corrida.parceiro_logo_url}
+                            alt="Parceiro"
+                            className="object-contain"
+                            style={{ maxHeight: 48, maxWidth: 64, width: 'auto', height: 'auto' }}
+                          />
+                        </div>
+                      ) : (
+                        <div className={`w-14 h-14 m-3 rounded-xl flex items-center justify-center shrink-0 ${isAtiva ? 'bg-green-500/10' : 'bg-blue-500/10'}`}>
+                          <Trophy className={`w-6 h-6 ${isAtiva ? 'text-green-500' : 'text-blue-500'}`} />
+                        </div>
+                      )}
+
+                      {/* Conteúdo */}
+                      <div className="flex-1 min-w-0 py-4 pr-2">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${isAtiva ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'}`}>
+                            {isAtiva ? <PlayCircle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+                            {isAtiva ? 'Em andamento' : 'Próxima'}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-foreground text-sm leading-snug truncate group-hover:text-primary transition-colors">
+                          {corrida.titulo || 'Corrida de Vendas'}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          {corrida.destino && (
+                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              {iso
+                                ? <img src={flagImgUrl(iso, '20x15')} width={16} height={12} alt="" className="rounded-sm object-contain shrink-0" />
+                                : <MapPin className="w-3 h-3 shrink-0" />
+                              }
+                              {corrida.destino}
+                            </span>
+                          )}
+                          {corrida.periodo && (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Calendar className="w-3 h-3 shrink-0" />
+                              {corrida.periodo}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mr-4 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                    </Link>
+                  )
+                })}
+              </div>
             </section>
           )}
 
