@@ -24,24 +24,34 @@ type ProgressRow = { lesson_id: string; completed_at: string }
 
 // ── Corrida de Vendas ────────────────────────────────────────────────────────
 type CorridaStatus = 'proxima' | 'em_andamento' | 'finalizada'
+type CorridaVencedor = { posicao: string; nome: string; agencia: string; logo_url: string }
 type CorridaPreview = {
   status: CorridaStatus
   titulo: string
   destino: string
   periodo: string
   parceiro_logo_url: string
-  vencedores: number
+  vencedores: CorridaVencedor[]
 }
 
 function parseCorridaPreview(p: Record<string, unknown>): CorridaPreview {
   const s = p.status as string
+  const rawVenc = Array.isArray(p.vencedores) ? p.vencedores : []
   return {
     status: (['proxima', 'em_andamento', 'finalizada'] as const).includes(s as CorridaStatus) ? (s as CorridaStatus) : 'em_andamento',
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
     periodo: typeof p.periodo === 'string' ? p.periodo : '',
     parceiro_logo_url: typeof p.parceiro_logo_url === 'string' ? p.parceiro_logo_url : '',
-    vencedores: Array.isArray(p.vencedores) ? p.vencedores.length : 0,
+    vencedores: rawVenc.map((v: unknown) => {
+      const r = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+      return {
+        posicao:  typeof r.posicao  === 'string' ? r.posicao  : '',
+        nome:     typeof r.nome     === 'string' ? r.nome     : '',
+        agencia:  typeof r.agencia  === 'string' ? r.agencia  : '',
+        logo_url: typeof r.logo_url === 'string' ? r.logo_url : '',
+      }
+    }),
   }
 }
 
@@ -640,62 +650,102 @@ export default async function DashboardPage() {
                 {corridaPreview.map((corrida, idx) => {
                   const iso = detectIso(corrida.destino)
                   const isAtiva = corrida.status === 'em_andamento'
+                  const accentBar = isAtiva ? 'bg-green-500' : 'bg-blue-500'
+                  const badgeClass = isAtiva
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
+                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+
                   return (
                     <Link
                       key={idx}
-                      href={`/dashboard/comercial?tab=corrida_vendas&subtab=${corrida.status === 'em_andamento' ? 'em_andamento' : 'proximas'}`}
-                      className="group flex items-center gap-4 rounded-2xl border overflow-hidden bg-card hover:shadow-md transition-all"
+                      href={`/dashboard/comercial?tab=corrida_vendas&subtab=${isAtiva ? 'em_andamento' : 'proximas'}`}
+                      className="group block rounded-2xl border overflow-hidden bg-card hover:shadow-md transition-all"
                     >
-                      {/* Faixa colorida lateral */}
-                      <div className={`w-1.5 self-stretch shrink-0 ${isAtiva ? 'bg-green-500' : 'bg-blue-500'}`} />
+                      {/* Linha principal */}
+                      <div className="flex items-center gap-4">
+                        <div className={`w-1.5 self-stretch shrink-0 ${accentBar}`} />
 
-                      {/* Logo do parceiro */}
-                      {corrida.parceiro_logo_url ? (
-                        <div className="shrink-0 flex items-center justify-center py-4 pl-1" style={{ width: 64 }}>
-                          <img
-                            src={corrida.parceiro_logo_url}
-                            alt="Parceiro"
-                            className="object-contain"
-                            style={{ maxHeight: 48, maxWidth: 64, width: 'auto', height: 'auto' }}
-                          />
-                        </div>
-                      ) : (
-                        <div className={`w-14 h-14 m-3 rounded-xl flex items-center justify-center shrink-0 ${isAtiva ? 'bg-green-500/10' : 'bg-blue-500/10'}`}>
-                          <Trophy className={`w-6 h-6 ${isAtiva ? 'text-green-500' : 'text-blue-500'}`} />
-                        </div>
-                      )}
+                        {corrida.parceiro_logo_url ? (
+                          <div className="shrink-0 flex items-center justify-center py-4 pl-1" style={{ width: 64 }}>
+                            <img src={corrida.parceiro_logo_url} alt="Parceiro" className="object-contain"
+                              style={{ maxHeight: 48, maxWidth: 64, width: 'auto', height: 'auto' }} />
+                          </div>
+                        ) : (
+                          <div className={`w-14 h-14 m-3 rounded-xl flex items-center justify-center shrink-0 ${isAtiva ? 'bg-green-500/10' : 'bg-blue-500/10'}`}>
+                            <Trophy className={`w-6 h-6 ${isAtiva ? 'text-green-500' : 'text-blue-500'}`} />
+                          </div>
+                        )}
 
-                      {/* Conteúdo */}
-                      <div className="flex-1 min-w-0 py-4 pr-2">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${isAtiva ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'}`}>
-                            {isAtiva ? <PlayCircle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
-                            {isAtiva ? 'Em andamento' : 'Próxima'}
-                          </span>
-                        </div>
-                        <p className="font-semibold text-foreground text-sm leading-snug truncate group-hover:text-primary transition-colors">
-                          {corrida.titulo || 'Corrida de Vendas'}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          {corrida.destino && (
-                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              {iso
-                                ? <img src={flagImgUrl(iso, '20x15')} width={16} height={12} alt="" className="rounded-sm object-contain shrink-0" />
-                                : <MapPin className="w-3 h-3 shrink-0" />
-                              }
-                              {corrida.destino}
+                        <div className="flex-1 min-w-0 py-4 pr-2">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                              {isAtiva ? <PlayCircle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+                              {isAtiva ? 'Em andamento' : 'Próxima'}
                             </span>
-                          )}
-                          {corrida.periodo && (
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Calendar className="w-3 h-3 shrink-0" />
-                              {corrida.periodo}
-                            </span>
-                          )}
+                          </div>
+                          <p className="font-semibold text-foreground text-sm leading-snug truncate group-hover:text-primary transition-colors">
+                            {corrida.titulo || 'Corrida de Vendas'}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            {corrida.destino && (
+                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                {iso
+                                  ? <img src={flagImgUrl(iso, '20x15')} width={16} height={12} alt="" className="rounded-sm object-contain shrink-0" />
+                                  : <MapPin className="w-3 h-3 shrink-0" />}
+                                {corrida.destino}
+                              </span>
+                            )}
+                            {corrida.periodo && (
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Calendar className="w-3 h-3 shrink-0" />
+                                {corrida.periodo}
+                              </span>
+                            )}
+                          </div>
                         </div>
+
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mr-4 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mr-4 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                      {/* Vencedores */}
+                      {corrida.vencedores.length > 0 && (
+                        <div className="border-t border-border px-5 py-3 space-y-2">
+                          {corrida.vencedores.slice(0, 3).map((v, vi) => {
+                            const pos = v.posicao.trim()
+                            const isGold   = /1[°º]|1\s*lugar|ouro/i.test(pos)
+                            const isSilver = /2[°º]|2\s*lugar|prata/i.test(pos)
+                            const isBronze = /3[°º]|3\s*lugar|bronze/i.test(pos)
+                            const bc = isGold
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
+                              : isSilver
+                              ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                              : isBronze
+                              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700'
+                              : 'bg-muted text-muted-foreground border-border'
+                            return (
+                              <div key={vi} className="flex items-center gap-2.5">
+                                {v.logo_url ? (
+                                  <img src={v.logo_url} alt={v.nome} className="w-7 h-7 rounded-full object-cover shrink-0 border border-border" />
+                                ) : (
+                                  <div className={`w-7 h-7 rounded-full border flex items-center justify-center shrink-0 text-[10px] font-bold ${bc}`}>
+                                    {vi + 1}º
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {pos && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${bc}`}>{pos}</span>}
+                                    <span className="text-sm font-semibold text-foreground truncate">{v.nome}</span>
+                                  </div>
+                                  {v.agencia && <p className="text-xs text-muted-foreground truncate">{v.agencia}</p>}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          {corrida.vencedores.length > 3 && (
+                            <p className="text-xs text-muted-foreground pl-9">+{corrida.vencedores.length - 3} vencedores</p>
+                          )}
+                        </div>
+                      )}
                     </Link>
                   )
                 })}
