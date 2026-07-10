@@ -22,7 +22,7 @@ function toEmbedUrl(url: string): string {
 type Status = 'proxima' | 'em_andamento' | 'finalizada'
 type PremiacaoItem = { texto: string; especificacoes: string }
 type PremiacaoSection = { titulo: string; itens: PremiacaoItem[] }
-type Vencedor = { posicao: string; nome: string; agencia: string; descricao: string }
+type Vencedor = { posicao: string; nome: string; agencia: string; descricao: string; logo_url: string }
 
 type CorridaData = {
   status: Status
@@ -60,13 +60,14 @@ function parseVencedor(raw: unknown): Vencedor {
   if (raw && typeof raw === 'object') {
     const r = raw as Record<string, unknown>
     return {
-      posicao:  typeof r.posicao  === 'string' ? r.posicao  : '',
-      nome:     typeof r.nome     === 'string' ? r.nome     : '',
-      agencia:  typeof r.agencia  === 'string' ? r.agencia  : '',
+      posicao:   typeof r.posicao   === 'string' ? r.posicao   : '',
+      nome:      typeof r.nome      === 'string' ? r.nome      : '',
+      agencia:   typeof r.agencia   === 'string' ? r.agencia   : '',
       descricao: typeof r.descricao === 'string' ? r.descricao : '',
+      logo_url:  typeof r.logo_url  === 'string' ? r.logo_url  : '',
     }
   }
-  return { posicao: '', nome: '', agencia: '', descricao: '' }
+  return { posicao: '', nome: '', agencia: '', descricao: '', logo_url: '' }
 }
 
 function parseSingle(p: Record<string, unknown>): CorridaData {
@@ -239,6 +240,16 @@ function CorridaCard({ corrida }: { corrida: CorridaData }) {
 
 // ── VencedoresView ─────────────────────────────────────────────────────────
 
+function badgeClasses(pos: string) {
+  if (/1[°º]|1\s*lugar|ouro|gold/i.test(pos))
+    return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
+  if (/2[°º]|2\s*lugar|prata|silver/i.test(pos))
+    return 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+  if (/3[°º]|3\s*lugar|bronze/i.test(pos))
+    return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700'
+  return 'bg-muted text-muted-foreground border-border'
+}
+
 function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
   if (corridas.length === 0) {
     return (
@@ -252,92 +263,85 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
   return (
     <div className="max-w-2xl space-y-10">
       {corridas.map((corrida, cIdx) => (
-        <div key={cIdx} className="space-y-5">
-          {/* Cabeçalho: logo + título */}
-          <div className="flex items-center gap-4">
-            {corrida.parceiro_logo_url && (
-              <img
-                src={corrida.parceiro_logo_url}
-                alt="Logo do parceiro"
-                className="h-12 w-auto max-w-[140px] object-contain"
-              />
-            )}
-            <div>
-              {corrida.titulo && <h2 className="text-lg font-bold text-foreground">{corrida.titulo}</h2>}
-              {corrida.destino && <p className="text-sm text-muted-foreground">{corrida.destino}</p>}
-            </div>
-          </div>
+        <div key={cIdx} className="space-y-4">
+          {corrida.titulo && <h2 className="text-lg font-bold text-foreground">{corrida.titulo}</h2>}
 
-          {/* Premiação */}
-          {corrida.premiacoes.some((s) => s.itens.length > 0) && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Premiação</h3>
-              {corrida.premiacoes.map((section, sIdx) =>
-                section.itens.length === 0 ? null : (
-                  <div key={sIdx} className="bg-card border rounded-xl p-4 space-y-3">
-                    {section.titulo && (
-                      <div className="flex items-center gap-2">
-                        <Gift className="w-4 h-4 text-yellow-500" />
-                        <span className="font-semibold text-foreground text-sm">{section.titulo}</span>
-                      </div>
-                    )}
-                    <ul className="space-y-2">
-                      {section.itens.map((item, idx) => {
-                        const Icon = detectPremiacaoIcon(item.texto)
-                        return (
-                          <li key={idx} className="space-y-1">
-                            <div className="flex items-center gap-3">
-                              <div className="w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
-                                <Icon className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                              </div>
-                              <span className="text-sm text-foreground">{item.texto}</span>
-                            </div>
-                            {item.especificacoes && <p className="text-xs text-muted-foreground ml-9">{item.especificacoes}</p>}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                ),
-              )}
-            </div>
-          )}
+          {corrida.vencedores.map((v, vIdx) => {
+            const pos = v.posicao.trim()
+            const bc = badgeClasses(pos)
+            const hasDetails = corrida.parceiro_logo_url || corrida.premiacoes.some((s) => s.itens.length > 0)
 
-          {/* Vencedores */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Vencedores</h3>
-            {corrida.vencedores.map((v, vIdx) => {
-              const pos = v.posicao.trim()
-              const isGold   = /1[°º]|1\s*lugar|ouro|gold/i.test(pos)
-              const isSilver = /2[°º]|2\s*lugar|prata|silver/i.test(pos)
-              const isBronze = /3[°º]|3\s*lugar|bronze/i.test(pos)
-              const badgeClass = isGold
-                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
-                : isSilver
-                ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-                : isBronze
-                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700'
-                : 'bg-muted text-muted-foreground border-border'
-
-              return (
-                <div key={vIdx} className="flex items-start gap-3 bg-card border rounded-xl p-4">
-                  <div className={cn('w-8 h-8 rounded-full border flex items-center justify-center shrink-0 mt-0.5', badgeClass)}>
-                    <Award className="w-4 h-4" />
-                  </div>
+            return (
+              <details key={vIdx} className="group bg-card border rounded-xl overflow-hidden">
+                {/* Fechado: logo do vencedor + badge + nome + agência */}
+                <summary className="flex items-center gap-3 p-4 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                  {v.logo_url ? (
+                    <img src={v.logo_url} alt={v.nome} className="h-10 w-10 rounded-full object-cover shrink-0 border border-border" />
+                  ) : (
+                    <div className={cn('w-10 h-10 rounded-full border flex items-center justify-center shrink-0', bc)}>
+                      <Award className="w-5 h-5" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {pos && <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full border', badgeClass)}>{pos}</span>}
+                      {pos && <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full border shrink-0', bc)}>{pos}</span>}
                       <span className="font-semibold text-foreground">{v.nome}</span>
                     </div>
                     {v.agencia && <p className="text-sm text-muted-foreground mt-0.5">{v.agencia}</p>}
-                    {v.descricao && <p className="text-xs text-muted-foreground mt-1">{v.descricao}</p>}
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                  {hasDetails && (
+                    <svg className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </summary>
 
-          {cIdx < corridas.length - 1 && <hr className="border-border" />}
+                {/* Aberto: logo do parceiro + premiação */}
+                {hasDetails && (
+                  <div className="border-t border-border px-4 pb-4 pt-4 space-y-4">
+                    {corrida.parceiro_logo_url && (
+                      <img src={corrida.parceiro_logo_url} alt="Logo do parceiro" className="h-10 w-auto max-w-[160px] object-contain" />
+                    )}
+                    {corrida.premiacoes.some((s) => s.itens.length > 0) && (
+                      <div className="space-y-3">
+                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Premiação</h3>
+                        {corrida.premiacoes.map((section, sIdx) =>
+                          section.itens.length === 0 ? null : (
+                            <div key={sIdx} className="space-y-2">
+                              {section.titulo && (
+                                <div className="flex items-center gap-2">
+                                  <Gift className="w-3.5 h-3.5 text-yellow-500" />
+                                  <span className="text-sm font-semibold text-foreground">{section.titulo}</span>
+                                </div>
+                              )}
+                              <ul className="space-y-2">
+                                {section.itens.map((item, idx) => {
+                                  const Icon = detectPremiacaoIcon(item.texto)
+                                  return (
+                                    <li key={idx} className="space-y-0.5">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                                          <Icon className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                                        </div>
+                                        <span className="text-sm text-foreground">{item.texto}</span>
+                                      </div>
+                                      {item.especificacoes && <p className="text-xs text-muted-foreground ml-8.5">{item.especificacoes}</p>}
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </details>
+            )
+          })}
+
+          {cIdx < corridas.length - 1 && <hr className="border-border mt-6" />}
         </div>
       ))}
     </div>

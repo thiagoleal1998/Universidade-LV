@@ -23,7 +23,7 @@ import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 type Status = 'proxima' | 'em_andamento' | 'finalizada'
 type PremiacaoItem = { texto: string; especificacoes: string }
 type PremiacaoSection = { titulo: string; itens: PremiacaoItem[] }
-type Vencedor = { posicao: string; nome: string; agencia: string; descricao: string }
+type Vencedor = { posicao: string; nome: string; agencia: string; descricao: string; logo_url: string }
 
 type CorridaData = {
   status: Status
@@ -50,7 +50,7 @@ const STATUS_CONFIG: Record<Status, { label: string; icon: typeof Clock; classNa
 
 function emptySection(): PremiacaoSection { return { titulo: '', itens: [] } }
 function emptyItem(): PremiacaoItem { return { texto: '', especificacoes: '' } }
-function emptyVencedor(): Vencedor { return { posicao: '', nome: '', agencia: '', descricao: '' } }
+function emptyVencedor(): Vencedor { return { posicao: '', nome: '', agencia: '', descricao: '', logo_url: '' } }
 
 function emptyCorida(): CorridaData {
   return {
@@ -86,10 +86,11 @@ function parseVencedor(raw: unknown): Vencedor {
   if (raw && typeof raw === 'object') {
     const r = raw as Record<string, unknown>
     return {
-      posicao:  typeof r.posicao  === 'string' ? r.posicao  : '',
-      nome:     typeof r.nome     === 'string' ? r.nome     : '',
-      agencia:  typeof r.agencia  === 'string' ? r.agencia  : '',
+      posicao:   typeof r.posicao   === 'string' ? r.posicao   : '',
+      nome:      typeof r.nome      === 'string' ? r.nome      : '',
+      agencia:   typeof r.agencia   === 'string' ? r.agencia   : '',
       descricao: typeof r.descricao === 'string' ? r.descricao : '',
+      logo_url:  typeof r.logo_url  === 'string' ? r.logo_url  : '',
     }
   }
   return emptyVencedor()
@@ -143,9 +144,14 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
   const [openSet, setOpenSet] = useState<number[]>(() => (parseList(raw).length === 1 ? [0] : []))
   const [isPending, startTransition] = useTransition()
   const [isUploading, startUpload] = useTransition()
-  const pendingUpload = useRef<{ idx: number; field: 'lamina_url' | 'parceiro_logo_url' } | null>(null)
+  const pendingUpload = useRef<
+    | { kind: 'corrida'; idx: number; field: 'lamina_url' | 'parceiro_logo_url' }
+    | { kind: 'vencedor'; cIdx: number; vIdx: number }
+    | null
+  >(null)
   const laminaRef = useRef<HTMLInputElement>(null)
   const logoRef = useRef<HTMLInputElement>(null)
+  const vencedorLogoRef = useRef<HTMLInputElement>(null)
 
   // ── List helpers ──────────────────────────────────────────────────────────
 
@@ -217,9 +223,14 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
   // ── Upload ────────────────────────────────────────────────────────────────
 
   function clickUpload(idx: number, field: 'lamina_url' | 'parceiro_logo_url') {
-    pendingUpload.current = { idx, field }
+    pendingUpload.current = { kind: 'corrida', idx, field }
     if (field === 'parceiro_logo_url') logoRef.current?.click()
     else laminaRef.current?.click()
+  }
+
+  function clickVencedorLogo(cIdx: number, vIdx: number) {
+    pendingUpload.current = { kind: 'vencedor', cIdx, vIdx }
+    vencedorLogoRef.current?.click()
   }
 
   function handleUploadChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -229,10 +240,14 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
     e.target.value = ''
     startUpload(async () => {
       const r = await uploadMarketingFile(file)
-      if (r?.error) toast.error(r.error)
-      else if (r.url) {
+      if (r?.error) { toast.error(r.error); return }
+      if (!r.url) return
+      if (pending.kind === 'corrida') {
         updateAt(pending.idx, { [pending.field]: r.url })
         toast.success(pending.field === 'parceiro_logo_url' ? 'Logo enviado!' : 'Lâmina enviada!')
+      } else {
+        updateVencedor(pending.cIdx, pending.vIdx, { logo_url: r.url })
+        toast.success('Logo do vencedor enviado!')
       }
     })
   }
@@ -438,6 +453,23 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                       </div>
                       <Input value={v.agencia} onChange={(e) => updateVencedor(cIdx, vIdx, { agencia: e.target.value })} placeholder="Agência" className="ml-9" />
                       <Input value={v.descricao} onChange={(e) => updateVencedor(cIdx, vIdx, { descricao: e.target.value })} placeholder="Observação (opcional)" className="ml-9" />
+                      {/* Logo do vencedor */}
+                      <div className="ml-9 flex items-center gap-2 flex-wrap">
+                        {v.logo_url && (
+                          <div className="border border-border rounded-md p-1.5 bg-muted/30">
+                            <img src={v.logo_url} alt="Logo" className="h-8 w-auto object-contain max-w-[120px]" />
+                          </div>
+                        )}
+                        <Button type="button" variant="outline" size="sm" onClick={() => clickVencedorLogo(cIdx, vIdx)} disabled={isUploading} className="gap-1.5 h-7 text-xs">
+                          {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                          {v.logo_url ? 'Trocar logo' : 'Logo do vencedor'}
+                        </Button>
+                        {v.logo_url && (
+                          <button type="button" onClick={() => updateVencedor(cIdx, vIdx, { logo_url: '' })} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                            Remover
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -502,8 +534,9 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
         )
       })}
 
-      <input ref={logoRef}   type="file" accept="image/*" className="hidden" onChange={handleUploadChange} />
-      <input ref={laminaRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUploadChange} />
+      <input ref={logoRef}         type="file" accept="image/*" className="hidden" onChange={handleUploadChange} />
+      <input ref={vencedorLogoRef} type="file" accept="image/*" className="hidden" onChange={handleUploadChange} />
+      <input ref={laminaRef}       type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUploadChange} />
 
       {list.length > 0 && (
         <div className="flex justify-end pt-2">
