@@ -7,6 +7,7 @@ import {
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
+import { detectEstadoBR, estadoFlagUrl } from '@/lib/estado-flag'
 import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 
 export const metadata = { title: 'Condições Comerciais' }
@@ -289,11 +290,14 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
                     </div>
                     {v.agencia && <p className="text-sm text-muted-foreground mt-0.5">{v.agencia}</p>}
                     {v.descricao && (() => {
-                      const locIso = detectIso(v.descricao)
+                      const estadoSigla = detectEstadoBR(v.descricao)
+                      const flagSrc = estadoSigla
+                        ? estadoFlagUrl(estadoSigla)
+                        : (() => { const iso = detectIso(v.descricao); return iso ? flagImgUrl(iso, '20x15') : null })()
                       return (
                         <span className="flex items-center gap-1.5 mt-0.5">
-                          {locIso && (
-                            <img src={flagImgUrl(locIso, '20x15')} srcSet={`${flagImgUrl(locIso, '32x24')} 2x`} width={20} height={15} alt="" className="rounded-sm object-cover shrink-0" />
+                          {flagSrc && (
+                            <img src={flagSrc} width={20} height={15} alt="" className="rounded-sm object-contain shrink-0" style={{ width: 20, height: 15 }} />
                           )}
                           <span className="text-xs text-muted-foreground">{v.descricao}</span>
                         </span>
