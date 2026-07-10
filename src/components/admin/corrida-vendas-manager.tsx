@@ -452,7 +452,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                         </button>
                       </div>
                       <Input value={v.agencia} onChange={(e) => updateVencedor(cIdx, vIdx, { agencia: e.target.value })} placeholder="Agência" className="ml-9" />
-                      <Input value={v.descricao} onChange={(e) => updateVencedor(cIdx, vIdx, { descricao: e.target.value })} placeholder="Observação (opcional)" className="ml-9" />
+                      <Input value={v.descricao} onChange={(e) => updateVencedor(cIdx, vIdx, { descricao: e.target.value })} placeholder="Localização — ex: Guarujá, SP" className="ml-9" />
                       {/* Logo do vencedor */}
                       <div className="ml-9 flex items-center gap-2 flex-wrap">
                         {v.logo_url && (

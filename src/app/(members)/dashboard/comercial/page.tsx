@@ -288,6 +288,7 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
                       <span className="font-semibold text-foreground">{v.nome}</span>
                     </div>
                     {v.agencia && <p className="text-sm text-muted-foreground mt-0.5">{v.agencia}</p>}
+                    {v.descricao && <p className="text-xs text-muted-foreground">{v.descricao}</p>}
                   </div>
                   {hasDetails && (
                     <svg className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
