@@ -76,9 +76,33 @@ function parseList(raw: string): CorridaData[] {
 // ── Sub-tabs config ────────────────────────────────────────────────────────
 
 const SUBTABS = [
-  { key: 'proximas',      label: 'Próximas',      filter: (c: CorridaData) => c.status === 'proxima',      icon: Clock,        emptyMsg: 'Nenhuma corrida futura cadastrada.' },
-  { key: 'em_andamento',  label: 'Em andamento',  filter: (c: CorridaData) => c.status === 'em_andamento', icon: PlayCircle,   emptyMsg: 'Nenhuma corrida em andamento no momento.' },
-  { key: 'finalizadas',   label: 'Finalizadas',   filter: (c: CorridaData) => c.status === 'finalizada',   icon: CheckCircle2, emptyMsg: 'Nenhuma corrida finalizada ainda.' },
+  {
+    key: 'proximas',
+    label: 'Próximas',
+    filter: (c: CorridaData) => c.status === 'proxima',
+    icon: Clock,
+    emptyMsg: 'Nenhuma corrida futura cadastrada.',
+    activeClass: 'bg-blue-500 text-white border-blue-500',
+    inactiveClass: 'border-border text-muted-foreground hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:hover:border-blue-800',
+  },
+  {
+    key: 'em_andamento',
+    label: 'Em andamento',
+    filter: (c: CorridaData) => c.status === 'em_andamento',
+    icon: PlayCircle,
+    emptyMsg: 'Nenhuma corrida em andamento no momento.',
+    activeClass: 'bg-green-500 text-white border-green-500',
+    inactiveClass: 'border-border text-muted-foreground hover:bg-green-50 hover:text-green-700 hover:border-green-200 dark:hover:bg-green-950/40 dark:hover:text-green-300 dark:hover:border-green-800',
+  },
+  {
+    key: 'finalizadas',
+    label: 'Finalizadas',
+    filter: (c: CorridaData) => c.status === 'finalizada',
+    icon: CheckCircle2,
+    emptyMsg: 'Nenhuma corrida finalizada ainda.',
+    activeClass: 'bg-muted text-muted-foreground border-border',
+    inactiveClass: 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+  },
 ] as const
 
 type SubtabKey = typeof SUBTABS[number]['key']
@@ -263,16 +287,14 @@ export default async function ComercialPage({
       {activeTab === 'corrida_vendas' && (
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Sub-tabs */}
-          <div className="flex items-center gap-0 border-b border-border shrink-0 bg-background px-4">
-            {SUBTABS.map(({ key, label, icon: Icon }) => (
+          <div className="flex items-center gap-2 border-b border-border shrink-0 bg-background px-4 py-2.5">
+            {SUBTABS.map(({ key, label, icon: Icon, activeClass, inactiveClass }) => (
               <Link
                 key={key}
                 href={`?tab=corrida_vendas&subtab=${key}`}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
-                  activeSubtab === key
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                  'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-all whitespace-nowrap',
+                  activeSubtab === key ? activeClass : inactiveClass,
                 )}
               >
                 <Icon className="w-3.5 h-3.5" />
