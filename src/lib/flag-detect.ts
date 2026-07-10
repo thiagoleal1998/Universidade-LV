@@ -1,5 +1,20 @@
 const COUNTRY_MAP: [string[], string][] = [
-  [['brasil', 'brazil', 'rio de janeiro', 'sao paulo', 'fortaleza', 'florianopolis', 'natal', 'salvador', 'recife', 'maceio', 'porto seguro', 'foz do iguacu'], 'BR'],
+  [['brasil', 'brazil',
+    // Cidades
+    'rio de janeiro', 'sao paulo', 'fortaleza', 'florianopolis', 'natal', 'salvador', 'recife', 'maceio', 'porto seguro', 'foz do iguacu',
+    'curitiba', 'belem', 'manaus', 'goiania', 'campo grande', 'cuiaba', 'porto alegre', 'joao pessoa', 'aracaju', 'macapa', 'porto velho',
+    'boa vista', 'palmas', 'vitoria', 'guaruja', 'santos', 'campinas', 'ribeirao preto', 'uberlandia', 'contagem', 'juiz de fora',
+    'joinville', 'londrina', 'maringa', 'feira de santana', 'niteroi', 'sao luis', 'teresina', 'caxias do sul', 'jundiai', 'sorocaba',
+    'caruaru', 'petropolis', 'ilheus', 'paraty', 'armacao', 'buzios', 'angra dos reis', 'arraial',
+    // Nomes dos estados
+    'minas gerais', 'rio grande do sul', 'parana', 'bahia', 'espirito santo', 'goias', 'ceara', 'pernambuco',
+    'maranhao', 'amazonas', 'rondonia', 'roraima', 'amapa', 'tocantins', 'mato grosso do sul', 'mato grosso',
+    'sergipe', 'alagoas', 'paraiba', 'rio grande do norte', 'piaui', 'acre', 'santa catarina', 'distrito federal',
+    // Siglas de estado no formato "Cidade, SP" → detectadas por ", sp" etc.
+    ', sp', ', rj', ', mg', ', ba', ', pr', ', rs', ', sc', ', ce', ', pe', ', pa', ', ma',
+    ', go', ', es', ', mt', ', ms', ', ro', ', rr', ', ap', ', to', ', al', ', se',
+    ', pb', ', rn', ', pi', ', ac', ', am', ', df', ', rn',
+  ], 'BR'],
   [['argentina', 'buenos aires', 'bariloche', 'mendoza', 'patagonia', 'calafate', 'ushuaia'], 'AR'],
   [['chile', 'santiago', 'atacama', 'valparaiso', 'torres del paine'], 'CL'],
   [['uruguai', 'uruguay', 'montevideo', 'punta del este'], 'UY'],
