@@ -428,20 +428,18 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                   {corrida.premiacoes.map((section, sIdx) => (
                     <div key={sIdx} className="border border-border rounded-lg overflow-hidden">
                       {/* Cabeçalho da seção */}
-                      <div className="flex items-center gap-2 bg-muted/40 px-3 py-2 border-b">
-                        <Trophy className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
-                        <input
-                          type="text"
-                          value={section.titulo}
-                          onChange={(e) => updateSection(cIdx, sIdx, { titulo: e.target.value })}
-                          placeholder={`Título da seção ${sIdx + 1} — ex: Prêmio para o 1º lugar`}
-                          className="flex-1 min-w-0 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-                        />
+                      <div className="flex items-center justify-between bg-muted/40 px-3 py-2 border-b">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-3.5 h-3.5 text-yellow-500" />
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Seção {sIdx + 1}
+                          </span>
+                        </div>
                         {corrida.premiacoes.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeSection(cIdx, sIdx)}
-                            className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                            className="text-muted-foreground hover:text-destructive transition-colors"
                             title="Remover seção"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -450,7 +448,12 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                       </div>
 
                       {/* Itens da seção */}
-                      <div className="p-3 space-y-2">
+                      <div className="p-3 space-y-3">
+                        <Input
+                          value={section.titulo}
+                          onChange={(e) => updateSection(cIdx, sIdx, { titulo: e.target.value })}
+                          placeholder={`Título da seção ${sIdx + 1} — ex: Prêmio para o 1º lugar`}
+                        />
                         <p className="text-xs text-muted-foreground">
                           O ícone é detectado automaticamente pelo nome — ex: "Hotel", "Transfer", "Voo".
                         </p>
