@@ -586,7 +586,7 @@ export default async function DashboardPage() {
 
           {/* ── Destaque do Dia ── */}
           {destaque && (
-            <section>
+            <><hr className="border-border/50" /><section>
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-4 h-4 text-primary" />
                 <h2 className="text-base font-semibold text-foreground">Destaque do Dia</h2>
@@ -632,12 +632,12 @@ export default async function DashboardPage() {
                   </span>
                 </Link>
               )}
-            </section>
+            </section></>
           )}
 
           {/* ── Corrida de Vendas ── */}
           {corridaPreview.length > 0 && (
-            <section>
+            <><hr className="border-border/50" /><section>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-yellow-500" />
@@ -753,12 +753,12 @@ export default async function DashboardPage() {
                   )
                 })}
               </div>
-            </section>
+            </section></>
           )}
 
           {/* ── Vencedores TamoJunto LV ── */}
           {tamojuntoWinners && (
-            <section className="rounded-2xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-yellow-400/5 to-orange-400/5">
+            <><hr className="border-border/50" /><section className="rounded-2xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-yellow-400/5 to-orange-400/5">
               <div className="p-5 sm:p-6">
                 {/* Cabeçalho */}
                 <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -783,12 +783,12 @@ export default async function DashboardPage() {
                   regions={tamojuntoWinners.regions.filter((r) => r.agency1 || r.agency2)}
                 />
               </div>
-            </section>
+            </section></>
           )}
 
           {/* ── TamoJuntoLV ── */}
           {tamojunto && (
-            <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+            <><hr className="border-border/50" /><div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
               {tamojunto.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={tamojunto.image_url} alt={tamojunto.title} className="w-full h-40 object-cover" />
@@ -817,7 +817,7 @@ export default async function DashboardPage() {
                 )}
               </div>
               <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-            </div>
+            </div></>
           )}
 
           {courses.length === 0 && (
