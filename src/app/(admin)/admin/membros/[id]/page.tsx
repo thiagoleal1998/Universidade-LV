@@ -170,24 +170,34 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
             <div className="px-5 py-8 text-center text-sm text-muted-foreground">Nenhuma atividade registrada.</div>
           ) : (
             <div className="divide-y divide-border">
-              {progress.slice(0, 10).map((a, i) => (
-                <div key={i} className="px-5 py-3 flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground truncate">{a.lessons?.title ?? 'Aula concluída'}</p>
-                    {a.lessons?.modules?.title && <p className="text-xs text-muted-foreground mt-0.5 truncate">{a.lessons.modules.title}</p>}
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0 mt-0.5">
-                    {new Date(a.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              {progress.slice(0, 10).map((a, i) => {
+  const lesson = a.lessons?.[0]
+  const module = lesson?.modules?.[0]
+
+  return (
+  <div key={i} className="px-5 py-3 flex items-start gap-3">
+    <div className="w-6 h-6 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 flex items-center justify-center shrink-0 mt-0.5">
+      <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
     </div>
-  )
-}
+
+    <div className="flex-1 min-w-0">
+      <p className="text-sm text-foreground truncate">
+        {lesson?.title || 'Aula concluída'}
+      </p>
+
+      {module?.title && (
+        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+          {module.title}
+        </p>
+      )}
+    </div>
+
+    <span className="text-xs text-muted-foreground shrink-0 mt-0.5">
+      {new Date(a.completed_at).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+      })}
+    </span>
+  </div>
+)
+})}
