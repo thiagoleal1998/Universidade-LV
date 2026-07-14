@@ -56,7 +56,7 @@ export default async function PerfilPage() {
       .limit(60),
   ])
 
-  type HistoryRow = { lesson_id: string; completed_at: string; lessons: { title: string } | null }
+  type HistoryRow = { lesson_id: string; completed_at: string; lessons: { title: string }[] }
   const history = (historyData ?? []) as HistoryRow[]
 
   const profile = profileData as { full_name: string; avatar_url: string; created_at: string } | null
@@ -128,7 +128,7 @@ export default async function PerfilPage() {
         pendingModules={pendingModules}
         activityHistory={history.map((h) => ({
           lessonId: h.lesson_id,
-          lessonTitle: h.lessons?.title ?? '',
+          lessonTitle: h.lessons?.[0]?.title ?? '',
           completedAt: h.completed_at,
         }))}
       />

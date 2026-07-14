@@ -753,7 +753,7 @@ function LinkRow({ item, cat, products, tags = [] }: { item: MarketingItem; cat:
         <div className="flex items-center gap-1.5 flex-wrap">
           <p className="font-medium text-sm text-foreground">{item.title}</p>
           <StatusBadge item={item} />
-          {restrictedToTags && <Lock className="w-3 h-3 text-muted-foreground" title="Visibilidade restrita por tag" />}
+          {restrictedToTags && <Lock className="w-3 h-3 text-muted-foreground" aria-label="Visibilidade restrita por tag" />}
         </div>
         {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
         {item.url && <p className="text-xs text-primary/80 truncate">{item.url}</p>}

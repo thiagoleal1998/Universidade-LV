@@ -33,5 +33,5 @@ export async function toWebP(file: File, opts: ConvertOptions = {}): Promise<Fil
   const webpBuffer = await pipeline.webp({ quality }).toBuffer()
   const baseName = file.name.replace(/\.[^/.]+$/, '')
 
-  return new File([webpBuffer], `${baseName}.webp`, { type: 'image/webp' })
+  return new File([new Uint8Array(webpBuffer)], `${baseName}.webp`, { type: 'image/webp' })
 }

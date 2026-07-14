@@ -2042,7 +2042,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
                               <p className="text-[10px] text-muted-foreground">{NAV_PLACEHOLDERS[key]}</p>
                               <Input
                                 value={(landingNavLabels as Record<string, string>)[key] ?? ''}
-                                onChange={(e) => setLandingNavLabels(prev => ({ ...prev, [key]: e.target.value }))}
+                                onChange={(e) => setLandingNavLabels((prev: Record<string, string>) => ({ ...prev, [key]: e.target.value }))}
                                 placeholder={NAV_PLACEHOLDERS[key]}
                                 className="h-7 text-sm"
                               />

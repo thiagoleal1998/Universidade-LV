@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, CheckCircle2, BookOpen, Clock, Flame, BarChart2, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type ProgressRow = { lesson_id: string; completed_at: string; lessons: { title: string; modules: { title: string } | null } | null }
+type ProgressRow = { lesson_id: string; completed_at: string; lessons: { title: string; modules: { title: string }[] }[] | null }
 type CourseRow = { id: string; name: string; modules: { id: string; title: string; lessons: { id: string; is_published: boolean }[] }[] }
 
 function calcStreak(rows: { completed_at: string }[]) {
@@ -167,8 +167,8 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
                     <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground truncate">{a.lessons?.title ?? 'Aula concluída'}</p>
-                    {a.lessons?.modules?.title && <p className="text-xs text-muted-foreground mt-0.5 truncate">{a.lessons.modules.title}</p>}
+                    <p className="text-sm text-foreground truncate">{a.lessons?.[0]?.title ?? 'Aula concluída'}</p>
+                    {a.lessons?.[0]?.modules?.[0]?.title && <p className="text-xs text-muted-foreground mt-0.5 truncate">{a.lessons[0].modules[0].title}</p>}
                   </div>
                   <span className="text-xs text-muted-foreground shrink-0 mt-0.5">
                     {new Date(a.completed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}

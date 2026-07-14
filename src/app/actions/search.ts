@@ -40,7 +40,7 @@ export async function searchContent(query: string): Promise<SearchResult[]> {
   const modsQ = supabase.from('modules').select('id, course_id, courses(name)').eq('is_published', true)
   const { data: mods } = isAdmin ? await modsQ : courseIds.length > 0 ? await modsQ.in('course_id', courseIds) : { data: [] }
   const modIds = (mods ?? []).map((m) => m.id)
-  const modMap = Object.fromEntries((mods ?? []).map((m) => [m.id, { courseName: (m.courses as { name: string } | null)?.name ?? '' }]))
+  const modMap = Object.fromEntries((mods ?? []).map((m) => [m.id, { courseName: (m.courses as { name: string }[])[0]?.name ?? '' }]))
 
   if (modIds.length > 0) {
     const { data: lessons } = await supabase

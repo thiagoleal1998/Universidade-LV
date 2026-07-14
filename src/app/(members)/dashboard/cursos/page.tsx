@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BookOpen } from 'lucide-react'
 import { CourseGrid } from '@/components/members/course-grid'
 import type { CourseCard } from '@/components/members/course-grid'
-import type { Module } from '@/lib/supabase/types'
+import type { Course, Module } from '@/lib/supabase/types'
 
 export const metadata = { title: 'Meus Cursos' }
 

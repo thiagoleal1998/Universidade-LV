@@ -41,8 +41,8 @@ export default async function MemberMarketingPage() {
 
   const userTagIds = new Set((userTagsData ?? []).map((t: { tag_id: string }) => t.tag_id))
   const userTagNames = new Set(
-    (userTagsData ?? []).flatMap((t: { tag_id: string; tags: { name: string } | null }) =>
-      t.tags ? [t.tags.name] : []
+    (userTagsData ?? []).flatMap((t: { tag_id: string; tags: { name: string }[] }) =>
+      t.tags.map((tag) => tag.name)
     )
   )
   const B2C_RESTRICTED_TAGS = ['Agentes de viagens', 'Promotores', 'Agente de Viagem']

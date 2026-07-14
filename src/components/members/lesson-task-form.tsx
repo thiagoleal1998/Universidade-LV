@@ -268,6 +268,9 @@ export function LessonTaskForm({
         setResponse({
           id: 'local',
           submitted_at: now,
+          grade: null,
+          feedback: null,
+          graded_at: null,
           answers: answers.map((a) => ({
             question_id: a.questionId,
             text_answer: a.textAnswer ?? null,
