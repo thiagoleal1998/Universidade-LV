@@ -34,8 +34,21 @@ export default async function BuscaPage({
     // Get modules for accessible courses
     const modsQuery = supabase.from('modules').select('id, title, course_id, courses(name)').eq('is_published', true)
     const modsResult = isAdmin ? await modsQuery : courseIds.length > 0 ? await modsQuery.in('course_id', courseIds) : { data: [] }
-    const mods = (modsResult.data ?? []) as { id: string; title: string; course_id: string; courses: { name: string }[] }[]
-    const modMap = Object.fromEntries(mods.map((m) => [m.id, { moduleName: m.title, courseName: m.courses?.[0]?.name ?? '' }]))
+    const mods = (modsResult.data ?? []) as {
+  id: string
+  title: string
+  course_id: string
+  courses: { name: string }[]
+}[]
+    const modMap = Object.fromEntries(
+  mods.map((m) => [
+    m.id,
+    {
+      moduleName: m.title,
+      courseName: m.courses?.[0]?.name ?? '',
+    },
+  ])
+)
     const modIds = mods.map((m) => m.id)
 
     if (modIds.length > 0) {

@@ -14,11 +14,22 @@ type Post = {
   is_locked: boolean
   created_at: string
   user_id: string
-  profiles: { full_name: string; role: string } | null
+  profiles: {
+    full_name: string
+    role: string
+  } | null
   reply_count: { count: number }[]
-  polls: { id: string; question: string; options: string[]; ends_at: string | null; votes: { option_index: number; user_id: string }[] }[]
+  polls: {
+    id: string
+    question: string
+    options: string[]
+    ends_at: string | null
+    votes: {
+      option_index: number
+      user_id: string
+    }[]
+  }[]
 }
-
 export default async function CourseComunidadePage({
   params,
 }: {
