@@ -36,8 +36,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/auth/')
 
   if (isPublic) {
-    // Se já autenticado e tentar acessar login ou a raiz, redireciona para o painel
-    if (user && (pathname === '/login' || pathname === '/')) {
+    // Se já autenticado e tentar acessar login, redireciona para o painel.
+    // A raiz "/" continua mostrando a landing page mesmo autenticado.
+    if (user && pathname === '/login') {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
