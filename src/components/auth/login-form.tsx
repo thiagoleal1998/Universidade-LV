@@ -11,7 +11,7 @@ import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { Eye, EyeOff } from 'lucide-react'
 
-type LoginState = { error?: string; redirectTo?: string } | undefined
+type LoginState = { error?: string; info?: string; redirectTo?: string } | undefined
 
 export function LoginForm({ settings, messages }: { settings: Settings; messages: string[] }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(login, undefined)
@@ -60,6 +60,12 @@ export function LoginForm({ settings, messages }: { settings: Settings; messages
           {state?.error && (
             <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2.5">
               {state.error}
+            </p>
+          )}
+
+          {state?.info && (
+            <p className="text-sm text-amber-800 dark:text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2.5">
+              {state.info}
             </p>
           )}
 

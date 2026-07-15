@@ -31,7 +31,7 @@ export async function login(_state: unknown, formData: FormData) {
 
   if (!profile?.active) {
     await supabase.auth.signOut()
-    return { error: 'Sua conta está desativada. Entre em contato com o administrador.' }
+    return { info: 'Sua conta foi criada com sucesso e está aguardando aprovação. Assim que o acesso for liberado, você poderá entrar no seu ambiente de estudos e oportunidades.' }
   }
 
   return { redirectTo: profile.role === 'admin' ? '/admin' : '/dashboard' }
