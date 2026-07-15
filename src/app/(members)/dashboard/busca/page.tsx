@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { toOne } from '@/lib/supabase/relations'
 import Link from 'next/link'
 import { Search, BookOpen, PlayCircle } from 'lucide-react'
 
@@ -45,7 +46,7 @@ export default async function BuscaPage({
     m.id,
     {
       moduleName: m.title,
-      courseName: m.courses?.[0]?.name ?? '',
+      courseName: toOne(m.courses)?.name ?? '',
     },
   ])
 )

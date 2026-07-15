@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { toOne } from '@/lib/supabase/relations'
 import { ProfileTabs } from '@/components/members/profile-tabs'
 
 export default async function PerfilPage() {
@@ -128,7 +129,7 @@ export default async function PerfilPage() {
         pendingModules={pendingModules}
         activityHistory={history.map((h) => ({
           lessonId: h.lesson_id,
-          lessonTitle: h.lessons?.[0]?.title ?? '',
+          lessonTitle: toOne(h.lessons)?.title ?? '',
           completedAt: h.completed_at,
         }))}
       />

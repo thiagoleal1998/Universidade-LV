@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { toOne } from '@/lib/supabase/relations'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, CheckCircle2, BookOpen, Clock, Flame, BarChart2, Activity } from 'lucide-react'
@@ -176,8 +177,8 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
   ) : (
     <div className="divide-y divide-border">
       {progress.slice(0, 10).map((a, i) => {
-        const lesson = a.lessons?.[0]
-        const module = lesson?.modules?.[0]
+        const lesson = toOne(a.lessons)
+        const module = toOne(lesson?.modules)
 
         return (
           <div key={i} className="px-5 py-3 flex items-start gap-3">

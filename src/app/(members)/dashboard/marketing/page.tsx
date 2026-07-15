@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { toOne } from '@/lib/supabase/relations'
 import { getSettings } from '@/lib/settings'
 import { MemberMarketingView } from '@/components/members/member-marketing-view'
 
@@ -41,9 +42,10 @@ export default async function MemberMarketingPage() {
 
   const userTagIds = new Set((userTagsData ?? []).map((t: { tag_id: string }) => t.tag_id))
   const userTagNames = new Set(
-    (userTagsData ?? []).flatMap((t: { tag_id: string; tags: { name: string }[] }) =>
-      t.tags.map((tag) => tag.name)
-    )
+    (userTagsData ?? []).flatMap((t: { tag_id: string; tags: { name: string }[] }) => {
+      const tag = toOne(t.tags)
+      return tag ? [tag.name] : []
+    })
   )
   const B2C_RESTRICTED_TAGS = ['Agentes de viagens', 'Promotores', 'Agente de Viagem']
   const userIsB2CRestricted = B2C_RESTRICTED_TAGS.some((name) => userTagNames.has(name))
