@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+import { extractYouTubeId } from '@/lib/youtube'
 
 export type MarketingCategory = string
 
@@ -190,4 +191,56 @@ export async function uploadMarketingFile(file: File) {
 
   const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)
   return { success: true, url: publicUrl }
+}
+
+export type YoutubeEpisodeMetadata = { title: string; description: string; cover_url: string }
+
+// Busca título (oEmbed), capa (thumbnail) e descrição (meta tag) de um vídeo do YouTube.
+// Não depende de chave de API — usa o endpoint público de oEmbed e a meta description da página.
+export async function fetchYoutubeEpisodeMetadata(
+  url: string
+): Promise<{ success: true; data: YoutubeEpisodeMetadata } | { error: string }> {
+  const videoId = extractYouTubeId((url || '').trim())
+  if (!videoId) return { error: 'Cole um link válido do YouTube (youtube.com/watch?v=... ou youtu.be/...).' }
+
+  let title = ''
+  try {
+    const oembedRes = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`
+    )
+    if (!oembedRes.ok) return { error: 'Vídeo não encontrado no YouTube. Verifique o link.' }
+    const oembed = (await oembedRes.json()) as { title?: string }
+    title = oembed.title ?? ''
+  } catch {
+    return { error: 'Não foi possível conectar ao YouTube. Tente novamente.' }
+  }
+
+  let description = ''
+  try {
+    const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    })
+    if (pageRes.ok) {
+      const html = await pageRes.text()
+      const match = html.match(/<meta name="description" content="([^"]*)"/)
+      if (match) {
+        description = match[1]
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&amp;/g, '&')
+      }
+    }
+  } catch {
+    // descrição é best-effort — segue sem ela se falhar
+  }
+
+  let cover_url = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+  try {
+    const imgRes = await fetch(cover_url, { method: 'HEAD' })
+    if (!imgRes.ok) cover_url = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+  } catch {
+    cover_url = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+  }
+
+  return { success: true, data: { title, description, cover_url } }
 }

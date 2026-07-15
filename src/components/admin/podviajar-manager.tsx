@@ -2,13 +2,13 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { savePodviajar } from '@/app/actions/marketing-settings'
-import { uploadMarketingFile } from '@/app/actions/marketing'
+import { uploadMarketingFile, fetchYoutubeEpisodeMetadata } from '@/app/actions/marketing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Headphones, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Upload, X } from 'lucide-react'
+import { Headphones, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Upload, X, SquarePlay, Loader2 } from 'lucide-react'
 
 type Episode = {
   title: string
@@ -52,6 +52,7 @@ export function PodviajarManager({ raw }: { raw: string }) {
   const [data, setData] = useState<PodviajarData>(() => parse(raw))
   const [isPending, startTransition] = useTransition()
   const [isUploading, setIsUploading] = useState(false)
+  const [fetchingIdx, setFetchingIdx] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleImageUpload(file: File) {
@@ -87,6 +88,31 @@ export function PodviajarManager({ raw }: { raw: string }) {
       ...d,
       episodes: d.episodes.map((ep, i) => i === idx ? { ...ep, [field]: value } : ep),
     }))
+  }
+
+  async function handleFetchFromYoutube(idx: number) {
+    const url = data.episodes[idx].url
+    if (!url.trim()) {
+      toast.error('Cole o link do episódio no YouTube antes de buscar.')
+      return
+    }
+    setFetchingIdx(idx)
+    const result = await fetchYoutubeEpisodeMetadata(url)
+    setFetchingIdx(null)
+    if ('error' in result) {
+      toast.error(result.error)
+      return
+    }
+    setData((d) => ({
+      ...d,
+      episodes: d.episodes.map((ep, i) => i === idx ? {
+        ...ep,
+        title: result.data.title || ep.title,
+        description: result.data.description || ep.description,
+        cover_url: result.data.cover_url || ep.cover_url,
+      } : ep),
+    }))
+    toast.success('Dados preenchidos a partir do YouTube!')
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -287,6 +313,34 @@ export function PodviajarManager({ raw }: { raw: string }) {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Link do episódio (Spotify, YouTube…)</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    value={ep.url}
+                    onChange={(e) => updateEpisode(idx, 'url', e.target.value)}
+                    placeholder="https://youtube.com/watch?v=..."
+                    type="url"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={fetchingIdx === idx}
+                    onClick={() => handleFetchFromYoutube(idx)}
+                    className="gap-1.5 shrink-0"
+                  >
+                    {fetchingIdx === idx
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <SquarePlay className="w-3.5 h-3.5" />}
+                    Buscar do YouTube
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Se o link for do YouTube, preenche automaticamente título, descrição e capa abaixo.
+                </p>
+              </div>
+              <div className="sm:col-span-2">
                 <Label className="text-xs text-muted-foreground">Título</Label>
                 <Input
                   className="mt-1"
@@ -305,20 +359,17 @@ export function PodviajarManager({ raw }: { raw: string }) {
                   placeholder="Resumo do episódio..."
                 />
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Link do episódio (Spotify, YouTube…)</Label>
-                <Input
-                  className="mt-1"
-                  value={ep.url}
-                  onChange={(e) => updateEpisode(idx, 'url', e.target.value)}
-                  placeholder="https://..."
-                  type="url"
-                />
-              </div>
-              <div>
+              <div className="sm:col-span-2 space-y-2">
                 <Label className="text-xs text-muted-foreground">URL da capa do episódio</Label>
+                {ep.cover_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={ep.cover_url}
+                    alt="Capa do episódio"
+                    className="h-20 w-36 rounded-lg object-cover bg-muted/30 border"
+                  />
+                )}
                 <Input
-                  className="mt-1"
                   value={ep.cover_url}
                   onChange={(e) => updateEpisode(idx, 'cover_url', e.target.value)}
                   placeholder="https://..."
