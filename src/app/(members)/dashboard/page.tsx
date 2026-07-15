@@ -201,10 +201,13 @@ function SidebarPodviajarCard({ pod }: { pod: SidebarPodviajar }) {
   const latest = pod.episodes?.[0] ?? null
   return (
     <div className="rounded-xl border border-border overflow-hidden bg-card">
-      {pod.image_url && (
+      {latest?.cover_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={latest.cover_url} alt={latest.title} className="w-full aspect-video object-cover bg-muted/30" />
+      ) : pod.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={pod.image_url} alt={pod.title} className="w-full aspect-video object-contain bg-muted/30" />
-      )}
+      ) : null}
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
           <Headphones className="w-3.5 h-3.5" />
