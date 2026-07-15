@@ -13,6 +13,7 @@ export async function updateSettings(formData: FormData) {
     { key: 'site_tagline', value: (formData.get('site_tagline') as string) || '' },
     { key: 'primary_color', value: (formData.get('primary_color') as string) || 'default' },
     { key: 'logo_url', value: (formData.get('logo_url') as string) || '' },
+    { key: 'favicon_url', value: (formData.get('favicon_url') as string) || '' },
     { key: 'login_logo_url', value: (formData.get('login_logo_url') as string) || '' },
     { key: 'login_logo_dark_url', value: (formData.get('login_logo_dark_url') as string) || '' },
     { key: 'login_messages', value: (formData.get('login_messages') as string) || '' },
@@ -118,6 +119,29 @@ export async function uploadSiteLogo(formData: FormData) {
   const { error } = await adminClient.storage
     .from('lesson-photos')
     .upload(path, webpFile, { upsert: true, contentType: webpFile.type })
+
+  if (error) return { error: error.message }
+
+  const { data } = adminClient.storage.from('lesson-photos').getPublicUrl(path)
+
+  return { success: true, url: data.publicUrl }
+}
+
+export async function uploadSiteFavicon(formData: FormData) {
+  const file = formData.get('favicon') as File
+  if (!file || file.size === 0) return { error: 'Nenhum arquivo selecionado' }
+
+  const adminClient = createAdminClient()
+  // .ico é enviado como está — sharp/toWebP não processa esse formato
+  const isIco = file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon' || file.name.toLowerCase().endsWith('.ico')
+  const finalFile = isIco ? file : await toWebP(file, { maxWidth: 256, maxHeight: 256, quality: 90 })
+  const isSvg = finalFile.type === 'image/svg+xml'
+  const ext = isIco ? 'ico' : isSvg ? 'svg' : 'webp'
+  const path = `logos/favicon-${Date.now()}.${ext}`
+
+  const { error } = await adminClient.storage
+    .from('lesson-photos')
+    .upload(path, finalFile, { upsert: true, contentType: isIco ? 'image/x-icon' : finalFile.type })
 
   if (error) return { error: error.message }
 

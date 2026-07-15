@@ -6,6 +6,7 @@ export type Settings = {
   site_tagline: string
   primary_color: string
   logo_url: string
+  favicon_url: string
   login_logo_url: string
   login_logo_dark_url: string
   login_messages: string
@@ -139,6 +140,7 @@ const DEFAULTS = {
   site_tagline: '',
   primary_color: 'default',
   logo_url: '',
+  favicon_url: '',
   login_logo_url: '',
   login_logo_dark_url: '',
   login_messages: DEFAULT_LOGIN_MESSAGES,
@@ -324,6 +326,7 @@ export async function getSettings(): Promise<Settings> {
       site_tagline: map.site_tagline ?? DEFAULTS.site_tagline,
       primary_color: map.primary_color ?? DEFAULTS.primary_color,
       logo_url: map.logo_url ?? DEFAULTS.logo_url,
+      favicon_url: map.favicon_url ?? DEFAULTS.favicon_url,
       login_logo_url: map.login_logo_url ?? DEFAULTS.login_logo_url,
       login_logo_dark_url: map.login_logo_dark_url ?? DEFAULTS.login_logo_dark_url,
       login_messages: map.login_messages ?? DEFAULTS.login_messages,

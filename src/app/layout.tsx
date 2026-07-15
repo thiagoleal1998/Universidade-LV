@@ -52,6 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
     ...(settings.seo_google_verification
       ? { verification: { google: settings.seo_google_verification } }
       : {}),
+    ...(settings.favicon_url ? { icons: { icon: settings.favicon_url } } : {}),
   }
 }
 

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import Image from 'next/image'
-import { updateSettings, uploadSiteLogo } from '@/app/actions/settings'
+import { updateSettings, uploadSiteLogo, uploadSiteFavicon } from '@/app/actions/settings'
 import { COLOR_PRESETS } from '@/lib/color-presets'
 import type { Settings } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
@@ -358,6 +358,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [landingSubTab, setLandingSubTab] = useState<LandingSubTabId>('hero')
   const [isPending, startTransition] = useTransition()
   const [isUploading, startUpload] = useTransition()
+  const [isUploadingFavicon, startUploadFavicon] = useTransition()
   const [isUploadingLogin, startUploadLogin] = useTransition()
   const [isUploadingLoginDark, startUploadLoginDark] = useTransition()
   const [isUploadingLoading, startUploadLoading] = useTransition()
@@ -484,6 +485,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [newType, setNewType] = useState<SectionType>('text')
   const [showAdd, setShowAdd] = useState(false)
   const [logoUrl, setLogoUrl] = useState(settings.logo_url)
+  const [faviconUrl, setFaviconUrl] = useState(settings.favicon_url)
   const [loginLogoUrl, setLoginLogoUrl] = useState(settings.login_logo_url)
   const [loginLogoDarkUrl, setLoginLogoDarkUrl] = useState(settings.login_logo_dark_url)
   const [loadingImageUrl, setLoadingImageUrl] = useState(settings.loading_image_url)
@@ -492,6 +494,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set('logo_url', logoUrl)
+    formData.set('favicon_url', faviconUrl)
     formData.set('login_logo_url', loginLogoUrl)
     formData.set('login_logo_dark_url', loginLogoDarkUrl)
     formData.set('loading_image_url', loadingImageUrl)
@@ -578,14 +581,16 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     setter: (url: string) => void,
     successMsg: string,
     uploadFn: typeof startUpload,
+    action: (fd: FormData) => Promise<{ error?: string; url?: string }> = uploadSiteLogo,
+    fieldName: string = 'logo',
   ) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file) return
       const fd = new FormData()
-      fd.append('logo', file)
+      fd.append(fieldName, file)
       uploadFn(async () => {
-        const result = await uploadSiteLogo(fd)
+        const result = await action(fd)
         if (result?.error) toast.error(result.error)
         else if (result?.url) { setter(result.url); toast.success(successMsg) }
       })
@@ -655,6 +660,45 @@ export function SettingsForm({ settings }: { settings: Settings }) {
                 <Label className="text-xs">Ou cole uma URL</Label>
                 <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
               </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Favicon */}
+        <section>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Favicon</h3>
+          <p className="text-xs text-muted-foreground mb-4">Ícone exibido na aba do navegador. Use um arquivo quadrado (.ico, .png ou .svg), idealmente 32×32 ou 64×64 px.</p>
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-xl border border-border bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+              {faviconUrl
+                ? <Image src={faviconUrl} alt="Favicon" width={40} height={40} className="object-contain" />
+                : <ImagePlus className="w-6 h-6 text-muted-foreground" />
+              }
+            </div>
+            <div className="flex-1 space-y-3">
+              <div>
+                <Label htmlFor="favicon_upload" className="text-xs">Fazer upload de imagem</Label>
+                <Input
+                  id="favicon_upload"
+                  type="file"
+                  accept="image/*,.ico"
+                  onChange={makeUploadHandler(setFaviconUrl, 'Favicon atualizado!', startUploadFavicon, uploadSiteFavicon, 'favicon')}
+                  disabled={isUploadingFavicon}
+                  className="mt-1.5"
+                />
+                {isUploadingFavicon && <p className="text-xs text-muted-foreground mt-1">Enviando...</p>}
+              </div>
+              <div>
+                <Label className="text-xs">Ou cole uma URL</Label>
+                <Input value={faviconUrl} onChange={(e) => setFaviconUrl(e.target.value)} placeholder="https://..." className="mt-1.5" />
+              </div>
+              {faviconUrl && (
+                <button type="button" onClick={() => setFaviconUrl('')} className="text-xs text-destructive hover:underline">
+                  Remover
+                </button>
+              )}
             </div>
           </div>
         </section>
