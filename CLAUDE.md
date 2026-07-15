@@ -43,6 +43,8 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 - Projeto ID: definido em `NEXT_PUBLIC_SUPABASE_URL` (ver `.env.local`)
 - RLS `profiles`: usuário lê/edita apenas o próprio; admins leem todos (`profiles_select_admin`)
 - Notificações: INSERT via `adminClient` (sem política de INSERT — service role bypassa RLS)
+- **Relações N→1** (ex.: `tags(name)`, `courses(name)`, `lessons(title)` em joins): o PostgREST retorna **objeto** em runtime, mas o client sem tipos gerados infere **array**. Nunca acesse com `.map()`/`[0]` direto — use `toOne()` de `src/lib/supabase/relations.ts`, que normaliza as duas formas. (Regressão real na v1.50.1: Marketing quebrou com `t.tags.map is not a function` só para usuários com tags.)
+- Triggers em `profiles` disparados via auth (GoTrue) rodam com `search_path` restrito — sempre qualifique objetos com `public.` dentro de funções de trigger (ver migração 030).
 
 ## Notificações
 - Tabela `notifications`: `id, user_id, type, title, body, link, read_at, created_at`
