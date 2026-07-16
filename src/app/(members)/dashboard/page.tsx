@@ -459,12 +459,20 @@ export default async function DashboardPage() {
 
   // TamoJunto Winners
   type WinnersRegion = { name: string; agency1: string; value1: string; agency2: string; value2: string }
-  type WinnersSection = { active: boolean; title: string; badge: string; month: string; regions: WinnersRegion[] }
+  type WinnersMonth = { month: string; regions: WinnersRegion[] }
+  type WinnersSection = { active: boolean; title: string; badge: string; months: WinnersMonth[] }
   let tamojuntoWinners: WinnersSection | null = null
   try {
     const parsed = JSON.parse(settings.tamojunto_winners)
-    if (parsed?.active) tamojuntoWinners = parsed
+    if (parsed?.active) {
+      // Compatibilidade com o formato antigo (um único mês salvo na raiz, sem lista de sessões)
+      const months: WinnersMonth[] = Array.isArray(parsed.months) && parsed.months.length > 0
+        ? parsed.months
+        : [{ month: parsed.month ?? '', regions: Array.isArray(parsed.regions) ? parsed.regions : [] }]
+      tamojuntoWinners = { active: true, title: parsed.title ?? 'Vencedores do Mês', badge: parsed.badge ?? '', months }
+    }
   } catch {}
+  const currentWinnersMonth = tamojuntoWinners?.months?.[0] ?? null
 
   // PodViajar
   type PodEpisode = { title: string; description: string; url: string; date: string; cover_url: string; duration: string }
@@ -774,16 +782,16 @@ export default async function DashboardPage() {
                       {tamojuntoWinners.badge}
                     </span>
                   )}
-                  {tamojuntoWinners.month && (
+                  {currentWinnersMonth?.month && (
                     <span className="text-xs font-semibold text-muted-foreground border border-border/60 bg-background/50 rounded-full px-3 py-1">
-                      {tamojuntoWinners.month}
+                      {currentWinnersMonth.month}
                     </span>
                   )}
                 </div>
 
                 {/* Carrossel de regiões */}
                 <WinnersCarousel
-                  regions={tamojuntoWinners.regions.filter((r) => r.agency1 || r.agency2)}
+                  regions={(currentWinnersMonth?.regions ?? []).filter((r) => r.agency1 || r.agency2)}
                 />
               </div>
             </section></>
