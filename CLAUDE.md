@@ -66,6 +66,7 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 - Componentes UI reutilizáveis em `src/components/ui/`
 - `settings` são pares chave-valor na tabela `site_settings`; tipo e defaults em `src/lib/settings.ts`
 - Nav do admin é duplicado em dois lugares que precisam ficar em sincronia: `NAV_ITEMS` em `src/components/admin/admin-sidebar.tsx` (render real, com ícone) e `ALL_NAV_ITEMS` em `src/components/admin/settings-form.tsx` (aba "Menu Admin", reordenável via `nav_order`). Ao adicionar página admin nova, adicionar nos dois + no default de `nav_order` em `src/lib/settings.ts`.
+- **Perfil (admin e membro) é a MESMA tela**: `src/app/(admin)/admin/perfil/page.tsx` e `src/app/(members)/dashboard/perfil/page.tsx` renderizam o mesmo `<ProfileTabs>` (`src/components/members/profile-tabs.tsx`), cuja aba "Meu Perfil" usa `ProfileFormCompact` (`src/components/members/profile-form-compact.tsx`) — único lugar a editar para mudar campos de perfil de qualquer um dos dois papéis. Campos hoje: nome, email (read-only), avatar, empresa (`company`), cargo (`job_title`), LinkedIn (`linkedin_url`), salvos via `updateProfile` em `src/app/actions/profile.ts`. Existe também `src/components/members/profile-form.tsx`, mas é código morto (nenhuma página importa) — não editar por engano achando que é o formulário real.
 
 ## Rollout faseado (em andamento, deadline 31/08/2026)
 - Plano completo em `C:\Users\thiago.leal\.claude\plans\recursive-painting-wave.md`. Fase 1 (Marketing/T.I.) em execução.

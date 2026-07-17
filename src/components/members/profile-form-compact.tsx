@@ -15,11 +15,17 @@ type Props = {
   fullName: string
   email: string
   avatarUrl: string
+  company: string
+  jobTitle: string
+  linkedinUrl: string
 }
 
-export function ProfileFormCompact({ fullName, email, avatarUrl }: Props) {
+export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTitle, linkedinUrl }: Props) {
   const [currentAvatar, setCurrentAvatar] = useState(avatarUrl)
   const [nameValue, setNameValue] = useState(fullName)
+  const [companyValue, setCompanyValue] = useState(company)
+  const [jobTitleValue, setJobTitleValue] = useState(jobTitle)
+  const [linkedinValue, setLinkedinValue] = useState(linkedinUrl)
   const [isUploading, startUpload] = useTransition()
   const [isSaving, startSave] = useTransition()
   const [isChangingPw, startChangePw] = useTransition()
@@ -47,6 +53,9 @@ export function ProfileFormCompact({ fullName, email, avatarUrl }: Props) {
     e.preventDefault()
     const fd = new FormData()
     fd.append('full_name', nameValue)
+    fd.append('company', companyValue)
+    fd.append('job_title', jobTitleValue)
+    fd.append('linkedin_url', linkedinValue)
     startSave(async () => {
       const r = await updateProfile(fd)
       if (r?.error) toast.error(r.error)
@@ -115,6 +124,37 @@ export function ProfileFormCompact({ fullName, email, avatarUrl }: Props) {
               <div>
                 <Label htmlFor="email" className="text-xs text-muted-foreground">Email</Label>
                 <Input id="email" value={email} readOnly disabled className="mt-1 opacity-60" />
+              </div>
+              <div>
+                <Label htmlFor="company" className="text-xs text-muted-foreground">Empresa</Label>
+                <Input
+                  id="company"
+                  value={companyValue}
+                  onChange={(e) => setCompanyValue(e.target.value)}
+                  placeholder="Nome da agência/empresa"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="job_title" className="text-xs text-muted-foreground">Cargo</Label>
+                <Input
+                  id="job_title"
+                  value={jobTitleValue}
+                  onChange={(e) => setJobTitleValue(e.target.value)}
+                  placeholder="Seu cargo"
+                  className="mt-1"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="linkedin_url" className="text-xs text-muted-foreground">LinkedIn</Label>
+                <Input
+                  id="linkedin_url"
+                  value={linkedinValue}
+                  onChange={(e) => setLinkedinValue(e.target.value)}
+                  placeholder="https://linkedin.com/in/seu-perfil"
+                  type="url"
+                  className="mt-1"
+                />
               </div>
               <div className="sm:col-span-2 flex justify-end pt-1">
                 <Button type="submit" size="sm" disabled={isSaving} className="w-full sm:w-auto">

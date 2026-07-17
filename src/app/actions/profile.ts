@@ -43,11 +43,18 @@ export async function updateProfile(formData: FormData) {
   if (!user) return { error: 'Não autenticado' }
 
   const full_name = formData.get('full_name') as string
+  const company = ((formData.get('company') as string) ?? '').trim()
+  const job_title = ((formData.get('job_title') as string) ?? '').trim()
+  const linkedin_url = ((formData.get('linkedin_url') as string) ?? '').trim()
+
+  if (linkedin_url) {
+    try { new URL(linkedin_url) } catch { return { error: 'Link do LinkedIn inválido. Cole uma URL completa (https://...).' } }
+  }
 
   const adminClient = createAdminClient()
   const { error } = await adminClient
     .from('profiles')
-    .update({ full_name })
+    .update({ full_name, company, job_title, linkedin_url })
     .eq('id', user.id)
 
   if (error) return { error: error.message }

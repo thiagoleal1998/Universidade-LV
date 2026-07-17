@@ -20,6 +20,9 @@ type Props = {
   fullName: string
   email: string
   avatarUrl: string
+  company: string
+  jobTitle: string
+  linkedinUrl: string
   memberSince: string
   courseProgress: CourseProgress[]
   certificates: Certificate[]
@@ -79,8 +82,18 @@ export function ProfileTabs(props: Props) {
    Tab 1: Perfil
 ───────────────────────────────────────────────────────── */
 
-function PerfilTab({ userId, fullName, email, avatarUrl }: Props) {
-  return <ProfileFormCompact userId={userId} fullName={fullName} email={email} avatarUrl={avatarUrl} />
+function PerfilTab({ userId, fullName, email, avatarUrl, company, jobTitle, linkedinUrl }: Props) {
+  return (
+    <ProfileFormCompact
+      userId={userId}
+      fullName={fullName}
+      email={email}
+      avatarUrl={avatarUrl}
+      company={company}
+      jobTitle={jobTitle}
+      linkedinUrl={linkedinUrl}
+    />
+  )
 }
 
 /* ─────────────────────────────────────────────────────────

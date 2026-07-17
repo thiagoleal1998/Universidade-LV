@@ -23,7 +23,7 @@ export default async function PerfilPage() {
   ] = await Promise.all([
     supabase
       .from('profiles')
-      .select('full_name, avatar_url, created_at')
+      .select('full_name, avatar_url, created_at, company, job_title, linkedin_url')
       .eq('id', user!.id)
       .single(),
 
@@ -60,7 +60,7 @@ export default async function PerfilPage() {
   type HistoryRow = { lesson_id: string; completed_at: string; lessons: { title: string }[] }
   const history = (historyData ?? []) as HistoryRow[]
 
-  const profile = profileData as { full_name: string; avatar_url: string; created_at: string } | null
+  const profile = profileData as { full_name: string; avatar_url: string; created_at: string; company: string; job_title: string; linkedin_url: string } | null
   const completedSet = new Set((progressData ?? []).map((p) => p.lesson_id))
 
   // Build per-module progress
@@ -117,6 +117,9 @@ export default async function PerfilPage() {
         fullName={profile?.full_name ?? ''}
         email={user?.email ?? ''}
         avatarUrl={profile?.avatar_url ?? ''}
+        company={profile?.company ?? ''}
+        jobTitle={profile?.job_title ?? ''}
+        linkedinUrl={profile?.linkedin_url ?? ''}
         memberSince={profile?.created_at ?? ''}
         courseProgress={courseProgress}
         certificates={certs.map((c) => ({
