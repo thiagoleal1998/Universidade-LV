@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Zap, PlayCircle, Volume2, VolumeX, Check } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { Bell, Zap, PlayCircle, Volume2, VolumeX, Check, Sun, Moon, Monitor } from 'lucide-react'
 
 type Prefs = {
   autoAdvance: boolean
@@ -35,11 +36,20 @@ function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void 
   )
 }
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Claro', icon: Sun },
+  { value: 'dark', label: 'Escuro', icon: Moon },
+  { value: 'system', label: 'Automático', icon: Monitor },
+] as const
+
 export default function ConfiguracoesPage() {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS)
   const [saved, setSaved] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setPrefs(loadPrefs()) }, [])
+  useEffect(() => { setMounted(true) }, [])
 
   function update(patch: Partial<Prefs>) {
     const next = { ...prefs, ...patch }
@@ -65,6 +75,35 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div className="space-y-3">
+        {/* Aparência */}
+        <div className="bg-card border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Sun className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Aparência</h2>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground mb-2">Tema</p>
+            <div className="flex gap-2 flex-wrap">
+              {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={!mounted}
+                  onClick={() => setTheme(value)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                    mounted && theme === value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Notificações */}
         <div className="bg-card border rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
