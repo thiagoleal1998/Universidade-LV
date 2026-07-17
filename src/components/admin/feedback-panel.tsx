@@ -170,7 +170,7 @@ export function FeedbackPanel({ reports, admins }: { reports: FeedbackReport[]; 
                           onValueChange={(v) => handleStatusChange(report.id, v as FeedbackStatus)}
                         >
                           <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
+                            <SelectValue>{(v: FeedbackStatus) => STATUS_LABEL[v]}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="open">Aberto</SelectItem>
@@ -187,7 +187,9 @@ export function FeedbackPanel({ reports, admins }: { reports: FeedbackReport[]; 
                           onValueChange={(v) => handleAssign(report.id, v as string)}
                         >
                           <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
+                            <SelectValue>
+                              {(v: string) => v === UNASSIGNED ? 'Ninguém' : (admins.find((a) => a.id === v)?.full_name ?? '')}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value={UNASSIGNED}>Ninguém</SelectItem>
