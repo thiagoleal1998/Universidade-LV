@@ -40,12 +40,11 @@ export function MemberFeedbackWidget({ visible }: { visible: boolean }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <div className="fixed bottom-4 left-4 z-40">
+      <div className="fixed bottom-28 right-4 z-40">
         <DialogTrigger render={
-          <Button size="sm" variant="outline" className="gap-2 shadow-lg bg-card" />
-        }>
+          <Button size="icon" variant="outline" className="rounded-full shadow-lg bg-card text-muted-foreground w-10 h-10" />
+        } title="Reportar problema">
           <Bug className="w-4 h-4" />
-          Reportar problema
         </DialogTrigger>
       </div>
 
