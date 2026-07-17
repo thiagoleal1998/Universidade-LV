@@ -30,6 +30,26 @@ export async function getNotifications(): Promise<Notification[]> {
   return (data ?? []) as Notification[]
 }
 
+// Usado pelo polling de reforço do som de notificação (Realtime nem sempre
+// entrega o evento de forma confiável — isso funciona como garantia).
+export async function getRecentSoundNotifications(sinceISO: string, types: string[]): Promise<Notification[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const adminClient = createAdminClient()
+  const { data } = await adminClient
+    .from('notifications')
+    .select('id, type, title, body, link, read_at, created_at')
+    .eq('user_id', user.id)
+    .in('type', types)
+    .gt('created_at', sinceISO)
+    .order('created_at', { ascending: true })
+    .limit(20)
+
+  return (data ?? []) as Notification[]
+}
+
 export async function markNotificationsByTypeRead(type: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
