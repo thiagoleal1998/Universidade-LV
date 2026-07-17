@@ -25,10 +25,23 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+export type FeedbackStatus = 'open' | 'in_progress' | 'resolved'
+
 export type FeedbackAttachment = {
   id: string
   url: string
   mime_type: string
+}
+
+export type FeedbackEvent = {
+  id: string
+  event_type: 'created' | 'assigned' | 'status_changed' | 'note_added'
+  actor_name: string
+  from_status: FeedbackStatus | null
+  to_status: FeedbackStatus | null
+  assigned_name: string | null
+  note_text: string | null
+  created_at: string
 }
 
 export type FeedbackReport = {
@@ -39,12 +52,14 @@ export type FeedbackReport = {
   message: string
   link_url: string
   page_url: string
-  status: 'open' | 'resolved'
-  admin_note: string
+  status: FeedbackStatus
+  assigned_to: string | null
+  assigned_name: string
   resolved_at: string | null
   created_at: string
   member_name: string
   attachments: FeedbackAttachment[]
+  events: FeedbackEvent[]
 }
 
 function attachmentPublicUrl(storagePath: string): string {
@@ -125,12 +140,19 @@ export async function submitFeedback(formData: FormData) {
   const adminClient = createAdminClient()
   const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', user.id).single()
   const typeLabel = type === 'bug' ? 'Bug' : 'Sugestão'
+  const memberName = profile?.full_name ?? ''
 
-  emailAdminNewFeedback(profile?.full_name ?? '', user.email ?? '', type, title, messageText.slice(0, 300))
+  await adminClient.from('feedback_events').insert({
+    feedback_id: inserted.id,
+    event_type: 'created',
+    actor_name: memberName,
+  })
+
+  emailAdminNewFeedback(memberName, user.email ?? '', type, title, messageText.slice(0, 300))
   await notifyAllAdmins(user.id, {
     type: 'new_feedback',
     title: `[${typeLabel}] ${title}`,
-    body: `${profile?.full_name || user.email} — ${messageText.slice(0, 140)}`,
+    body: `${memberName || user.email} — ${messageText.slice(0, 140)}`,
     link: '/admin/feedback',
   })
 
@@ -138,13 +160,21 @@ export async function submitFeedback(formData: FormData) {
   return { success: true }
 }
 
-async function mapReports(rows: {
+type ReportRow = {
   id: string; user_id: string; type: 'bug' | 'suggestion'; title: string; message: string
-  link_url: string; page_url: string; status: 'open' | 'resolved'; admin_note: string
+  link_url: string; page_url: string; status: FeedbackStatus; assigned_to: string | null
   resolved_at: string | null; created_at: string
   profiles: { full_name: string }[] | { full_name: string } | null
+  assigned: { full_name: string }[] | { full_name: string } | null
   feedback_attachments: { id: string; storage_path: string; mime_type: string }[]
-}[]): Promise<FeedbackReport[]> {
+  feedback_events: {
+    id: string; event_type: FeedbackEvent['event_type']; actor_name: string
+    from_status: FeedbackStatus | null; to_status: FeedbackStatus | null
+    assigned_name: string | null; note_text: string | null; created_at: string
+  }[]
+}
+
+function mapReports(rows: ReportRow[]): FeedbackReport[] {
   return rows.map((r) => ({
     id: r.id,
     user_id: r.user_id,
@@ -154,7 +184,8 @@ async function mapReports(rows: {
     link_url: r.link_url,
     page_url: r.page_url,
     status: r.status,
-    admin_note: r.admin_note,
+    assigned_to: r.assigned_to,
+    assigned_name: toOne(r.assigned)?.full_name ?? '',
     resolved_at: r.resolved_at,
     created_at: r.created_at,
     member_name: toOne(r.profiles)?.full_name ?? '',
@@ -163,17 +194,38 @@ async function mapReports(rows: {
       url: attachmentPublicUrl(a.storage_path),
       mime_type: a.mime_type,
     })),
+    events: (r.feedback_events ?? [])
+      .slice()
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((e) => ({
+        id: e.id,
+        event_type: e.event_type,
+        actor_name: e.actor_name,
+        from_status: e.from_status,
+        to_status: e.to_status,
+        assigned_name: e.assigned_name,
+        note_text: e.note_text,
+        created_at: e.created_at,
+      })),
   }))
 }
+
+const REPORT_SELECT = `
+  id, user_id, type, title, message, link_url, page_url, status, assigned_to, resolved_at, created_at,
+  profiles!feedback_reports_user_id_fkey(full_name),
+  assigned:profiles!feedback_reports_assigned_to_fkey(full_name),
+  feedback_attachments(id, storage_path, mime_type),
+  feedback_events(id, event_type, actor_name, from_status, to_status, assigned_name, note_text, created_at)
+`
 
 export async function getFeedbackReports(): Promise<FeedbackReport[]> {
   const adminClient = createAdminClient()
   const { data } = await adminClient
     .from('feedback_reports')
-    .select('id, user_id, type, title, message, link_url, page_url, status, admin_note, resolved_at, created_at, profiles(full_name), feedback_attachments(id, storage_path, mime_type)')
+    .select(REPORT_SELECT)
     .order('created_at', { ascending: false })
 
-  return mapReports(data ?? [])
+  return mapReports((data ?? []) as unknown as ReportRow[])
 }
 
 export async function getMyFeedbackReports(): Promise<FeedbackReport[]> {
@@ -181,74 +233,139 @@ export async function getMyFeedbackReports(): Promise<FeedbackReport[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const { data } = await supabase
+  // Usa adminClient (com filtro explícito por user_id) em vez do client de sessão:
+  // a RLS de profiles só deixa o membro ler o próprio perfil, então o join do nome
+  // do admin responsável (profiles via assigned_to) voltaria vazio com RLS ativa.
+  const adminClient = createAdminClient()
+  const { data } = await adminClient
     .from('feedback_reports')
-    .select('id, user_id, type, title, message, link_url, page_url, status, admin_note, resolved_at, created_at, profiles(full_name), feedback_attachments(id, storage_path, mime_type)')
+    .select(REPORT_SELECT)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  return mapReports(data ?? [])
+  return mapReports((data ?? []) as unknown as ReportRow[])
 }
 
-export async function resolveFeedback(id: string, resolved: boolean, adminNote?: string) {
+export type AdminOption = { id: string; full_name: string }
+
+export async function getAdmins(): Promise<AdminOption[]> {
+  const adminClient = createAdminClient()
+  const { data } = await adminClient
+    .from('profiles')
+    .select('id, full_name')
+    .eq('role', 'admin')
+    .eq('active', true)
+    .order('full_name')
+
+  return (data ?? []) as AdminOption[]
+}
+
+const STATUS_LABEL: Record<FeedbackStatus, string> = {
+  open: 'Aberto',
+  in_progress: 'Em andamento',
+  resolved: 'Finalizado',
+}
+
+export async function assignFeedback(id: string, assignedTo: string | null) {
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
-  const { data: before } = await adminClient
-    .from('feedback_reports')
-    .select('user_id, title, status, admin_note')
-    .eq('id', id)
-    .single()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title').eq('id', id).single()
+  if (!report) return { error: 'Chamado não encontrado.' }
+
+  const assignedName = assignedTo
+    ? (await adminClient.from('profiles').select('full_name').eq('id', assignedTo).single()).data?.full_name ?? ''
+    : ''
+
+  const { error } = await supabase.from('feedback_reports').update({ assigned_to: assignedTo }).eq('id', id)
+  if (error) return { error: error.message }
+
+  await adminClient.from('feedback_events').insert({
+    feedback_id: id,
+    event_type: 'assigned',
+    actor_name: '',
+    assigned_name: assignedName,
+  })
+
+  const title = report.title || 'Sem título'
+  await notifyUser(report.user_id, {
+    type: 'feedback_update',
+    title: assignedTo ? `Seu chamado foi atribuído a ${assignedName}` : `Atribuição removida do seu chamado`,
+    body: title,
+    link: '/dashboard/feedback',
+  })
+
+  revalidatePath('/admin/feedback')
+  revalidatePath('/dashboard/feedback')
+  return { success: true }
+}
+
+export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
+  const supabase = await createClient()
+  const adminClient = createAdminClient()
+
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, status').eq('id', id).single()
+  if (!report) return { error: 'Chamado não encontrado.' }
+  if (report.status === status) return { success: true }
 
   const { error } = await supabase.from('feedback_reports').update({
-    status: resolved ? 'resolved' : 'open',
-    resolved_at: resolved ? new Date().toISOString() : null,
-    ...(adminNote !== undefined ? { admin_note: adminNote } : {}),
+    status,
+    resolved_at: status === 'resolved' ? new Date().toISOString() : null,
   }).eq('id', id)
   if (error) return { error: error.message }
 
-  if (before) await notifyFeedbackOwner(before, { resolved, adminNote })
+  await adminClient.from('feedback_events').insert({
+    feedback_id: id,
+    event_type: 'status_changed',
+    actor_name: '',
+    from_status: report.status,
+    to_status: status,
+  })
 
-  revalidatePath('/admin/feedback')
-  revalidatePath('/dashboard/feedback')
-  return { success: true }
-}
-
-export async function updateFeedbackNote(id: string, adminNote: string) {
-  const supabase = await createClient()
-  const adminClient = createAdminClient()
-
-  const { data: before } = await adminClient
-    .from('feedback_reports')
-    .select('user_id, title, status, admin_note')
-    .eq('id', id)
-    .single()
-
-  const { error } = await supabase.from('feedback_reports').update({ admin_note: adminNote }).eq('id', id)
-  if (error) return { error: error.message }
-
-  if (before) await notifyFeedbackOwner(before, { resolved: before.status === 'resolved', adminNote })
-
-  revalidatePath('/admin/feedback')
-  revalidatePath('/dashboard/feedback')
-  return { success: true }
-}
-
-// Notifica o membro dono do chamado quando o admin muda o status e/ou escreve uma
-// resposta — sem isso, o membro só saberia entrando manualmente em "Meus chamados".
-async function notifyFeedbackOwner(
-  before: { user_id: string; title: string; status: 'open' | 'resolved'; admin_note: string },
-  after: { resolved: boolean; adminNote?: string }
-) {
-  const statusChanged = before.status !== (after.resolved ? 'resolved' : 'open')
-  const noteChanged = after.adminNote !== undefined && after.adminNote.trim() !== '' && after.adminNote !== before.admin_note
-  if (!statusChanged && !noteChanged) return
-
-  const title = before.title || 'Sem título'
-  await notifyUser(before.user_id, {
+  const title = report.title || 'Sem título'
+  await notifyUser(report.user_id, {
     type: 'feedback_update',
-    title: noteChanged ? `Nova resposta no seu chamado: ${title}` : (after.resolved ? `Chamado resolvido: ${title}` : `Chamado reaberto: ${title}`),
-    body: noteChanged ? after.adminNote!.slice(0, 140) : (after.resolved ? 'Seu chamado foi marcado como resolvido.' : 'Seu chamado foi reaberto para análise.'),
+    title: `Chamado ${STATUS_LABEL[status].toLowerCase()}: ${title}`,
+    body: `Status alterado de "${STATUS_LABEL[report.status as FeedbackStatus]}" para "${STATUS_LABEL[status]}".`,
     link: '/dashboard/feedback',
   })
+
+  revalidatePath('/admin/feedback')
+  revalidatePath('/dashboard/feedback')
+  return { success: true }
+}
+
+export async function addFeedbackNote(id: string, note: string) {
+  const noteText = note.trim()
+  if (!noteText) return { error: 'Escreva algo antes de salvar.' }
+
+  const supabase = await createClient()
+  const { data: { user: actor } } = await supabase.auth.getUser()
+  const adminClient = createAdminClient()
+
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title').eq('id', id).single()
+  if (!report) return { error: 'Chamado não encontrado.' }
+
+  const { data: actorProfile } = actor
+    ? await adminClient.from('profiles').select('full_name').eq('id', actor.id).single()
+    : { data: null }
+
+  await adminClient.from('feedback_events').insert({
+    feedback_id: id,
+    event_type: 'note_added',
+    actor_name: actorProfile?.full_name ?? '',
+    note_text: noteText,
+  })
+
+  const title = report.title || 'Sem título'
+  await notifyUser(report.user_id, {
+    type: 'feedback_update',
+    title: `Nova resposta no seu chamado: ${title}`,
+    body: noteText.slice(0, 140),
+    link: '/dashboard/feedback',
+  })
+
+  revalidatePath('/admin/feedback')
+  revalidatePath('/dashboard/feedback')
+  return { success: true }
 }

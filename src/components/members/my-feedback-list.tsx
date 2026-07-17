@@ -1,13 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import type { FeedbackReport } from '@/app/actions/feedback'
+import type { FeedbackReport, FeedbackStatus } from '@/app/actions/feedback'
 import { Badge } from '@/components/ui/badge'
+import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+const STATUS_LABEL: Record<FeedbackStatus, string> = {
+  open: 'Aberto',
+  in_progress: 'Em andamento',
+  resolved: 'Finalizado',
+}
+
+const STATUS_BADGE_VARIANT: Record<FeedbackStatus, 'default' | 'outline' | 'secondary'> = {
+  open: 'default',
+  in_progress: 'secondary',
+  resolved: 'outline',
+}
+
 export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
 
   if (reports.length === 0) {
     return (
@@ -21,7 +36,6 @@ export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
     <div className="space-y-3">
       {reports.map((report) => {
         const isOpen = openId === report.id
-        const isResolved = report.status === 'resolved'
         return (
           <div key={report.id} className="bg-card border rounded-xl overflow-hidden">
             <button
@@ -40,19 +54,18 @@ export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
                   <p className="text-sm font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(report.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Badge variant={isResolved ? 'outline' : 'default'}>
-                  {isResolved ? 'Resolvido' : 'Aberto'}
-                </Badge>
+                <Badge variant={STATUS_BADGE_VARIANT[report.status]}>{STATUS_LABEL[report.status]}</Badge>
                 {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </div>
             </button>
 
             {isOpen && (
-              <div className="border-t border-border px-4 py-4 space-y-3">
+              <div className="border-t border-border px-4 py-4 space-y-4">
                 <div className="rich-text text-sm text-foreground" dangerouslySetInnerHTML={{ __html: report.message }} />
 
                 {report.link_url && (
@@ -65,26 +78,38 @@ export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
 
                 {report.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {report.attachments.map((a) => (
-                      <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
+                    {report.attachments.map((a, i) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setLightbox({ reportId: report.id, index: i })}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border" />
-                      </a>
+                        <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                      </button>
                     ))}
                   </div>
                 )}
 
-                {report.admin_note && (
-                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-                    <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-0.5">Resposta</p>
-                    <p className="text-sm text-foreground">{report.admin_note}</p>
-                  </div>
-                )}
+                <FeedbackTimeline events={report.events} />
               </div>
             )}
           </div>
         )
       })}
+
+      {lightbox && (() => {
+        const report = reports.find((r) => r.id === lightbox.reportId)
+        if (!report) return null
+        return (
+          <ImageLightbox
+            images={report.attachments}
+            index={lightbox.index}
+            onClose={() => setLightbox(null)}
+            onNavigate={(index) => setLightbox({ reportId: lightbox.reportId, index })}
+          />
+        )
+      })()}
     </div>
   )
 }

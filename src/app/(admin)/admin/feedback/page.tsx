@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getFeedbackReports } from '@/app/actions/feedback'
+import { getFeedbackReports, getAdmins } from '@/app/actions/feedback'
 import { FeedbackPanel } from '@/components/admin/feedback-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-react'
@@ -7,7 +7,7 @@ import { PlusCircle } from 'lucide-react'
 export const metadata = { title: 'Feedback' }
 
 export default async function AdminFeedbackPage() {
-  const reports = await getFeedbackReports()
+  const [reports, admins] = await Promise.all([getFeedbackReports(), getAdmins()])
 
   return (
     <div className="p-4 md:p-8">
@@ -21,7 +21,7 @@ export default async function AdminFeedbackPage() {
           Abrir meu chamado
         </Link>
       </div>
-      <FeedbackPanel reports={reports} />
+      <FeedbackPanel reports={reports} admins={admins} />
     </div>
   )
 }
