@@ -7,8 +7,9 @@ import { getRecentSoundNotifications } from '@/app/actions/notifications'
 import { toast } from 'sonner'
 
 // Tipos de notificação que merecem som + toast imediato (ação que o admin
-// provavelmente quer ver na hora — chamado novo, cadastro aguardando aprovação).
-const SOUND_TYPES = ['new_feedback', 'new_member_pending']
+// provavelmente quer ver na hora — chamado novo, cadastro aguardando aprovação,
+// membro respondeu ou chamado foi atribuído a este admin).
+const SOUND_TYPES = ['new_feedback', 'new_member_pending', 'feedback_update']
 const POLL_INTERVAL_MS = 15_000
 
 // Toca um som e mostra um toast quando chega uma notificação relevante.

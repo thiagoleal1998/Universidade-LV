@@ -6,7 +6,7 @@ import { assignFeedback, updateFeedbackStatus, addFeedbackNote } from '@/app/act
 import type { FeedbackReport, FeedbackStatus, AdminOption } from '@/app/actions/feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
@@ -30,11 +30,16 @@ const STATUS_BADGE_VARIANT: Record<FeedbackStatus, 'default' | 'outline' | 'seco
 
 const UNASSIGNED = '__unassigned__'
 
+function isNoteEmpty(html: string): boolean {
+  return !html.replace(/<[^>]*>/g, '').trim()
+}
+
 export function FeedbackPanel({ reports, admins }: { reports: FeedbackReport[]; admins: AdminOption[] }) {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
   const [openId, setOpenId] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [noteResetKey, setNoteResetKey] = useState<Record<string, number>>({})
   const [isPending, startSave] = useTransition()
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
 
@@ -64,7 +69,12 @@ export function FeedbackPanel({ reports, admins }: { reports: FeedbackReport[]; 
     startSave(async () => {
       const r = await addFeedbackNote(id, note)
       if (r?.error) toast.error(r.error)
-      else { toast.success('Nota salva! O membro foi notificado.'); setNotes((p) => ({ ...p, [id]: '' })); router.refresh() }
+      else {
+        toast.success('Resposta enviada! O membro foi notificado.')
+        setNotes((p) => ({ ...p, [id]: '' }))
+        setNoteResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
+        router.refresh()
+      }
     })
   }
 
@@ -204,18 +214,16 @@ export function FeedbackPanel({ reports, admins }: { reports: FeedbackReport[]; 
                     <FeedbackTimeline events={report.events} />
 
                     <div>
-                      <Textarea
-                        value={notes[report.id] ?? ''}
-                        onChange={(e) => setNotes((p) => ({ ...p, [report.id]: e.target.value }))}
-                        placeholder="Escreva uma resposta para o membro..."
-                        rows={2}
-                        className="text-sm"
+                      <RichTextEditor
+                        key={`note-${report.id}-${noteResetKey[report.id] ?? 0}`}
+                        content={notes[report.id] ?? ''}
+                        onChange={(v) => setNotes((p) => ({ ...p, [report.id]: v }))}
                       />
                     </div>
 
                     <Button
                       size="sm"
-                      disabled={isPending || !(notes[report.id] ?? '').trim()}
+                      disabled={isPending || isNoteEmpty(notes[report.id] ?? '')}
                       onClick={() => handleSaveNote(report.id)}
                     >
                       Enviar resposta

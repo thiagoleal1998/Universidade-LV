@@ -42,9 +42,10 @@ export function FeedbackTimeline({ events }: { events: FeedbackEvent[] }) {
             <div className="min-w-0 flex-1 pt-0.5">
               <p className="text-sm text-foreground">{eventText(e)}</p>
               {e.event_type === 'note_added' && e.note_text && (
-                <div className="mt-1 bg-muted/60 rounded-lg px-3 py-2 text-sm text-foreground whitespace-pre-wrap">
-                  {e.note_text}
-                </div>
+                <div
+                  className="mt-1 bg-muted/60 rounded-lg px-3 py-2 text-sm text-foreground rich-text"
+                  dangerouslySetInnerHTML={{ __html: e.note_text }}
+                />
               )}
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {new Date(e.created_at).toLocaleString('pt-BR')}

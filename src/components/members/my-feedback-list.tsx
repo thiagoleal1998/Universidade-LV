@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import type { FeedbackReport, FeedbackStatus } from '@/app/actions/feedback'
+import { addFeedbackNote } from '@/app/actions/feedback'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 const STATUS_LABEL: Record<FeedbackStatus, string> = {
@@ -20,9 +25,31 @@ const STATUS_BADGE_VARIANT: Record<FeedbackStatus, 'default' | 'outline' | 'seco
   resolved: 'outline',
 }
 
+function isNoteEmpty(html: string): boolean {
+  return !html.replace(/<[^>]*>/g, '').trim()
+}
+
 export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
+  const router = useRouter()
   const [openId, setOpenId] = useState<string | null>(null)
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
+  const [replies, setReplies] = useState<Record<string, string>>({})
+  const [replyResetKey, setReplyResetKey] = useState<Record<string, number>>({})
+  const [isSending, startSend] = useTransition()
+
+  function handleSendReply(id: string) {
+    const note = replies[id] ?? ''
+    startSend(async () => {
+      const r = await addFeedbackNote(id, note)
+      if (r?.error) toast.error(r.error)
+      else {
+        toast.success('Resposta enviada!')
+        setReplies((p) => ({ ...p, [id]: '' }))
+        setReplyResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
+        router.refresh()
+      }
+    })
+  }
 
   if (reports.length === 0) {
     return (
@@ -92,6 +119,22 @@ export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
                 )}
 
                 <FeedbackTimeline events={report.events} />
+
+                <div>
+                  <RichTextEditor
+                    key={`reply-${report.id}-${replyResetKey[report.id] ?? 0}`}
+                    content={replies[report.id] ?? ''}
+                    onChange={(v) => setReplies((p) => ({ ...p, [report.id]: v }))}
+                  />
+                </div>
+
+                <Button
+                  size="sm"
+                  disabled={isSending || isNoteEmpty(replies[report.id] ?? '')}
+                  onClick={() => handleSendReply(report.id)}
+                >
+                  Enviar resposta
+                </Button>
               </div>
             )}
           </div>

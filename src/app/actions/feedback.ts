@@ -62,6 +62,23 @@ export type FeedbackReport = {
   events: FeedbackEvent[]
 }
 
+// Confirma que o usuário logado é admin — usado pelas ações que só o admin
+// pode executar (atribuir responsável, mudar status). Sem essa checagem, a
+// RLS de feedback_reports bloquearia o UPDATE silenciosamente (0 linhas
+// afetadas, sem erro), mas o código seguiria inserindo evento/notificação
+// como se a mudança tivesse realmente acontecido.
+async function requireAdmin(): Promise<{ error: string } | { userId: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado.' }
+
+  const adminClient = createAdminClient()
+  const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'admin') return { error: 'Apenas admins podem fazer isso.' }
+
+  return { userId: user.id }
+}
+
 function attachmentPublicUrl(storagePath: string): string {
   const adminClient = createAdminClient()
   return adminClient.storage.from('feedback-attachments').getPublicUrl(storagePath).data.publicUrl
@@ -267,6 +284,9 @@ const STATUS_LABEL: Record<FeedbackStatus, string> = {
 }
 
 export async function assignFeedback(id: string, assignedTo: string | null) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
@@ -301,6 +321,9 @@ export async function assignFeedback(id: string, assignedTo: string | null) {
 }
 
 export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
@@ -335,35 +358,64 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
   return { success: true }
 }
 
+// Chamado tanto pelo admin (responder um chamado) quanto pelo membro (responder
+// no próprio chamado) — por isso a autorização checa os dois casos, e a
+// notificação vai para "quem não escreveu": admin escreveu -> avisa o membro
+// dono; membro escreveu -> avisa o responsável (ou todos os admins, se ninguém
+// foi atribuído ainda).
 export async function addFeedbackNote(id: string, note: string) {
-  const noteText = note.trim()
-  if (!noteText) return { error: 'Escreva algo antes de salvar.' }
+  const sanitized = sanitizeRichText(note)
+  const preview = stripHtml(sanitized)
+  if (!preview) return { error: 'Escreva algo antes de salvar.' }
 
   const supabase = await createClient()
   const { data: { user: actor } } = await supabase.auth.getUser()
+  if (!actor) return { error: 'Não autenticado.' }
+
   const adminClient = createAdminClient()
 
-  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title').eq('id', id).single()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, assigned_to').eq('id', id).single()
   if (!report) return { error: 'Chamado não encontrado.' }
 
-  const { data: actorProfile } = actor
-    ? await adminClient.from('profiles').select('full_name').eq('id', actor.id).single()
-    : { data: null }
+  const { data: actorProfile } = await adminClient.from('profiles').select('full_name, role').eq('id', actor.id).single()
+  const isAdminActor = actorProfile?.role === 'admin'
+
+  if (!isAdminActor && actor.id !== report.user_id) {
+    return { error: 'Você não tem permissão para responder este chamado.' }
+  }
 
   await adminClient.from('feedback_events').insert({
     feedback_id: id,
     event_type: 'note_added',
     actor_name: actorProfile?.full_name ?? '',
-    note_text: noteText,
+    note_text: sanitized,
   })
 
   const title = report.title || 'Sem título'
-  await notifyUser(report.user_id, {
-    type: 'feedback_update',
-    title: `Nova resposta no seu chamado: ${title}`,
-    body: noteText.slice(0, 140),
-    link: '/dashboard/feedback',
-  })
+  const body = preview.slice(0, 140)
+
+  if (isAdminActor) {
+    await notifyUser(report.user_id, {
+      type: 'feedback_update',
+      title: `Nova resposta no seu chamado: ${title}`,
+      body,
+      link: '/dashboard/feedback',
+    })
+  } else if (report.assigned_to) {
+    await notifyUser(report.assigned_to, {
+      type: 'feedback_update',
+      title: `Nova resposta no chamado: ${title}`,
+      body,
+      link: '/admin/feedback',
+    })
+  } else {
+    await notifyAllAdmins(actor.id, {
+      type: 'feedback_update',
+      title: `Nova resposta no chamado: ${title}`,
+      body,
+      link: '/admin/feedback',
+    })
+  }
 
   revalidatePath('/admin/feedback')
   revalidatePath('/dashboard/feedback')
