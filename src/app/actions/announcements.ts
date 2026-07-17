@@ -7,6 +7,13 @@ import { emailMembersNewAnnouncement } from '@/lib/email'
 import { getSettings } from '@/lib/settings'
 import { notifyAllMembers } from '@/app/actions/notifications'
 
+// O corpo do comunicado é HTML (editor rico) — a notificação mostra o body
+// como texto puro, então precisa remover as tags antes de truncar, senão
+// aparece "<strong>...</strong>" literal na tela do membro.
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export async function createAnnouncement(formData: FormData) {
   const supabase = await createClient()
   const title = formData.get('title') as string
@@ -87,7 +94,7 @@ export async function toggleAnnouncementPublished(id: string, is_published: bool
     notifyAllMembers({
       type: 'announcement',
       title: `Novo comunicado: ${ann.title}`,
-      body: ann.body?.substring(0, 120) ?? '',
+      body: stripHtml(ann.body ?? '').substring(0, 120),
       link: '/dashboard',
     })
   }
