@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -5,12 +6,24 @@ import { toOne } from '@/lib/supabase/relations'
 import { getMyFeedbackReports } from '@/app/actions/feedback'
 import { FeedbackTicketForm } from '@/components/members/feedback-ticket-form'
 import { MyFeedbackList } from '@/components/members/my-feedback-list'
+import { PlusCircle, ListChecks } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export const metadata = { title: 'Feedback' }
 
 const TESTER_TAG_NAME = 'Beta'
 
-export default async function MemberFeedbackPage() {
+const TABS = [
+  { key: 'abrir', label: 'Abrir chamado', icon: PlusCircle },
+  { key: 'minhas', label: 'Minhas solicitações', icon: ListChecks },
+] as const
+type TabKey = typeof TABS[number]['key']
+
+export default async function MemberFeedbackPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -25,6 +38,9 @@ export default async function MemberFeedbackPage() {
   )
   if (!userTagNames.has(TESTER_TAG_NAME)) redirect('/dashboard')
 
+  const { tab } = await searchParams
+  const activeTab: TabKey = tab === 'minhas' ? 'minhas' : 'abrir'
+
   const reports = await getMyFeedbackReports()
 
   return (
@@ -34,12 +50,32 @@ export default async function MemberFeedbackPage() {
         <p className="text-sm text-muted-foreground mt-1">Abra um chamado para reportar um bug ou enviar uma sugestão.</p>
       </div>
 
-      <FeedbackTicketForm />
-
-      <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3">Minhas solicitações</h2>
-        <MyFeedbackList reports={reports} />
+      <div className="flex items-center gap-0 border-b border-border">
+        {TABS.map(({ key, label, icon: Icon }) => (
+          <Link
+            key={key}
+            href={`?tab=${key}`}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+              activeTab === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+            {key === 'minhas' && reports.length > 0 && (
+              <span className="text-[10px] font-bold bg-muted text-muted-foreground rounded-full px-1.5 py-0.5">
+                {reports.length}
+              </span>
+            )}
+          </Link>
+        ))}
       </div>
+
+      {activeTab === 'abrir' ? (
+        <FeedbackTicketForm />
+      ) : (
+        <MyFeedbackList reports={reports} />
+      )}
     </div>
   )
 }
