@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Bell, ClipboardCheck, Star, Megaphone, Video, BookOpen } from 'lucide-react'
+import { Bell, ClipboardCheck, Star, Megaphone, Video, BookOpen, Bug } from 'lucide-react'
 import { getNotifications, markAllNotificationsRead } from '@/app/actions/notifications'
 import type { Notification } from '@/app/actions/notifications'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,8 @@ function NotifIcon({ type }: { type: string }) {
     return <div className={cn(base, 'bg-green-500/15')}><Star className="w-3.5 h-3.5 text-green-600 dark:text-green-400" /></div>
   if (type === 'announcement')
     return <div className={cn(base, 'bg-blue-500/15')}><Megaphone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></div>
+  if (type === 'new_feedback')
+    return <div className={cn(base, 'bg-violet-500/15')}><Bug className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" /></div>
   if (type === 'new_training' || type === 'training_replay')
     return <div className={cn(base, 'bg-purple-500/15')}><Video className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /></div>
   return <div className={cn(base, 'bg-primary/10')}><BookOpen className="w-3.5 h-3.5 text-primary" /></div>

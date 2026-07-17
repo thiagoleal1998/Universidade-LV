@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { emailAdminNewFeedback } from '@/lib/email'
+import { notifyAllAdmins } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
 import { toWebP } from '@/lib/image'
 import DOMPurify from 'isomorphic-dompurify'
@@ -123,7 +124,15 @@ export async function submitFeedback(formData: FormData) {
 
   const adminClient = createAdminClient()
   const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', user.id).single()
+  const typeLabel = type === 'bug' ? 'Bug' : 'Sugestão'
+
   emailAdminNewFeedback(profile?.full_name ?? '', user.email ?? '', type, title, messageText.slice(0, 300))
+  await notifyAllAdmins(user.id, {
+    type: 'new_feedback',
+    title: `[${typeLabel}] ${title}`,
+    body: `${profile?.full_name || user.email} — ${messageText.slice(0, 140)}`,
+    link: '/admin/feedback',
+  })
 
   revalidatePath('/dashboard/feedback')
   return { success: true }

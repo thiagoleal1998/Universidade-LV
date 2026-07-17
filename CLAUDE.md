@@ -54,7 +54,8 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 ## Notificações
 - Tabela `notifications`: `id, user_id, type, title, body, link, read_at, created_at`
 - Após inserir notificações: chamar `revalidatePath('/dashboard', 'layout')` para invalidar cache do unread count
-- Tipos usados: `new_training`, `training_replay`, `training_live_expired`, `announcement`
+- Tipos usados: `new_training`, `training_replay`, `training_live_expired`, `announcement`, `new_feedback`
+- **Realtime**: `notifications` está na publication `supabase_realtime` (migração `033`) — usado por `src/components/admin/admin-notification-sound.tsx` para tocar som (`public/sounds/new-ticket.mp3`) + toast quando chega notificação `type: 'new_feedback'`. Componente é montado UMA VEZ em `src/app/(admin)/admin/layout.tsx` (não dentro da sidebar, que duplica para mobile/desktop — evita assinatura/som duplicados). Se precisar de realtime em outra tabela, mesma receita: `ALTER PUBLICATION supabase_realtime ADD TABLE x` (idempotente com `DO $$ ... EXCEPTION WHEN duplicate_object`).
 
 ## Convenções
 - Server actions ficam em `src/app/actions/`
