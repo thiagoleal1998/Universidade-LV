@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { emailAdminNewFeedback } from '@/lib/email'
-import { notifyAllAdmins } from '@/app/actions/notifications'
+import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
 import { toWebP } from '@/lib/image'
 import DOMPurify from 'isomorphic-dompurify'
@@ -192,12 +192,63 @@ export async function getMyFeedbackReports(): Promise<FeedbackReport[]> {
 
 export async function resolveFeedback(id: string, resolved: boolean, adminNote?: string) {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
+
+  const { data: before } = await adminClient
+    .from('feedback_reports')
+    .select('user_id, title, status, admin_note')
+    .eq('id', id)
+    .single()
+
   const { error } = await supabase.from('feedback_reports').update({
     status: resolved ? 'resolved' : 'open',
     resolved_at: resolved ? new Date().toISOString() : null,
     ...(adminNote !== undefined ? { admin_note: adminNote } : {}),
   }).eq('id', id)
   if (error) return { error: error.message }
+
+  if (before) await notifyFeedbackOwner(before, { resolved, adminNote })
+
   revalidatePath('/admin/feedback')
+  revalidatePath('/dashboard/feedback')
   return { success: true }
+}
+
+export async function updateFeedbackNote(id: string, adminNote: string) {
+  const supabase = await createClient()
+  const adminClient = createAdminClient()
+
+  const { data: before } = await adminClient
+    .from('feedback_reports')
+    .select('user_id, title, status, admin_note')
+    .eq('id', id)
+    .single()
+
+  const { error } = await supabase.from('feedback_reports').update({ admin_note: adminNote }).eq('id', id)
+  if (error) return { error: error.message }
+
+  if (before) await notifyFeedbackOwner(before, { resolved: before.status === 'resolved', adminNote })
+
+  revalidatePath('/admin/feedback')
+  revalidatePath('/dashboard/feedback')
+  return { success: true }
+}
+
+// Notifica o membro dono do chamado quando o admin muda o status e/ou escreve uma
+// resposta — sem isso, o membro só saberia entrando manualmente em "Meus chamados".
+async function notifyFeedbackOwner(
+  before: { user_id: string; title: string; status: 'open' | 'resolved'; admin_note: string },
+  after: { resolved: boolean; adminNote?: string }
+) {
+  const statusChanged = before.status !== (after.resolved ? 'resolved' : 'open')
+  const noteChanged = after.adminNote !== undefined && after.adminNote.trim() !== '' && after.adminNote !== before.admin_note
+  if (!statusChanged && !noteChanged) return
+
+  const title = before.title || 'Sem título'
+  await notifyUser(before.user_id, {
+    type: 'feedback_update',
+    title: noteChanged ? `Nova resposta no seu chamado: ${title}` : (after.resolved ? `Chamado resolvido: ${title}` : `Chamado reaberto: ${title}`),
+    body: noteChanged ? after.adminNote!.slice(0, 140) : (after.resolved ? 'Seu chamado foi marcado como resolvido.' : 'Seu chamado foi reaberto para análise.'),
+    link: '/dashboard/feedback',
+  })
 }

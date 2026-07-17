@@ -9,6 +9,7 @@ import { FaqWidgetWrapper } from '@/components/members/faq-widget-wrapper'
 import { CommandPalette } from '@/components/members/command-palette'
 import { OnboardingModal } from '@/components/members/onboarding-modal'
 import { AnnouncementTicker } from '@/components/members/announcement-ticker'
+import { FeedbackNotificationSound } from '@/components/members/feedback-notification-sound'
 
 const TESTER_TAG_NAME = 'Beta'
 
@@ -100,6 +101,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         userName={profile?.full_name ?? ''}
         stepsJson={settings.onboarding_steps}
       />
+      {isTester && <FeedbackNotificationSound userId={user.id} />}
     </div>
   )
 }

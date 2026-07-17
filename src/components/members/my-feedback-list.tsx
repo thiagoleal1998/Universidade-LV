@@ -74,7 +74,7 @@ export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
                   </div>
                 )}
 
-                {isResolved && report.admin_note && (
+                {report.admin_note && (
                   <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
                     <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-0.5">Resposta</p>
                     <p className="text-sm text-foreground">{report.admin_note}</p>

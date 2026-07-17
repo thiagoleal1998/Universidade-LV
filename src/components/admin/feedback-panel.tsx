@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { resolveFeedback } from '@/app/actions/feedback'
+import { resolveFeedback, updateFeedbackNote } from '@/app/actions/feedback'
 import type { FeedbackReport } from '@/app/actions/feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,14 @@ export function FeedbackPanel({ reports }: { reports: FeedbackReport[] }) {
       const r = await resolveFeedback(id, !currentlyResolved, notes[id] ?? '')
       if (r?.error) toast.error(r.error)
       else { toast.success(currentlyResolved ? 'Reaberto.' : 'Marcado como resolvido!'); router.refresh() }
+    })
+  }
+
+  function handleSaveNote(id: string) {
+    startSave(async () => {
+      const r = await updateFeedbackNote(id, notes[id] ?? '')
+      if (r?.error) toast.error(r.error)
+      else { toast.success('Nota salva! O membro foi notificado.'); router.refresh() }
     })
   }
 
@@ -132,16 +140,26 @@ export function FeedbackPanel({ reports }: { reports: FeedbackReport[] }) {
                       />
                     </div>
 
-                    <Button
-                      size="sm"
-                      variant={isResolved ? 'outline' : 'default'}
-                      disabled={isPending}
-                      onClick={() => handleToggleResolved(report.id, isResolved)}
-                      className="gap-2"
-                    >
-                      {isResolved ? <RotateCcw className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                      {isResolved ? 'Reabrir' : 'Marcar como resolvido'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isPending}
+                        onClick={() => handleSaveNote(report.id)}
+                      >
+                        Salvar nota
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={isResolved ? 'outline' : 'default'}
+                        disabled={isPending}
+                        onClick={() => handleToggleResolved(report.id, isResolved)}
+                        className="gap-2"
+                      >
+                        {isResolved ? <RotateCcw className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                        {isResolved ? 'Reabrir' : 'Marcar como resolvido'}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
