@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
-import { RichTextEditor } from '@/components/admin/rich-text-editor'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────

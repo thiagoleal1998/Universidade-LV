@@ -6,8 +6,9 @@ import { resolveFeedback } from '@/app/actions/feedback'
 import type { FeedbackReport } from '@/app/actions/feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Bug, Lightbulb, ChevronDown, ChevronUp, CheckCircle2, RotateCcw } from 'lucide-react'
+import { Bug, Lightbulb, ChevronDown, ChevronUp, CheckCircle2, RotateCcw, Link2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type StatusFilter = 'open' | 'resolved' | 'all'
@@ -16,6 +17,9 @@ export function FeedbackPanel({ reports }: { reports: FeedbackReport[] }) {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
   const [openId, setOpenId] = useState<string | null>(null)
+  const [notes, setNotes] = useState<Record<string, string>>(
+    Object.fromEntries(reports.map((r) => [r.id, r.admin_note]))
+  )
   const [isPending, startSave] = useTransition()
 
   const filtered = reports.filter((r) => statusFilter === 'all' || r.status === statusFilter)
@@ -23,7 +27,7 @@ export function FeedbackPanel({ reports }: { reports: FeedbackReport[] }) {
 
   function handleToggleResolved(id: string, currentlyResolved: boolean) {
     startSave(async () => {
-      const r = await resolveFeedback(id, !currentlyResolved)
+      const r = await resolveFeedback(id, !currentlyResolved, notes[id] ?? '')
       if (r?.error) toast.error(r.error)
       else { toast.success(currentlyResolved ? 'Reaberto.' : 'Marcado como resolvido!'); router.refresh() }
     })
@@ -75,8 +79,8 @@ export function FeedbackPanel({ reports }: { reports: FeedbackReport[] }) {
                       {report.type === 'bug' ? <Bug className="w-3.5 h-3.5" /> : <Lightbulb className="w-3.5 h-3.5" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{report.member_name || 'Membro'}</p>
-                      <p className="text-xs text-muted-foreground truncate">{report.message}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{report.member_name || 'Membro'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -89,13 +93,45 @@ export function FeedbackPanel({ reports }: { reports: FeedbackReport[] }) {
 
                 {isOpen && (
                   <div className="border-t border-border px-4 py-4 space-y-3">
-                    <p className="text-sm text-foreground whitespace-pre-wrap bg-muted/40 rounded-lg px-3 py-2">
-                      {report.message}
-                    </p>
+                    <div
+                      className="rich-text text-sm text-foreground bg-muted/40 rounded-lg px-3 py-2"
+                      dangerouslySetInnerHTML={{ __html: report.message }}
+                    />
+
+                    {report.link_url && (
+                      <a href={report.link_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+                        <Link2 className="w-3 h-3" />
+                        {report.link_url}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+
+                    {report.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {report.attachments.map((a) => (
+                          <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>Página: {report.page_url || '—'}</span>
                       <span>{new Date(report.created_at).toLocaleString('pt-BR')}</span>
                     </div>
+
+                    <div>
+                      <Textarea
+                        value={notes[report.id] ?? ''}
+                        onChange={(e) => setNotes((p) => ({ ...p, [report.id]: e.target.value }))}
+                        placeholder="Nota interna / resposta para o membro (opcional)..."
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+
                     <Button
                       size="sm"
                       variant={isResolved ? 'outline' : 'default'}

@@ -45,6 +45,11 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 - Notificações: INSERT via `adminClient` (sem política de INSERT — service role bypassa RLS)
 - **Relações N→1** (ex.: `tags(name)`, `courses(name)`, `lessons(title)` em joins): o PostgREST retorna **objeto** em runtime, mas o client sem tipos gerados infere **array**. Nunca acesse com `.map()`/`[0]` direto — use `toOne()` de `src/lib/supabase/relations.ts`, que normaliza as duas formas. (Regressão real na v1.50.1: Marketing quebrou com `t.tags.map is not a function` só para usuários com tags.)
 - Triggers em `profiles` disparados via auth (GoTrue) rodam com `search_path` restrito — sempre qualifique objetos com `public.` dentro de funções de trigger (ver migração 030).
+- Pacotes `@tiptap/*` precisam ficar todos na MESMA versão exata (ver `package.json`) — as extensões fixam peer dependency `@tiptap/core` na versão exata, não em range; um caret (`^`) num único pacote causa conflito de peer dependency no `npm install` assim que o tiptap publica um patch novo.
+
+## Conteúdo rico gerado por membros (não só admin)
+- `RichTextEditor` mora em `src/components/ui/rich-text-editor.tsx` (Tiptap) — usado tanto por admins (`lesson-editor.tsx`, `corrida-vendas-manager.tsx`) quanto por membros (`feedback-ticket-form.tsx`).
+- Sempre que HTML gerado por MEMBRO for salvo para ser renderizado depois (`dangerouslySetInnerHTML`) por outro usuário (ex: admin vendo um chamado de feedback), sanitize no server action antes de gravar — usar `isomorphic-dompurify` com allowlist explícita (ver `sanitizeRichText` em `src/app/actions/feedback.ts`). Todo `dangerouslySetInnerHTML` anterior no projeto (anúncios, aulas, corridas) só recebe HTML gerado por admins confiáveis — não sanitizado, e deve continuar assim (não é boundary de confiança). Feedback é o primeiro caso de conteúdo rico membro→admin.
 
 ## Notificações
 - Tabela `notifications`: `id, user_id, type, title, body, link, read_at, created_at`
@@ -60,8 +65,9 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 
 ## Rollout faseado (em andamento, deadline 31/08/2026)
 - Plano completo em `C:\Users\thiago.leal\.claude\plans\recursive-painting-wave.md`. Fase 1 (Marketing/T.I.) em execução.
-- Testadores são marcados com a tag **"Beta"** (criada em Admin → Membros → Gerenciar tags, atribuída via `assignMemberTags` já existente). O botão "Reportar problema" (`src/components/members/member-feedback-widget.tsx`) só aparece para quem tem essa tag — checado em `src/app/(members)/dashboard/layout.tsx` via `profile_tags`.
-- Reports ficam em `feedback_reports` (migração `031`), visíveis em Admin → Feedback (`src/app/(admin)/admin/feedback/`).
+- Testadores são marcados com a tag **"Beta"** (criada em Admin → Membros → Gerenciar tags, atribuída via `assignMemberTags` já existente).
+- Feedback virou um "chamado" completo, não mais popup: item "Feedback" na sidebar do membro (`src/components/members/member-feedback-widget.tsx`, só aparece com a tag Beta — checado em `src/app/(members)/dashboard/layout.tsx` e de novo, server-side, na própria página `src/app/(members)/dashboard/feedback/page.tsx` — bloqueia acesso direto por URL) leva para uma página com formulário completo (`feedback-ticket-form.tsx`: título, tipo, editor rico com imagem inline, link, anexos de foto) + lista "Minhas solicitações" (`my-feedback-list.tsx`).
+- Dados em `feedback_reports` (migração `031`) + `title`/`link_url` (migração `032`) + `feedback_attachments` (tabela filha, bucket `feedback-attachments`). Visível em Admin → Feedback (`src/app/(admin)/admin/feedback/`).
 
 ## Atualização deste arquivo
 Mantenha este CLAUDE.md atualizado com decisões arquiteturais, convenções novas ou contexto relevante descoberto durante o desenvolvimento. Não documente o óbvio — apenas o que um novo Claude não conseguiria derivar lendo o código.

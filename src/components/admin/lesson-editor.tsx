@@ -23,7 +23,7 @@ import {
 import { Trash2, Upload, Video, Image as ImageIcon, Paperclip, FileText, FileSpreadsheet, FileImage, File, Clock, X, Table2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { RichTextEditor } from './rich-text-editor'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { LessonTaskEditor } from './lesson-task-editor'
 import type { LessonTask } from '@/app/actions/lesson-tasks'
 import Image from 'next/image'
