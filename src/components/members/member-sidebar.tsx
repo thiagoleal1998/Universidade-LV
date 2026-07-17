@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
 import { NotificationBell } from '@/components/members/notification-bell'
+import { MemberFeedbackWidget } from '@/components/members/member-feedback-widget'
 
 type NavLabels = Record<string, string>
 
@@ -50,6 +51,7 @@ type Props = {
   aereoActive?: boolean
   comercialActive?: boolean
   memberNavOrder?: string
+  showFeedbackButton?: boolean
 }
 
 // Smooth slide-out for text elements — max-width + opacity
@@ -81,6 +83,7 @@ const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, unreadCount = 0,
   areaSubtitle = 'Área do Aluno', memberNavLabels = '', memberNavOrder = '', podviajarActive = false, aereoActive = false, comercialActive = false,
+  showFeedbackButton = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
@@ -192,6 +195,8 @@ function SidebarContent({
             </Link>
           )
         })}
+
+        <MemberFeedbackWidget visible={showFeedbackButton} collapsed={collapsed} onNavigate={onClose} />
 
       </nav>
 

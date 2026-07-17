@@ -9,7 +9,6 @@ import { FaqWidgetWrapper } from '@/components/members/faq-widget-wrapper'
 import { CommandPalette } from '@/components/members/command-palette'
 import { OnboardingModal } from '@/components/members/onboarding-modal'
 import { AnnouncementTicker } from '@/components/members/announcement-ticker'
-import { MemberFeedbackWidget } from '@/components/members/member-feedback-widget'
 
 const TESTER_TAG_NAME = 'Beta'
 
@@ -85,6 +84,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         podviajarActive={(() => { try { return JSON.parse(settings.podviajar)?.active === true } catch { return false } })()}
         aereoActive={!!aereoUrl}
         comercialActive={!!comercialUrl}
+        showFeedbackButton={isTester}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         <AnnouncementTicker announcements={announcements} />
@@ -100,7 +100,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
         userName={profile?.full_name ?? ''}
         stepsJson={settings.onboarding_steps}
       />
-      <MemberFeedbackWidget visible={isTester} />
     </div>
   )
 }
