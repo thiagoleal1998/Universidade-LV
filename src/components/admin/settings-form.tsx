@@ -111,6 +111,7 @@ const ALL_NAV_ITEMS = [
   { href: '/admin/comunicados',    label: 'Comunicados'    },
   { href: '/admin/documentos',     label: 'Documentos'     },
   { href: '/admin/comunidade',     label: 'Comunidade'     },
+  { href: '/admin/feedback',       label: 'Feedback'       },
   { href: '/admin/marketing',      label: 'Marketing'      },
   { href: '/admin/relatorios',     label: 'Relatórios'     },
   { href: '/admin/seo',            label: 'SEO'            },

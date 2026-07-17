@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   BookOpen, Users, LayoutDashboard, LogOut, Settings, GraduationCap,
   Megaphone, BarChart2, FileText, Presentation, MessageSquare,
-  SearchCheck, HelpCircle, Menu, X, PanelLeftClose, PanelLeftOpen,
+  SearchCheck, HelpCircle, Menu, X, PanelLeftClose, PanelLeftOpen, Bug,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { href: '/admin/comunicados',    label: 'Comunicados',   icon: Megaphone,       exact: false },
   { href: '/admin/documentos',     label: 'Documentos',    icon: FileText,        exact: false },
   { href: '/admin/comunidade',     label: 'Comunidade',    icon: MessageSquare,   exact: false },
+  { href: '/admin/feedback',       label: 'Feedback',      icon: Bug,             exact: false },
   { href: '/admin/marketing',      label: 'Marketing',     icon: Presentation,    exact: false },
   { href: '/admin/relatorios',     label: 'Relatórios',    icon: BarChart2,       exact: false },
   { href: '/admin/seo',            label: 'SEO',           icon: SearchCheck,     exact: false },

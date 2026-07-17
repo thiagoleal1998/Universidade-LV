@@ -290,6 +290,7 @@ const DEFAULTS = {
     '/admin/comunicados',
     '/admin/documentos',
     '/dashboard/comunidade',
+    '/admin/feedback',
     '/admin/marketing',
     '/admin/relatorios',
     '/admin/seo',

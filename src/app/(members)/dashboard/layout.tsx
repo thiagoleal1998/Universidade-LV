@@ -3,11 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getFaqItems } from '@/app/actions/faq'
+import { toOne } from '@/lib/supabase/relations'
 import { MemberSidebar } from '@/components/members/member-sidebar'
 import { FaqWidgetWrapper } from '@/components/members/faq-widget-wrapper'
 import { CommandPalette } from '@/components/members/command-palette'
 import { OnboardingModal } from '@/components/members/onboarding-modal'
 import { AnnouncementTicker } from '@/components/members/announcement-ticker'
+import { MemberFeedbackWidget } from '@/components/members/member-feedback-widget'
+
+const TESTER_TAG_NAME = 'Beta'
 
 type Announcement = { id: string; title: string; body: string; created_at: string }
 
@@ -19,7 +23,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const adminClient = createAdminClient()
   const now = new Date().toISOString()
-  const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }, { data: aereoData }, { data: comercialData }] = await Promise.all([
+  const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }, { data: aereoData }, { data: comercialData }, { data: userTagsData }] = await Promise.all([
     adminClient.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
     getSettings(),
     adminClient
@@ -51,12 +55,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
       .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('order_index')
       .limit(1),
+    adminClient.from('profile_tags').select('tag_id, tags(name)').eq('profile_id', user.id),
   ])
 
   const profile = profileData as { full_name: string; avatar_url: string } | null
   const announcements = (announcementsData ?? []) as Announcement[]
   const aereoUrl = (aereoData?.[0] as { url?: string } | undefined)?.url ?? null
   const comercialUrl = (comercialData?.[0] as { url?: string } | undefined)?.url ?? null
+  const userTagNames = new Set(
+    (userTagsData ?? []).flatMap((t: { tag_id: string; tags: { name: string }[] }) => {
+      const tag = toOne(t.tags)
+      return tag ? [tag.name] : []
+    })
+  )
+  const isTester = userTagNames.has(TESTER_TAG_NAME)
 
   return (
     <div className="flex h-screen bg-muted/30">
@@ -88,6 +100,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         userName={profile?.full_name ?? ''}
         stepsJson={settings.onboarding_steps}
       />
+      <MemberFeedbackWidget visible={isTester} />
     </div>
   )
 }

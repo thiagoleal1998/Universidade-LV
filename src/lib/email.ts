@@ -48,3 +48,19 @@ export async function emailMembersNewAnnouncement(
     `<p><strong>${title}</strong></p><p>${body.replace(/\n/g, '<br/>')}</p>`
   )
 }
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+export async function emailAdminNewFeedback(memberName: string, memberEmail: string, type: string, message: string) {
+  if (!adminEmail) return
+  const typeLabel = type === 'bug' ? 'Bug reportado' : 'Sugestão enviada'
+  await send(
+    adminEmail,
+    `[Feedback] ${typeLabel} — ${memberName || memberEmail}`,
+    `<p><strong>${escapeHtml(memberName || memberEmail)}</strong> (${escapeHtml(memberEmail)}) enviou um feedback (${typeLabel}):</p>
+     <p>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>
+     <p>Acesse o painel administrativo (Feedback) para responder.</p>`
+  )
+}

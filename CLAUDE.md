@@ -56,6 +56,12 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 - Componentes admin em `src/components/admin/`
 - Componentes UI reutilizáveis em `src/components/ui/`
 - `settings` são pares chave-valor na tabela `site_settings`; tipo e defaults em `src/lib/settings.ts`
+- Nav do admin é duplicado em dois lugares que precisam ficar em sincronia: `NAV_ITEMS` em `src/components/admin/admin-sidebar.tsx` (render real, com ícone) e `ALL_NAV_ITEMS` em `src/components/admin/settings-form.tsx` (aba "Menu Admin", reordenável via `nav_order`). Ao adicionar página admin nova, adicionar nos dois + no default de `nav_order` em `src/lib/settings.ts`.
+
+## Rollout faseado (em andamento, deadline 31/08/2026)
+- Plano completo em `C:\Users\thiago.leal\.claude\plans\recursive-painting-wave.md`. Fase 1 (Marketing/T.I.) em execução.
+- Testadores são marcados com a tag **"Beta"** (criada em Admin → Membros → Gerenciar tags, atribuída via `assignMemberTags` já existente). O botão "Reportar problema" (`src/components/members/member-feedback-widget.tsx`) só aparece para quem tem essa tag — checado em `src/app/(members)/dashboard/layout.tsx` via `profile_tags`.
+- Reports ficam em `feedback_reports` (migração `031`), visíveis em Admin → Feedback (`src/app/(admin)/admin/feedback/`).
 
 ## Atualização deste arquivo
 Mantenha este CLAUDE.md atualizado com decisões arquiteturais, convenções novas ou contexto relevante descoberto durante o desenvolvimento. Não documente o óbvio — apenas o que um novo Claude não conseguiria derivar lendo o código.
