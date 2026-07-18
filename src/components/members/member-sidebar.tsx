@@ -191,7 +191,7 @@ function SidebarContent({
               )}
             >
               <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
-              <span style={slideText(collapsed, 140)}>{label}</span>
+              <span style={slideText(collapsed, 172)}>{label}</span>
             </Link>
           )
         })}
