@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { login } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,13 +14,22 @@ import { Eye, EyeOff } from 'lucide-react'
 
 type LoginState = { error?: string; info?: string; redirectTo?: string } | undefined
 
-export function LoginForm({ settings, messages }: { settings: Settings; messages: string[] }) {
+export function LoginForm({ settings, messages, reason }: { settings: Settings; messages: string[]; reason?: string }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(login, undefined)
   const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (state?.redirectTo) window.location.href = state.redirectTo
   }, [state])
+
+  useEffect(() => {
+    if (reason !== 'idle') return
+    // setTimeout empurra pra depois do efeito de subscribe do <Toaster/> (root
+    // layout) — chamado no mesmo commit do mount, toast() aqui perderia o
+    // toast porque ToastState.subscribe não faz replay de eventos anteriores.
+    const t = setTimeout(() => toast.info('Você foi desconectado por inatividade.'), 0)
+    return () => clearTimeout(t)
+  }, [reason])
 
   return (
     <AuthShell settings={settings} messages={messages}>

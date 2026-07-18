@@ -10,6 +10,7 @@ import { CommandPalette } from '@/components/members/command-palette'
 import { OnboardingModal } from '@/components/members/onboarding-modal'
 import { AnnouncementTicker } from '@/components/members/announcement-ticker'
 import { FeedbackNotificationSound } from '@/components/members/feedback-notification-sound'
+import { IdleLogoutGuard } from '@/components/ui/idle-logout-guard'
 
 const TESTER_TAG_NAME = 'Beta'
 
@@ -102,6 +103,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         stepsJson={settings.onboarding_steps}
       />
       {isTester && <FeedbackNotificationSound userId={user.id} />}
+      <IdleLogoutGuard />
     </div>
   )
 }

@@ -1,6 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { ACTIVITY_EVENT } from '@/lib/idle-timeout'
+
+// Vídeo tocando conta como atividade para o idle-logout (src/components/ui/idle-logout-guard.tsx)
+// mesmo sem interação manual — senão quem só assiste sem mexer no mouse seria deslogado.
+const YT_STATE_PLAYING = 1
+const HEARTBEAT_INTERVAL_MS = 25_000
 
 type YTPlayer = {
   setPlaybackRate: (rate: number) => void
@@ -23,6 +29,7 @@ type Props = {
 export function StudyVideoPlayer({ videoId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YTPlayer | null>(null)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const [speed, setSpeed] = useState(1)
   const [ready, setReady] = useState(false)
 
@@ -34,6 +41,15 @@ export function StudyVideoPlayer({ videoId }: Props) {
         playerVars: { rel: 0, modestbranding: 1, enablejsapi: 1 },
         events: {
           onReady: () => setReady(true),
+          onStateChange: (e: { data: number }) => {
+            clearInterval(heartbeatRef.current)
+            if (e.data === YT_STATE_PLAYING) {
+              window.dispatchEvent(new Event(ACTIVITY_EVENT))
+              heartbeatRef.current = setInterval(() => {
+                window.dispatchEvent(new Event(ACTIVITY_EVENT))
+              }, HEARTBEAT_INTERVAL_MS)
+            }
+          },
         },
       })
     }
@@ -52,6 +68,7 @@ export function StudyVideoPlayer({ videoId }: Props) {
     }
 
     return () => {
+      clearInterval(heartbeatRef.current)
       playerRef.current?.destroy()
     }
   }, [videoId])
