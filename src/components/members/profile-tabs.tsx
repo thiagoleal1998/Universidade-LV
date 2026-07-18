@@ -8,6 +8,7 @@ import {
   CheckCircle2, Clock, Trophy, Download, BookOpen, ChevronDown, ChevronRight, PlayCircle,
 } from 'lucide-react'
 import { ProfileFormCompact } from '@/components/members/profile-form-compact'
+import { formatDuration } from '@/lib/presence'
 
 type ModuleProgress = { id: string; title: string; total: number; done: number }
 type CourseProgress = { id: string; name: string; total: number; done: number; modules: ModuleProgress[] }
@@ -23,6 +24,7 @@ type Props = {
   company: string
   jobTitle: string
   linkedinUrl: string
+  totalTimeSeconds: number
   memberSince: string
   courseProgress: CourseProgress[]
   certificates: Certificate[]
@@ -71,7 +73,7 @@ export function ProfileTabs(props: Props) {
       </div>
 
       {activeTab === 'perfil'       && <PerfilTab {...props} />}
-      {activeTab === 'desempenho'   && <DesempenhoTab courseProgress={props.courseProgress} memberSince={props.memberSince} />}
+      {activeTab === 'desempenho'   && <DesempenhoTab courseProgress={props.courseProgress} memberSince={props.memberSince} totalTimeSeconds={props.totalTimeSeconds} />}
       {activeTab === 'certificados' && <CertificadosTab certificates={props.certificates} pendingModules={props.pendingModules} />}
       {activeTab === 'historico'    && <HistoricoTab items={props.activityHistory ?? []} />}
     </div>
@@ -100,7 +102,7 @@ function PerfilTab({ userId, fullName, email, avatarUrl, company, jobTitle, link
    Tab 2: Desempenho
 ───────────────────────────────────────────────────────── */
 
-function DesempenhoTab({ courseProgress, memberSince }: { courseProgress: CourseProgress[]; memberSince: string }) {
+function DesempenhoTab({ courseProgress, memberSince, totalTimeSeconds }: { courseProgress: CourseProgress[]; memberSince: string; totalTimeSeconds: number }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   function toggle(id: string) {
@@ -115,15 +117,6 @@ function DesempenhoTab({ courseProgress, memberSince }: { courseProgress: Course
   const totalLessons = courseProgress.reduce((s, c) => s + c.total, 0)
   const doneLessons  = courseProgress.reduce((s, c) => s + c.done, 0)
   const overallPct   = totalLessons > 0 ? Math.round((doneLessons / totalLessons) * 100) : 0
-
-  if (courseProgress.length === 0) {
-    return (
-      <div className="text-center py-16 bg-card border rounded-xl">
-        <BookOpen className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-        <p className="text-muted-foreground font-medium">Nenhum curso disponível ainda.</p>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-4">
@@ -145,6 +138,10 @@ function DesempenhoTab({ courseProgress, memberSince }: { courseProgress: Course
             <p className="text-lg font-semibold text-foreground">{courseProgress.length}</p>
           </div>
           <div>
+            <p className="text-xs text-muted-foreground">Tempo na plataforma</p>
+            <p className="text-sm font-medium text-foreground">{formatDuration(totalTimeSeconds)}</p>
+          </div>
+          <div>
             <p className="text-xs text-muted-foreground">Membro desde</p>
             <p className="text-sm font-medium text-foreground">
               {memberSince
@@ -156,6 +153,12 @@ function DesempenhoTab({ courseProgress, memberSince }: { courseProgress: Course
       </div>
 
       {/* Per-course breakdown */}
+      {courseProgress.length === 0 && (
+        <div className="text-center py-16 bg-card border rounded-xl">
+          <BookOpen className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground font-medium">Nenhum curso disponível ainda.</p>
+        </div>
+      )}
       {courseProgress.map((course) => {
         const pct = course.total > 0 ? Math.round((course.done / course.total) * 100) : 0
         const isExpanded = expanded.has(course.id)

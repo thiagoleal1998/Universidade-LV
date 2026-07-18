@@ -24,6 +24,8 @@ export type RecentActivityItem = {
 
 export type SignupRow = { id: string; name: string; created_at: string }
 
+export type OnlineByRole = { member: number; collaborator: number; admin: number }
+
 export type EngagementBucket = {
   label: string; value: number; color: string; valueColor: string
 }
@@ -46,6 +48,7 @@ export type DashboardProps = {
   newSignups: SignupRow[]
   engagementBuckets: EngagementBucket[]
   pendingLessons: PendingLesson[]
+  onlineByRole: OnlineByRole
 }
 
 type TrendDir = 'up' | 'down' | 'flat'
@@ -173,7 +176,24 @@ export function AdminDashboardShell(props: DashboardProps) {
             <div className="space-y-5">
 
               {/* Hero stat cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                {/* Online agora */}
+                <div className="rounded-2xl border border-border bg-card p-6 relative overflow-hidden">
+                  <div className="flex items-center gap-2.5 mb-5">
+                    <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center">
+                      <Activity className="w-4.5 h-4.5 text-muted-foreground" />
+                    </div>
+                    <span className="text-sm font-medium text-muted-foreground">Online agora</span>
+                    <span className="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  </div>
+                  <p className="text-5xl font-bold text-foreground tracking-tight mb-1">
+                    {props.onlineByRole.member + props.onlineByRole.collaborator + props.onlineByRole.admin}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {props.onlineByRole.member} alunos · {props.onlineByRole.collaborator} colaboradores · {props.onlineByRole.admin} admins
+                  </p>
+                </div>
 
                 {/* Membros */}
                 <div className="rounded-2xl border border-border bg-card p-6 relative overflow-hidden">

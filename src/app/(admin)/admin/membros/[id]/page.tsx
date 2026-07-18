@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, CheckCircle2, BookOpen, Clock, Flame, BarChart2, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { requireAdminPage } from '@/lib/authz'
+import { formatDuration } from '@/lib/presence'
 
 type ProgressRow = {
   lesson_id: string
@@ -62,7 +63,7 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
   if (!profileData) notFound()
 
   const email = userAuth?.user?.email ?? ''
-  const profile = profileData as { full_name: string; avatar_url: string; created_at: string; active: boolean; role: string }
+  const profile = profileData as { full_name: string; avatar_url: string; created_at: string; active: boolean; role: string; total_time_seconds: number | null }
   const tagIds = new Set((profileTagsData ?? []).map((t) => t.tag_id))
   const memberTags = (tagsData ?? []).filter((t) => tagIds.has(t.id))
   const courseIds = (memberCoursesData ?? []).map((mc) => mc.course_id)
@@ -78,7 +79,7 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
   const totalDone = completedSet.size
   const overallPct = totalLessons > 0 ? Math.round((totalDone / totalLessons) * 100) : 0
   const streak = calcStreak(progress)
-  const estimatedMinutes = totalDone * 10
+  const totalTimeSeconds = profile.total_time_seconds ?? 0
 
   const initials = profile.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
@@ -120,7 +121,7 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
           { icon: CheckCircle2, label: 'Aulas concluídas', value: totalDone, color: 'text-green-600' },
           { icon: BarChart2, label: 'Progresso geral', value: `${overallPct}%`, color: 'text-primary' },
           { icon: BookOpen, label: 'Cursos liberados', value: courses.length, color: 'text-blue-600' },
-          { icon: streak > 0 ? Flame : Clock, label: streak > 0 ? 'Dias seguidos' : 'Horas est.', value: streak > 0 ? streak : estimatedMinutes >= 60 ? `${Math.floor(estimatedMinutes / 60)}h` : `${estimatedMinutes}m`, color: streak > 0 ? 'text-orange-500' : 'text-muted-foreground' },
+          { icon: streak > 0 ? Flame : Clock, label: streak > 0 ? 'Dias seguidos' : 'Tempo na ULV', value: streak > 0 ? streak : formatDuration(totalTimeSeconds), color: streak > 0 ? 'text-orange-500' : 'text-muted-foreground' },
         ] as const).map(({ icon: Icon, label, value, color }) => (
           <div key={label} className="bg-card border rounded-xl p-4">
             <div className="flex items-center gap-1.5 mb-1">

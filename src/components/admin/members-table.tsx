@@ -31,6 +31,7 @@ type MemberWithEmail = {
   collaborator_area_id?: string | null
   tagIds?: string[]
   courseIds?: string[]
+  isOnline?: boolean
 }
 
 type Filter = 'all' | 'active' | 'inactive' | 'admin' | 'collaborator'
@@ -178,10 +179,18 @@ export function MembersTable({
                 <TableCell>
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="w-7 h-7">
-                        {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.full_name} />}
-                        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                      </Avatar>
+                      <div className="relative shrink-0">
+                        <Avatar className="w-7 h-7">
+                          {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.full_name} />}
+                          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                        </Avatar>
+                        {member.isOnline && (
+                          <span
+                            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-card"
+                            title="Online agora"
+                          />
+                        )}
+                      </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
                           {member.full_name || <span className="text-muted-foreground italic">Sem nome</span>}

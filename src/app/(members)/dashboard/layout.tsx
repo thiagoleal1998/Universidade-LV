@@ -11,6 +11,7 @@ import { OnboardingModal } from '@/components/members/onboarding-modal'
 import { AnnouncementTicker } from '@/components/members/announcement-ticker'
 import { FeedbackNotificationSound } from '@/components/members/feedback-notification-sound'
 import { IdleLogoutGuard } from '@/components/ui/idle-logout-guard'
+import { PresenceHeartbeat } from '@/components/ui/presence-heartbeat'
 
 const TESTER_TAG_NAME = 'Beta'
 
@@ -104,6 +105,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       />
       {isTester && <FeedbackNotificationSound userId={user.id} />}
       <IdleLogoutGuard />
+      <PresenceHeartbeat />
     </div>
   )
 }

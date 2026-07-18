@@ -7,6 +7,8 @@ import { TagsManager } from '@/components/admin/tags-manager'
 import { CollaboratorAreasManager } from '@/components/admin/collaborator-areas-manager'
 import { getCollaboratorAreas } from '@/app/actions/collaborator-areas'
 import { requireAdminPage } from '@/lib/authz'
+import { presenceSinceIso } from '@/lib/presence'
+import { DashboardAutoRefresh } from '@/components/admin/dashboard-auto-refresh'
 
 export default async function MembrosPage() {
   await requireAdminPage()
@@ -50,11 +52,13 @@ export default async function MembrosPage() {
     memberCourseMap.set(mc.member_id, existing)
   }
 
+  const onlineSince = presenceSinceIso()
   const members = (profiles ?? []).map((p) => ({
     ...p,
     email: emailMap.get(p.id) ?? '',
     tagIds: profileTagMap.get(p.id) ?? [],
     courseIds: memberCourseMap.get(p.id) ?? [],
+    isOnline: !!p.last_seen_at && p.last_seen_at > onlineSince,
   }))
 
   const pending = members.filter((m) => !m.active && m.role !== 'admin')
@@ -81,6 +85,7 @@ export default async function MembrosPage() {
       <div className="bg-card border rounded-lg overflow-hidden">
         <MembersTable members={active} allTags={allTags} allCourses={allCourses} allAreas={areas} />
       </div>
+      <DashboardAutoRefresh />
     </div>
   )
 }

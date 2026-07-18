@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdminContext } from '@/lib/authz'
+import { presenceSinceIso } from '@/lib/presence'
 import { AdminDashboardShell } from '@/components/admin/admin-dashboard-shell'
-import type { ModuleStat, LessonWithCount, MemberStat, PendingLesson } from '@/components/admin/admin-dashboard-shell'
+import type { ModuleStat, LessonWithCount, MemberStat, PendingLesson, OnlineByRole } from '@/components/admin/admin-dashboard-shell'
+import { DashboardAutoRefresh } from '@/components/admin/dashboard-auto-refresh'
 
 type LessonRow = {
   id: string
@@ -49,6 +51,7 @@ export default async function AdminDashboard() {
     { count: newMembersThisWeek },
     { count: newMembersPrevWeek },
     { data: pendingResponsesRaw },
+    { data: onlineRolesRaw },
   ] = await Promise.all([
     supabase.from('modules').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member'),
@@ -75,6 +78,10 @@ export default async function AdminDashboard() {
       .from('lesson_task_responses')
       .select('task_id')
       .is('grade', null),
+    adminClient
+      .from('profiles')
+      .select('role')
+      .gte('last_seen_at', presenceSinceIso()),
   ])
 
   const lessons = (lessonsData as LessonRow[] | null) ?? []
@@ -162,6 +169,14 @@ export default async function AdminDashboard() {
     created_at: m.created_at,
   }))
 
+  // Online agora, quebrado por papel
+  const onlineRoles = (onlineRolesRaw ?? []) as { role: string }[]
+  const onlineByRole: OnlineByRole = {
+    member: onlineRoles.filter((p) => p.role === 'member').length,
+    collaborator: onlineRoles.filter((p) => p.role === 'collaborator').length,
+    admin: onlineRoles.filter((p) => p.role === 'admin').length,
+  }
+
   // Tarefas pendentes de correção
   const pendingResponses = (pendingResponsesRaw ?? []) as { task_id: string }[]
   let pendingLessons: PendingLesson[] = []
@@ -190,24 +205,28 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <AdminDashboardShell
-      totalModules={totalModules ?? 0}
-      totalLessons={totalLessons}
-      totalMembersActive={totalMembersActive}
-      totalMembersAll={totalMembers ?? 0}
-      overallRate={overallRate}
-      totalCompletions={progress.length}
-      completionsThisWeek={completionsThisWeek ?? 0}
-      completionsPrevWeek={completionsPrevWeek ?? 0}
-      newMembersThisWeek={newMembersThisWeek ?? 0}
-      newMembersPrevWeek={newMembersPrevWeek ?? 0}
-      moduleStats={moduleStats}
-      lessonsWithCount={lessonsWithCount}
-      memberStats={memberStats}
-      recentActivity={transformedActivity}
-      newSignups={transformedSignups}
-      engagementBuckets={engagementBuckets}
-      pendingLessons={pendingLessons}
-    />
+    <>
+      <AdminDashboardShell
+        totalModules={totalModules ?? 0}
+        totalLessons={totalLessons}
+        totalMembersActive={totalMembersActive}
+        totalMembersAll={totalMembers ?? 0}
+        overallRate={overallRate}
+        totalCompletions={progress.length}
+        completionsThisWeek={completionsThisWeek ?? 0}
+        completionsPrevWeek={completionsPrevWeek ?? 0}
+        newMembersThisWeek={newMembersThisWeek ?? 0}
+        newMembersPrevWeek={newMembersPrevWeek ?? 0}
+        moduleStats={moduleStats}
+        lessonsWithCount={lessonsWithCount}
+        memberStats={memberStats}
+        recentActivity={transformedActivity}
+        newSignups={transformedSignups}
+        engagementBuckets={engagementBuckets}
+        pendingLessons={pendingLessons}
+        onlineByRole={onlineByRole}
+      />
+      <DashboardAutoRefresh />
+    </>
   )
 }

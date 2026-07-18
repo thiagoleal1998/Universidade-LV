@@ -6,6 +6,7 @@ import { getAdminContext } from '@/lib/authz'
 import { NAV_CAPABILITIES } from '@/lib/capabilities'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminNotificationSound } from '@/components/admin/admin-notification-sound'
+import { PresenceHeartbeat } from '@/components/ui/presence-heartbeat'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -52,6 +53,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {children}
       </main>
       <AdminNotificationSound userId={user.id} />
+      <PresenceHeartbeat />
     </div>
   )
 }
