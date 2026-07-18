@@ -1,7 +1,10 @@
 import { getSettings } from '@/lib/settings'
 import { SettingsForm } from '@/components/admin/settings-form'
+import { requireAdminPage } from '@/lib/authz'
 
 export default async function ConfiguracoesPage() {
+  await requireAdminPage()
+
   const settings = await getSettings()
 
   return (

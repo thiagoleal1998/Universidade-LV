@@ -3,10 +3,13 @@ import { getFeedbackReports, getAdmins } from '@/app/actions/feedback'
 import { FeedbackPanel } from '@/components/admin/feedback-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-react'
+import { requireAdminPage } from '@/lib/authz'
 
 export const metadata = { title: 'Feedback' }
 
 export default async function AdminFeedbackPage() {
+  await requireAdminPage()
+
   const [reports, admins] = await Promise.all([getFeedbackReports(), getAdmins()])
 
   return (

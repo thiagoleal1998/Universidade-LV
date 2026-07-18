@@ -71,7 +71,7 @@ function DeleteButton({ course }: { course: CourseWithCount }) {
   )
 }
 
-export function CoursesList({ courses }: { courses: CourseWithCount[] }) {
+export function CoursesList({ courses, isAdmin = true }: { courses: CourseWithCount[]; isAdmin?: boolean }) {
   if (courses.length === 0) {
     return (
       <p className="text-muted-foreground text-center py-12">
@@ -86,7 +86,8 @@ export function CoursesList({ courses }: { courses: CourseWithCount[] }) {
         const moduleCount = course.modules?.[0]?.count ?? 0
         return (
           <div key={course.id} className="flex items-center gap-4 bg-card border rounded-xl p-4">
-            <ReorderButtons course={course} isFirst={i === 0} isLast={i === courses.length - 1} />
+            {/* Reordenar é global — colaborador (lista parcial) não vê */}
+            {isAdmin && <ReorderButtons course={course} isFirst={i === 0} isLast={i === courses.length - 1} />}
 
             {/* Cover thumbnail */}
             <div className="w-16 h-10 rounded-lg overflow-hidden bg-muted border flex-shrink-0 flex items-center justify-center">

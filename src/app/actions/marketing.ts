@@ -1,7 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin, requireCapability, requireAnyCapability, requireContentAccess } from '@/lib/authz'
+import { capabilityForMarketingCategory, MARKETING_CAPABILITIES } from '@/lib/capabilities'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 import { extractYouTubeId } from '@/lib/youtube'
@@ -27,6 +28,9 @@ export async function getMarketingProducts(): Promise<MarketingProduct[]> {
 }
 
 export async function createMarketingProduct(name: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
   const adminClient = createAdminClient()
   if (!name.trim()) return { error: 'Nome obrigatório' }
   const { error } = await adminClient.from('marketing_products').insert({ name: name.trim() })
@@ -36,6 +40,9 @@ export async function createMarketingProduct(name: string) {
 }
 
 export async function updateMarketingProduct(id: string, name: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
   const adminClient = createAdminClient()
   if (!name.trim()) return { error: 'Nome obrigatório' }
   const { error } = await adminClient.from('marketing_products').update({ name: name.trim() }).eq('id', id)
@@ -45,6 +52,9 @@ export async function updateMarketingProduct(id: string, name: string) {
 }
 
 export async function deleteMarketingProduct(id: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
   const adminClient = createAdminClient()
   const { error } = await adminClient.from('marketing_products').delete().eq('id', id)
   if (error) return { error: error.message }
@@ -59,6 +69,9 @@ export async function getMarketingPeriods(): Promise<MarketingPeriod[]> {
 }
 
 export async function createMarketingPeriod(name: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
   const adminClient = createAdminClient()
   if (!name.trim()) return { error: 'Nome obrigatório' }
   const { error } = await adminClient.from('marketing_periods').insert({ name: name.trim() })
@@ -68,6 +81,9 @@ export async function createMarketingPeriod(name: string) {
 }
 
 export async function deleteMarketingPeriod(id: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
   const adminClient = createAdminClient()
   const { error } = await adminClient.from('marketing_periods').delete().eq('id', id)
   if (error) return { error: error.message }
@@ -91,10 +107,13 @@ export async function createMarketingItem(data: {
   expires_at?: string
   allowed_tag_ids?: string[]
 }) {
-  const supabase = await createClient()
+  const ctx = await requireCapability(capabilityForMarketingCategory(data.category))
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
   if (!data.title.trim()) return { error: 'Título obrigatório' }
 
-  const { data: existing } = await supabase
+  const { data: existing } = await adminClient
     .from('marketing_items')
     .select('order_index')
     .eq('category', data.category)
@@ -103,7 +122,7 @@ export async function createMarketingItem(data: {
 
   const nextIndex = (existing?.[0]?.order_index ?? -1) + 1
 
-  const { error } = await supabase.from('marketing_items').insert({
+  const { error } = await adminClient.from('marketing_items').insert({
     category: data.category,
     title: data.title.trim(),
     description: data.description.trim(),
@@ -119,11 +138,24 @@ export async function createMarketingItem(data: {
     expires_at: data.expires_at || null,
     allowed_tag_ids: data.allowed_tag_ids ?? [],
     order_index: nextIndex,
+    owner_area_id: ctx.areaId,
   })
 
   if (error) return { error: error.message }
   revalidatePath('/admin/marketing')
   return { success: true }
+}
+
+// Guard de posse: busca categoria + dono do item e valida capacidade + área
+async function requireMarketingItemAccess(id: string) {
+  const adminClient = createAdminClient()
+  const { data: item } = await adminClient
+    .from('marketing_items')
+    .select('category, owner_area_id')
+    .eq('id', id)
+    .single()
+  if (!item) return { error: 'Item não encontrado.' }
+  return requireContentAccess(capabilityForMarketingCategory(item.category), item.owner_area_id)
 }
 
 export async function updateMarketingItem(
@@ -144,10 +176,13 @@ export async function updateMarketingItem(
     allowed_tag_ids?: string[]
   },
 ) {
-  const supabase = await createClient()
+  const ctx = await requireMarketingItemAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
   if (!data.title.trim()) return { error: 'Título obrigatório' }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('marketing_items')
     .update({
       title: data.title.trim(),
@@ -172,14 +207,21 @@ export async function updateMarketingItem(
 }
 
 export async function deleteMarketingItem(id: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.from('marketing_items').delete().eq('id', id)
+  const ctx = await requireMarketingItemAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.from('marketing_items').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/marketing')
   return { success: true }
 }
 
 export async function uploadMarketingFile(file: File) {
+  // Qualquer capacidade de marketing serve para upload de arquivo
+  const ctx = await requireAnyCapability(MARKETING_CAPABILITIES)
+  if ('error' in ctx) return { error: ctx.error }
+
   const adminClient = createAdminClient()
   const outFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
   const isConverted = outFile.type === 'image/webp'

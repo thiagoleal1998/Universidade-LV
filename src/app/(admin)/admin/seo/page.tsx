@@ -1,9 +1,12 @@
 import { getSettings } from '@/lib/settings'
 import { SeoManager } from '@/components/admin/seo-manager'
+import { requireAdminPage } from '@/lib/authz'
 
 export const metadata = { title: 'SEO' }
 
 export default async function AdminSeoPage() {
+  await requireAdminPage()
+
   const settings = await getSettings()
 
   return (

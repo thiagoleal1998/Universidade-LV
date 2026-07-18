@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { emailMembersNewAnnouncement } from '@/lib/email'
 import { getSettings } from '@/lib/settings'
 import { notifyAllMembers } from '@/app/actions/notifications'
+import { requireAdmin } from '@/lib/authz'
 
 // O corpo do comunicado é HTML (editor rico) — a notificação mostra o body
 // como texto puro, então precisa remover as tags antes de truncar, senão
@@ -15,6 +16,9 @@ function stripHtml(html: string): string {
 }
 
 export async function createAnnouncement(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const title = formData.get('title') as string
   const body = formData.get('body') as string
@@ -36,6 +40,9 @@ export async function createAnnouncement(formData: FormData) {
 }
 
 export async function updateAnnouncement(id: string, formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const title = formData.get('title') as string
   const body = formData.get('body') as string
@@ -57,6 +64,9 @@ export async function updateAnnouncement(id: string, formData: FormData) {
 }
 
 export async function deleteAnnouncement(id: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const { error } = await supabase.from('announcements').delete().eq('id', id)
   if (error) return { error: error.message }
@@ -66,6 +76,9 @@ export async function deleteAnnouncement(id: string) {
 }
 
 export async function toggleAnnouncementPublished(id: string, is_published: boolean) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
@@ -105,6 +118,9 @@ export async function toggleAnnouncementPublished(id: string, is_published: bool
 }
 
 export async function scheduleAnnouncement(id: string, publish_at: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
 
   const { error } = await supabase

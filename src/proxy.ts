@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
         .eq('id', user.id)
         .single()
 
-      const redirectTo = profile?.role === 'admin' ? '/admin' : '/dashboard'
+      const redirectTo = profile?.role === 'admin' || profile?.role === 'collaborator' ? '/admin' : '/dashboard'
       return NextResponse.redirect(new URL(redirectTo, request.url))
     }
     return supabaseResponse
@@ -58,11 +58,17 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith('/admin')) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, active')
       .eq('id', user.id)
       .single()
 
-    if (!profile || profile.role !== 'admin') {
+    // Colaborador entra no painel (as páginas filtram o que ele pode ver),
+    // mas precisa estar ativo — admin não exige active (comportamento original).
+    const allowed =
+      profile?.role === 'admin' ||
+      (profile?.role === 'collaborator' && profile.active)
+
+    if (!allowed) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }

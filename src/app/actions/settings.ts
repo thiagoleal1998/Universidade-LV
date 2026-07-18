@@ -4,8 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+import { requireAdmin } from '@/lib/authz'
 
 export async function updateSettings(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
 
   const entries = [
@@ -106,6 +110,9 @@ export async function updateSettings(formData: FormData) {
 }
 
 export async function uploadSiteLogo(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const file = formData.get('logo') as File
   if (!file || file.size === 0) return { error: 'Nenhum arquivo selecionado' }
 
@@ -128,6 +135,9 @@ export async function uploadSiteLogo(formData: FormData) {
 }
 
 export async function uploadSiteFavicon(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const file = formData.get('favicon') as File
   if (!file || file.size === 0) return { error: 'Nenhum arquivo selecionado' }
 

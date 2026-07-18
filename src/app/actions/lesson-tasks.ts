@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireLessonAccess } from '@/lib/authz'
 import { revalidatePath } from 'next/cache'
 import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 
@@ -47,8 +48,11 @@ export type TaskResponse = {
 // ── Admin actions ────────────────────────────────────────────────────────────
 
 export async function createTask(lessonId: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
     .from('lesson_tasks')
     .insert({ lesson_id: lessonId, title: 'Tarefa', description: '' })
     .select()
@@ -59,8 +63,11 @@ export async function createTask(lessonId: string) {
 }
 
 export async function updateTask(taskId: string, lessonId: string, title: string, description: string) {
-  const supabase = await createClient()
-  const { error } = await supabase
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
     .from('lesson_tasks')
     .update({ title, description })
     .eq('id', taskId)
@@ -70,23 +77,29 @@ export async function updateTask(taskId: string, lessonId: string, title: string
 }
 
 export async function deleteTask(taskId: string, lessonId: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.from('lesson_tasks').delete().eq('id', taskId)
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.from('lesson_tasks').delete().eq('id', taskId)
   if (error) return { error: error.message }
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
 }
 
 export async function addQuestion(taskId: string, lessonId: string) {
-  const supabase = await createClient()
-  const { data: existing } = await supabase
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { data: existing } = await adminClient
     .from('lesson_task_questions')
     .select('order_index')
     .eq('task_id', taskId)
     .order('order_index', { ascending: false })
     .limit(1)
   const nextIndex = (existing?.[0]?.order_index ?? -1) + 1
-  const { data, error } = await supabase
+  const { data, error } = await adminClient
     .from('lesson_task_questions')
     .insert({ task_id: taskId, type: 'short_text', question: '', options: [], required: true, order_index: nextIndex, points: 1 })
     .select()
@@ -101,8 +114,11 @@ export async function updateQuestion(
   lessonId: string,
   payload: { type: QuestionType; question: string; options: string[]; correct_options: number[]; correct_answer: string | null; required: boolean; points: number }
 ) {
-  const supabase = await createClient()
-  const { error } = await supabase
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
     .from('lesson_task_questions')
     .update(payload)
     .eq('id', questionId)
@@ -112,8 +128,11 @@ export async function updateQuestion(
 }
 
 export async function deleteQuestion(questionId: string, lessonId: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.from('lesson_task_questions').delete().eq('id', questionId)
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.from('lesson_task_questions').delete().eq('id', questionId)
   if (error) return { error: error.message }
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
@@ -125,19 +144,22 @@ export async function reorderQuestion(
   lessonId: string,
   direction: 'up' | 'down'
 ) {
-  const supabase = await createClient()
-  const { data: current } = await supabase
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { data: current } = await adminClient
     .from('lesson_task_questions').select('order_index').eq('id', questionId).single()
   if (!current) return { error: 'Questão não encontrada' }
-  const { data: neighbor } = await supabase
+  const { data: neighbor } = await adminClient
     .from('lesson_task_questions')
     .select('id, order_index')
     .eq('task_id', taskId)
     .eq('order_index', direction === 'up' ? current.order_index - 1 : current.order_index + 1)
     .single()
   if (!neighbor) return { error: 'Não é possível mover' }
-  await supabase.from('lesson_task_questions').update({ order_index: neighbor.order_index }).eq('id', questionId)
-  await supabase.from('lesson_task_questions').update({ order_index: current.order_index }).eq('id', neighbor.id)
+  await adminClient.from('lesson_task_questions').update({ order_index: neighbor.order_index }).eq('id', questionId)
+  await adminClient.from('lesson_task_questions').update({ order_index: current.order_index }).eq('id', neighbor.id)
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
 }
@@ -197,6 +219,9 @@ export async function gradeTaskResponse(
   feedback: string,
   answerGrades: { questionId: string; grade: number }[] = []
 ) {
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()

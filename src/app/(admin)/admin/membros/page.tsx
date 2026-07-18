@@ -4,8 +4,13 @@ import { MembersTable } from '@/components/admin/members-table'
 import { PendingMembers } from '@/components/admin/pending-members'
 import { CreateMemberDialog } from '@/components/admin/create-member-dialog'
 import { TagsManager } from '@/components/admin/tags-manager'
+import { CollaboratorAreasManager } from '@/components/admin/collaborator-areas-manager'
+import { getCollaboratorAreas } from '@/app/actions/collaborator-areas'
+import { requireAdminPage } from '@/lib/authz'
 
 export default async function MembrosPage() {
+  await requireAdminPage()
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
@@ -16,6 +21,7 @@ export default async function MembrosPage() {
     { data: profileTags },
     { data: coursesData },
     { data: memberCoursesData },
+    areas,
   ] = await Promise.all([
     supabase.from('profiles').select('*').order('created_at', { ascending: false }),
     adminClient.auth.admin.listUsers(),
@@ -23,6 +29,7 @@ export default async function MembrosPage() {
     supabase.from('profile_tags').select('profile_id, tag_id'),
     supabase.from('courses').select('id, name').order('order_index'),
     supabase.from('member_courses').select('member_id, course_id'),
+    getCollaboratorAreas(),
   ])
 
   const emailMap = new Map(
@@ -67,10 +74,12 @@ export default async function MembrosPage() {
 
       <TagsManager tags={allTags} />
 
+      <CollaboratorAreasManager areas={areas} />
+
       <PendingMembers members={pending} courses={allCourses} />
 
       <div className="bg-card border rounded-lg overflow-hidden">
-        <MembersTable members={active} allTags={allTags} allCourses={allCourses} />
+        <MembersTable members={active} allTags={allTags} allCourses={allCourses} allAreas={areas} />
       </div>
     </div>
   )

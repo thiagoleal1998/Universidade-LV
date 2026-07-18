@@ -1,8 +1,11 @@
 import { getFaqItems } from '@/app/actions/faq'
 import { FaqManager } from '@/components/admin/faq-manager'
 import { HelpCircle } from 'lucide-react'
+import { requireAdminPage } from '@/lib/authz'
 
 export default async function AdminFaqPage() {
+  await requireAdminPage()
+
   const items = await getFaqItems()
 
   return (

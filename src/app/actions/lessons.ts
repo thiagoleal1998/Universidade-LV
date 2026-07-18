@@ -1,17 +1,23 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireModuleAccess, requireLessonAccess } from '@/lib/authz'
 import { revalidatePath } from 'next/cache'
 import { notifyCourseMembers } from '@/app/actions/notifications'
 import { toWebP } from '@/lib/image'
 
-export async function createLesson(moduleId: string, formData: FormData) {
-  const supabase = await createClient()
+// Mutações usam adminClient após o guard (RLS de lessons é admin-only).
+// A posse é herdada: lesson → module → course.owner_area_id.
 
+export async function createLesson(moduleId: string, formData: FormData) {
+  const ctx = await requireModuleAccess(moduleId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
   const title = formData.get('title') as string
   const description = formData.get('description') as string
 
-  const { data: lessons } = await supabase
+  const { data: lessons } = await adminClient
     .from('lessons')
     .select('order_index')
     .eq('module_id', moduleId)
@@ -20,7 +26,7 @@ export async function createLesson(moduleId: string, formData: FormData) {
 
   const nextIndex = (lessons?.[0]?.order_index ?? -1) + 1
 
-  const { data, error } = await supabase
+  const { data, error } = await adminClient
     .from('lessons')
     .insert({ module_id: moduleId, title, description, order_index: nextIndex })
     .select()
@@ -33,8 +39,10 @@ export async function createLesson(moduleId: string, formData: FormData) {
 }
 
 export async function updateLesson(id: string, moduleId: string, formData: FormData) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
 
+  const adminClient = createAdminClient()
   const title = formData.get('title') as string
   const description = formData.get('description') as string
   const youtube_url = (formData.get('youtube_url') as string) || null
@@ -47,13 +55,13 @@ export async function updateLesson(id: string, moduleId: string, formData: FormD
   const task_end_date = (formData.get('task_end_date') as string) || null
 
   // Get previous state to detect first-publish event
-  const { data: prev } = await supabase
+  const { data: prev } = await adminClient
     .from('lessons')
     .select('is_published, modules(course_id)')
     .eq('id', id)
     .single()
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('lessons')
     .update({ title, description, youtube_url, content_text, sheet_url, is_published, publish_at, task_start_date, task_end_date })
     .eq('id', id)
@@ -80,15 +88,17 @@ export async function updateLesson(id: string, moduleId: string, formData: FormD
 }
 
 export async function setLessonPublished(id: string, moduleId: string, is_published: boolean) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
 
-  const { data: prev } = await supabase
+  const adminClient = createAdminClient()
+  const { data: prev } = await adminClient
     .from('lessons')
     .select('is_published, title, description, modules(course_id)')
     .eq('id', id)
     .single()
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('lessons')
     .update({ is_published })
     .eq('id', id)
@@ -114,9 +124,11 @@ export async function setLessonPublished(id: string, moduleId: string, is_publis
 }
 
 export async function scheduleLesson(id: string, moduleId: string, publish_at: string) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
 
-  const { error } = await supabase
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
     .from('lessons')
     .update({ publish_at: new Date(publish_at).toISOString(), is_published: false })
     .eq('id', id)
@@ -128,14 +140,18 @@ export async function scheduleLesson(id: string, moduleId: string, publish_at: s
   return { success: true }
 }
 
+// Reorder de aula é escopado ao módulo (o colaborador vê o módulo inteiro da
+// área dele), então continua liberado — diferente do reorder global de cursos.
 export async function reorderLesson(id: string, moduleId: string, direction: 'up' | 'down') {
-  const supabase = await createClient()
+  const ctx = await requireModuleAccess(moduleId)
+  if ('error' in ctx) return { error: ctx.error }
 
-  const { data: current } = await supabase
+  const adminClient = createAdminClient()
+  const { data: current } = await adminClient
     .from('lessons').select('order_index').eq('id', id).single()
   if (!current) return { error: 'Aula não encontrada' }
 
-  const { data: neighbor } = await supabase
+  const { data: neighbor } = await adminClient
     .from('lessons')
     .select('id, order_index')
     .eq('module_id', moduleId)
@@ -143,17 +159,19 @@ export async function reorderLesson(id: string, moduleId: string, direction: 'up
     .single()
   if (!neighbor) return { error: 'Não é possível mover' }
 
-  await supabase.from('lessons').update({ order_index: neighbor.order_index }).eq('id', id)
-  await supabase.from('lessons').update({ order_index: current.order_index }).eq('id', neighbor.id)
+  await adminClient.from('lessons').update({ order_index: neighbor.order_index }).eq('id', id)
+  await adminClient.from('lessons').update({ order_index: current.order_index }).eq('id', neighbor.id)
 
   revalidatePath(`/admin/modulos/${moduleId}`)
   return { success: true }
 }
 
 export async function publishAllLessons(moduleId: string) {
-  const supabase = await createClient()
+  const ctx = await requireModuleAccess(moduleId)
+  if ('error' in ctx) return { error: ctx.error }
 
-  const { data: lessons } = await supabase
+  const adminClient = createAdminClient()
+  const { data: lessons } = await adminClient
     .from('lessons')
     .select('id, is_published, title, description, modules(course_id)')
     .eq('module_id', moduleId)
@@ -161,7 +179,7 @@ export async function publishAllLessons(moduleId: string) {
 
   if (!lessons || lessons.length === 0) return { count: 0 }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('lessons')
     .update({ is_published: true })
     .eq('module_id', moduleId)
@@ -187,21 +205,26 @@ export async function publishAllLessons(moduleId: string) {
 }
 
 export async function uploadContentImage(lessonId: string, file: File) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
   const webpFile = await toWebP(file, { maxWidth: 1200, quality: 85 })
   const isSvg = webpFile.type === 'image/svg+xml'
   const ext = isSvg ? file.name.split('.').pop() : 'webp'
   const path = `content-images/${lessonId}/${Date.now()}.${ext}`
-  const { error } = await supabase.storage.from('uploads').upload(path, webpFile, { contentType: webpFile.type })
+  const { error } = await adminClient.storage.from('uploads').upload(path, webpFile, { contentType: webpFile.type })
   if (error) return { error: error.message }
-  const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+  const { data: { publicUrl } } = adminClient.storage.from('uploads').getPublicUrl(path)
   return { url: publicUrl }
 }
 
 export async function deleteLesson(id: string, moduleId: string) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
 
-  const { error } = await supabase.from('lessons').delete().eq('id', id)
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.from('lessons').delete().eq('id', id)
 
   if (error) return { error: error.message }
 
@@ -214,18 +237,20 @@ export async function uploadLessonPhoto(
   file: File,
   caption: string
 ) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
 
+  const adminClient = createAdminClient()
   const webpFile = await toWebP(file, { maxWidth: 1200, quality: 85 })
   const path = `${lessonId}/${Date.now()}.webp`
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await adminClient.storage
     .from('lesson-photos')
     .upload(path, webpFile, { contentType: 'image/webp' })
 
   if (uploadError) return { error: uploadError.message }
 
-  const { data: photos } = await supabase
+  const { data: photos } = await adminClient
     .from('lesson_photos')
     .select('order_index')
     .eq('lesson_id', lessonId)
@@ -234,7 +259,7 @@ export async function uploadLessonPhoto(
 
   const nextIndex = (photos?.[0]?.order_index ?? -1) + 1
 
-  const { error: dbError } = await supabase
+  const { error: dbError } = await adminClient
     .from('lesson_photos')
     .insert({ lesson_id: lessonId, storage_path: path, caption, order_index: nextIndex })
 
@@ -246,11 +271,13 @@ export async function uploadLessonPhoto(
 }
 
 export async function deleteLessonPhoto(photoId: string, storagePath: string, lessonId: string) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
 
-  await supabase.storage.from('lesson-photos').remove([storagePath])
+  const adminClient = createAdminClient()
+  await adminClient.storage.from('lesson-photos').remove([storagePath])
 
-  const { error } = await supabase.from('lesson_photos').delete().eq('id', photoId)
+  const { error } = await adminClient.from('lesson_photos').delete().eq('id', photoId)
 
   if (error) return { error: error.message }
 
@@ -260,18 +287,19 @@ export async function deleteLessonPhoto(photoId: string, storagePath: string, le
 }
 
 export async function uploadLessonAttachment(lessonId: string, file: File) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
 
-  const ext = file.name.split('.').pop()
+  const adminClient = createAdminClient()
   const path = `${lessonId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await adminClient.storage
     .from('lesson-attachments')
     .upload(path, file)
 
   if (uploadError) return { error: uploadError.message }
 
-  const { data: existing } = await supabase
+  const { data: existing } = await adminClient
     .from('lesson_attachments')
     .select('order_index')
     .eq('lesson_id', lessonId)
@@ -280,7 +308,7 @@ export async function uploadLessonAttachment(lessonId: string, file: File) {
 
   const nextIndex = (existing?.[0]?.order_index ?? -1) + 1
 
-  const { error: dbError } = await supabase.from('lesson_attachments').insert({
+  const { error: dbError } = await adminClient.from('lesson_attachments').insert({
     lesson_id: lessonId,
     name: file.name,
     storage_path: path,
@@ -297,11 +325,13 @@ export async function uploadLessonAttachment(lessonId: string, file: File) {
 }
 
 export async function deleteLessonAttachment(attachmentId: string, storagePath: string, lessonId: string) {
-  const supabase = await createClient()
+  const ctx = await requireLessonAccess(lessonId)
+  if ('error' in ctx) return { error: ctx.error }
 
-  await supabase.storage.from('lesson-attachments').remove([storagePath])
+  const adminClient = createAdminClient()
+  await adminClient.storage.from('lesson-attachments').remove([storagePath])
 
-  const { error } = await supabase.from('lesson_attachments').delete().eq('id', attachmentId)
+  const { error } = await adminClient.from('lesson_attachments').delete().eq('id', attachmentId)
 
   if (error) return { error: error.message }
 

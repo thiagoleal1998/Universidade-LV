@@ -2,8 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireAdmin } from '@/lib/authz'
 
 export async function createTag(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const name = (formData.get('name') as string).trim()
   const color = (formData.get('color') as string) || 'blue'
@@ -15,6 +19,9 @@ export async function createTag(formData: FormData) {
 }
 
 export async function deleteTag(tagId: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const { error } = await supabase.from('tags').delete().eq('id', tagId)
   if (error) return { error: error.message }
@@ -23,6 +30,9 @@ export async function deleteTag(tagId: string) {
 }
 
 export async function updateTag(tagId: string, name: string, color: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   if (!name.trim()) return { error: 'Nome obrigatório' }
   const { error } = await supabase
@@ -35,6 +45,9 @@ export async function updateTag(tagId: string, name: string, color: string) {
 }
 
 export async function assignMemberTags(memberId: string, tagIds: string[]) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   await supabase.from('profile_tags').delete().eq('profile_id', memberId)
   if (tagIds.length > 0) {

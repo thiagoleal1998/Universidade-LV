@@ -5,8 +5,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { emailMemberApproved } from '@/lib/email'
 import { getSettings } from '@/lib/settings'
+import { requireAdmin } from '@/lib/authz'
 
 export async function createMember(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const fullName = formData.get('full_name') as string
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -38,13 +42,21 @@ export async function updateMember(
   data: {
     full_name: string
     email: string
-    role: 'admin' | 'member'
+    role: 'admin' | 'member' | 'collaborator'
     active: boolean
     new_password?: string
+    collaborator_area_id?: string | null
   }
 ) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const adminClient = createAdminClient()
   const supabase = await createClient()
+
+  if (data.role === 'collaborator' && !data.collaborator_area_id) {
+    return { error: 'Escolha a área do colaborador.' }
+  }
 
   // Atualiza email e senha no auth (via admin API)
   const authUpdate: { email?: string; password?: string } = {}
@@ -56,10 +68,15 @@ export async function updateMember(
     if (error) return { error: error.message }
   }
 
-  // Atualiza nome, role e status no perfil
+  // Atualiza nome, role, status e área no perfil (área só existe para colaborador)
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ full_name: data.full_name, role: data.role, active: data.active })
+    .update({
+      full_name: data.full_name,
+      role: data.role,
+      active: data.active,
+      collaborator_area_id: data.role === 'collaborator' ? data.collaborator_area_id : null,
+    })
     .eq('id', userId)
 
   if (profileError) return { error: profileError.message }
@@ -69,6 +86,9 @@ export async function updateMember(
 }
 
 export async function deleteMember(userId: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const adminClient = createAdminClient()
 
   const { error } = await adminClient.auth.admin.deleteUser(userId)
@@ -79,6 +99,9 @@ export async function deleteMember(userId: string) {
 }
 
 export async function toggleMemberActive(userId: string, active: boolean) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
@@ -105,6 +128,9 @@ export async function toggleMemberActive(userId: string, active: boolean) {
 }
 
 export async function updateMemberNotes(userId: string, notes: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const { error } = await supabase
     .from('profiles')
@@ -115,6 +141,9 @@ export async function updateMemberNotes(userId: string, notes: string) {
 }
 
 export async function assignMemberCourses(memberId: string, courseIds: string[]) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const { error: delError } = await supabase
     .from('member_courses')
@@ -132,6 +161,9 @@ export async function assignMemberCourses(memberId: string, courseIds: string[])
 }
 
 export async function approveMember(userId: string, courseIds: string[]) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   if (courseIds.length === 0) return { error: 'Selecione pelo menos um curso' }
 
   const supabase = await createClient()
@@ -161,12 +193,19 @@ export async function approveMember(userId: string, courseIds: string[]) {
   return { success: true }
 }
 
-export async function updateMemberRole(userId: string, role: 'admin' | 'member') {
+export async function updateMemberRole(userId: string, role: 'admin' | 'member' | 'collaborator', collaboratorAreaId?: string | null) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
+  if (role === 'collaborator' && !collaboratorAreaId) {
+    return { error: 'Escolha a área do colaborador.' }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('profiles')
-    .update({ role })
+    .update({ role, collaborator_area_id: role === 'collaborator' ? collaboratorAreaId : null })
     .eq('id', userId)
 
   if (error) return { error: error.message }

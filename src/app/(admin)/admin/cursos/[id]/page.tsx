@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import { CourseEditor } from '@/components/admin/course-editor'
 import { ModulesList } from '@/components/admin/modules-list'
 import { CreateModuleDialog } from '@/components/admin/create-module-dialog'
@@ -9,16 +8,23 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Course, Module } from '@/lib/supabase/types'
+import { requireCoursePage } from '@/lib/authz'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 type ModuleWithCount = Module & { lessons: { count: number }[] }
 
 export default async function EditCursoPpage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
+  const ctx = await requireCoursePage(id)
+  const isAdmin = ctx.role === 'admin'
+
+  // adminClient: a posse já foi validada no guard; para colaborador, a RLS
+  // esconderia rascunhos do próprio curso via client de sessão.
+  const db = createAdminClient()
 
   const [{ data: courseData, error: courseError }, { data: modulesData }] = await Promise.all([
-    supabase.from('courses').select('*').eq('id', id).single(),
-    supabase.from('modules').select('*, lessons(count)').eq('course_id', id).order('order_index'),
+    db.from('courses').select('*').eq('id', id).single(),
+    db.from('modules').select('*, lessons(count)').eq('course_id', id).order('order_index'),
   ])
 
   if (courseError) console.error('[Admin] Erro ao buscar curso id=%s:', id, courseError)
@@ -63,7 +69,7 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
             Nenhum módulo neste curso ainda. Clique em "Novo Módulo" para começar.
           </p>
         ) : (
-          <ModulesList modules={modules} />
+          <ModulesList modules={modules} isAdmin={isAdmin} />
         )}
       </div>
     </div>

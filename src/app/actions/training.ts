@@ -2,8 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin, requireCapability, requireContentAccess, type AdminContext } from '@/lib/authz'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+
+// Guard de posse: colaborador só mexe em treinamento da própria área
+async function requireTrainingAccess(id: string): Promise<AdminContext | { error: string }> {
+  const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('training_items').select('owner_area_id').eq('id', id).single()
+  if (!item) return { error: 'Treinamento não encontrado.' }
+  return requireContentAccess('trainings', item.owner_area_id)
+}
 
 function formatLiveAt(iso: string | null): string {
   if (!iso) return ''
@@ -28,7 +37,7 @@ async function notifyMembers(payload: {
   const { data: members, error: membersErr } = await adminClient
     .from('profiles')
     .select('id')
-    .eq('role', 'member')
+    .in('role', ['member', 'collaborator'])
     .eq('active', true)
 
   if (membersErr) return { error: membersErr.message, memberCount: 0 }
@@ -91,6 +100,7 @@ export type TrainingItem = {
   type: 'link' | 'live' | 'replay'
   live_at: string | null
   created_at: string
+  owner_area_id?: string | null
   materials?: TrainingMaterial[]
 }
 
@@ -134,9 +144,8 @@ function parseLiveAt(raw: string | null): string | null {
 }
 
 export async function createTrainingItem(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Não autenticado' }
+  const ctx = await requireCapability('trainings')
+  if ('error' in ctx) return { error: ctx.error }
 
   const isActive = formData.get('is_active') === 'true'
   const type = (formData.get('type') as string) || 'link'
@@ -154,6 +163,7 @@ export async function createTrainingItem(formData: FormData) {
     is_active: isActive,
     type,
     live_at: liveAt,
+    owner_area_id: ctx.areaId,
   }).select('id, title, type, live_at').single()
 
   if (error) return { error: error.message }
@@ -170,9 +180,8 @@ export async function createTrainingItem(formData: FormData) {
 }
 
 export async function updateTrainingItem(id: string, formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Não autenticado' }
+  const ctx = await requireTrainingAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
 
@@ -220,6 +229,9 @@ export async function updateTrainingItem(id: string, formData: FormData) {
 }
 
 export async function toggleTrainingActive(id: string, is_active: boolean) {
+  const ctx = await requireTrainingAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
+
   const adminClient = createAdminClient()
   const { error } = await adminClient.from('training_items').update({ is_active }).eq('id', id)
   if (error) return { error: error.message }
@@ -243,6 +255,9 @@ export async function toggleTrainingActive(id: string, is_active: boolean) {
 }
 
 export async function deleteTrainingItem(id: string) {
+  const ctx = await requireTrainingAccess(id)
+  if ('error' in ctx) return { error: ctx.error }
+
   const adminClient = createAdminClient()
   const { error } = await adminClient.from('training_items').delete().eq('id', id)
   if (error) return { error: error.message }
@@ -252,21 +267,23 @@ export async function deleteTrainingItem(id: string) {
 }
 
 export async function uploadTrainingCover(file: File) {
-  const supabase = await createClient()
+  const ctx = await requireCapability('trainings')
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
   const webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
   const path = `training-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
 
-  const { error } = await supabase.storage.from('marketing-files').upload(path, webpFile, { contentType: 'image/webp' })
+  const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: 'image/webp' })
   if (error) return { error: error.message }
 
-  const { data: { publicUrl } } = supabase.storage.from('marketing-files').getPublicUrl(path)
+  const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)
   return { success: true, url: publicUrl }
 }
 
 export async function createTrainingMaterial(trainingId: string, formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Não autenticado' }
+  const ctx = await requireTrainingAccess(trainingId)
+  if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
   const { error } = await adminClient.from('training_materials').insert({
@@ -285,6 +302,12 @@ export async function createTrainingMaterial(trainingId: string, formData: FormD
 
 export async function deleteTrainingMaterial(id: string) {
   const adminClient = createAdminClient()
+  const { data: material } = await adminClient.from('training_materials').select('training_id').eq('id', id).single()
+  if (!material) return { error: 'Material não encontrado.' }
+
+  const ctx = await requireTrainingAccess(material.training_id)
+  if ('error' in ctx) return { error: ctx.error }
+
   const { error } = await adminClient.from('training_materials').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/marketing')
@@ -325,7 +348,12 @@ export async function checkAndNotifyExpiredLive(items: TrainingItem[]) {
   }
 }
 
+// Reorder é admin-only: a listagem do colaborador é parcial (só a área dele)
+// e reordenar um subconjunto bagunçaria os índices globais.
 export async function reorderTrainingItems(ids: string[]) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return
+
   const adminClient = createAdminClient()
   await Promise.all(
     ids.map((id, index) =>

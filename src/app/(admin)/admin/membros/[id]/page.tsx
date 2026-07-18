@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, CheckCircle2, BookOpen, Clock, Flame, BarChart2, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { requireAdminPage } from '@/lib/authz'
 
 type ProgressRow = {
   lesson_id: string
@@ -36,6 +37,8 @@ function calcStreak(rows: { completed_at: string }[]) {
 }
 
 export default async function AdminMemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage()
+
   const { id } = await params
   const supabase = await createClient()
   const adminClient = createAdminClient()

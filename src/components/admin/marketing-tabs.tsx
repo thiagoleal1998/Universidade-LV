@@ -78,6 +78,8 @@ export function MarketingTabs({
   tamojuntoWinnersRaw = '{}',
   podviajarRaw = '{}',
   corridaVendasRaw = '{}',
+  allowedTabs = null,
+  isAdmin = true,
 }: {
   marketingItems: object[]
   sections: MarketingSection[]
@@ -88,12 +90,20 @@ export function MarketingTabs({
   tamojuntoWinnersRaw?: string
   podviajarRaw?: string
   corridaVendasRaw?: string
+  // null = admin (todas as abas); array = colaborador (só as abas listadas)
+  allowedTabs?: string[] | null
+  isAdmin?: boolean
 }) {
-  const [tab, setTab] = useState<Tab>('marketing')
+  const visibleTabs = allowedTabs === null ? TABS : TABS.filter((t) => allowedTabs.includes(t.id))
+  const [tab, setTab] = useState<Tab>(visibleTabs[0]?.id ?? 'marketing')
   const [comercialSubTab, setComercialSubTab] = useState<ComercialSubTab>('links')
 
-  const current = TABS.find((t) => t.id === tab)!
+  const current = visibleTabs.find((t) => t.id === tab) ?? visibleTabs[0]
+  if (!current) return null
   const Icon = current.icon
+
+  // Corrida de vendas grava settings globais — admin-only
+  const comercialSubtabs = isAdmin ? COMERCIAL_SUBTABS : COMERCIAL_SUBTABS.filter((s) => s.id !== 'corrida')
 
   return (
     <>
@@ -106,7 +116,7 @@ export function MarketingTabs({
 
       {/* Tabs principais */}
       <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit mb-8 flex-wrap">
-        {TABS.map(({ id, label, icon: TabIcon }) => (
+        {visibleTabs.map(({ id, label, icon: TabIcon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -134,7 +144,7 @@ export function MarketingTabs({
         <>
           {/* Sub-abas do Comercial */}
           <div className="flex gap-0 border-b border-border mb-6">
-            {COMERCIAL_SUBTABS.map(({ id, label, icon: SubIcon }) => (
+            {comercialSubtabs.map(({ id, label, icon: SubIcon }) => (
               <button
                 key={id}
                 type="button"

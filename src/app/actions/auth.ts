@@ -35,7 +35,7 @@ export async function login(_state: unknown, formData: FormData) {
     return { info: 'Sua conta foi criada com sucesso e está aguardando aprovação. Assim que o acesso for liberado, você poderá entrar no seu ambiente de estudos e oportunidades.' }
   }
 
-  return { redirectTo: profile.role === 'admin' ? '/admin' : '/dashboard' }
+  return { redirectTo: profile.role === 'admin' || profile.role === 'collaborator' ? '/admin' : '/dashboard' }
 }
 
 export async function logout() {

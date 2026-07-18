@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { AnnouncementsManager } from '@/components/admin/announcements-manager'
+import { requireAdminPage } from '@/lib/authz'
 
 export default async function ComunicadosPage() {
+  await requireAdminPage()
+
   const supabase = await createClient()
 
   const { data } = await supabase

@@ -1,17 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { CreateCourseDialog } from '@/components/admin/create-course-dialog'
 import { CoursesList } from '@/components/admin/courses-list'
 import type { Course } from '@/lib/supabase/types'
+import { requirePageCapability } from '@/lib/authz'
 
 type CourseWithCount = Course & { modules: { count: number }[] }
 
 export default async function CursosPage() {
-  const supabase = await createClient()
+  const ctx = await requirePageCapability('courses')
+  const isCollaborator = ctx.role === 'collaborator'
 
-  const { data } = await supabase
-    .from('courses')
-    .select('*, modules(count)')
-    .order('order_index')
+  // Colaborador: adminClient (a RLS esconderia rascunhos) + filtro por dono
+  const db = isCollaborator ? createAdminClient() : await createClient()
+
+  let query = db.from('courses').select('*, modules(count)').order('order_index')
+  if (isCollaborator) query = query.eq('owner_area_id', ctx.areaId!)
+
+  const { data } = await query
 
   const courses = (data ?? []) as CourseWithCount[]
 
@@ -25,7 +31,7 @@ export default async function CursosPage() {
         <CreateCourseDialog />
       </div>
 
-      <CoursesList courses={courses} />
+      <CoursesList courses={courses} isAdmin={!isCollaborator} />
     </div>
   )
 }

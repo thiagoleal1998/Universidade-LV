@@ -10,22 +10,27 @@ import { ArrowLeft, ClipboardCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Lesson, LessonPhoto, LessonAttachment } from '@/lib/supabase/types'
 import type { LessonTask } from '@/app/actions/lesson-tasks'
+import { requireLessonPage } from '@/lib/authz'
 
 export default async function EditLessonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  await requireLessonPage(id)
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
+  // adminClient nas leituras: posse validada no guard; RLS esconderia
+  // rascunhos do colaborador via client de sessão
   const [
     { data: lessonData },
     { data: photosData },
     { data: attachmentsData },
     { data: taskRaw },
   ] = await Promise.all([
-    supabase.from('lessons').select('*').eq('id', id).single(),
-    supabase.from('lesson_photos').select('*').eq('lesson_id', id).order('order_index'),
-    supabase.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
-    supabase
+    adminClient.from('lessons').select('*').eq('id', id).single(),
+    adminClient.from('lesson_photos').select('*').eq('lesson_id', id).order('order_index'),
+    adminClient.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
+    adminClient
       .from('lesson_tasks')
       .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, correct_answer, required, order_index, points), response_count:lesson_task_responses(count)')
       .eq('lesson_id', id)

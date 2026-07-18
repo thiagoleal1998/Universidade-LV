@@ -3,8 +3,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { CertificatesAdmin } from '@/components/admin/certificates-admin'
 import { FileText } from 'lucide-react'
+import { requireAdminPage } from '@/lib/authz'
 
 export default async function DocumentosPage() {
+  await requireAdminPage()
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
   const settings = await getSettings()

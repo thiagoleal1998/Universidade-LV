@@ -17,30 +17,34 @@ import { cn } from '@/lib/utils'
 
 type Tag = { id: string; name: string; color: string }
 type Course = { id: string; name: string }
+type Area = { id: string; name: string }
 
 type MemberWithEmail = {
   id: string
   full_name: string
-  role: 'admin' | 'member'
+  role: 'admin' | 'member' | 'collaborator'
   active: boolean
   created_at: string
   email: string
   avatar_url?: string
   member_number?: number | null
+  collaborator_area_id?: string | null
   tagIds?: string[]
   courseIds?: string[]
 }
 
-type Filter = 'all' | 'active' | 'inactive' | 'admin'
+type Filter = 'all' | 'active' | 'inactive' | 'admin' | 'collaborator'
 
 export function MembersTable({
   members,
   allTags = [],
   allCourses = [],
+  allAreas = [],
 }: {
   members: MemberWithEmail[]
   allTags?: Tag[]
   allCourses?: Course[]
+  allAreas?: Area[]
 }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -57,7 +61,8 @@ export function MembersTable({
       filter === 'all' ||
       (filter === 'active' && m.active && m.role !== 'admin') ||
       (filter === 'inactive' && !m.active) ||
-      (filter === 'admin' && m.role === 'admin')
+      (filter === 'admin' && m.role === 'admin') ||
+      (filter === 'collaborator' && m.role === 'collaborator')
 
     const matchesTag = !tagFilter || (m.tagIds ?? []).includes(tagFilter)
 
@@ -68,6 +73,7 @@ export function MembersTable({
     { key: 'all', label: 'Todos' },
     { key: 'active', label: 'Ativos' },
     { key: 'inactive', label: 'Inativos' },
+    { key: 'collaborator', label: 'Colaboradores' },
     { key: 'admin', label: 'Admins' },
   ]
 
@@ -197,7 +203,11 @@ export function MembersTable({
                       {member.active ? 'Ativo' : 'Inativo'}
                     </Badge>
                     <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="text-xs w-fit">
-                      {member.role === 'admin' ? 'Admin' : 'Membro'}
+                      {member.role === 'admin'
+                        ? 'Admin'
+                        : member.role === 'collaborator'
+                          ? `Colaborador${(() => { const a = allAreas.find((ar) => ar.id === member.collaborator_area_id); return a ? ` · ${a.name}` : '' })()}`
+                          : 'Membro'}
                     </Badge>
                   </div>
                 </TableCell>
@@ -217,6 +227,7 @@ export function MembersTable({
                       member={member}
                       allTags={allTags}
                       allCourses={allCourses}
+                      allAreas={allAreas}
                     />
                   </div>
                 </TableCell>

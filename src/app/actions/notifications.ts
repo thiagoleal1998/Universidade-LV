@@ -92,10 +92,11 @@ export async function notifyAllMembers(opts: {
 }) {
   const adminClient = createAdminClient()
 
+  // Colaboradores também estudam — recebem os mesmos avisos que membros
   const { data: members } = await adminClient
     .from('profiles')
     .select('id')
-    .eq('role', 'member')
+    .in('role', ['member', 'collaborator'])
     .eq('active', true)
 
   if (!members?.length) return

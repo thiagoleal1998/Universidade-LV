@@ -24,13 +24,15 @@ import { cn } from '@/lib/utils'
 
 type Tag = { id: string; name: string; color: string }
 type Course = { id: string; name: string }
+type Area = { id: string; name: string }
 
 type Member = {
   id: string
   full_name: string
   email: string
-  role: 'admin' | 'member'
+  role: 'admin' | 'member' | 'collaborator'
   active: boolean
+  collaborator_area_id?: string | null
   avatar_url?: string
   member_number?: number | null
   tagIds?: string[]
@@ -41,16 +43,20 @@ export function EditMemberDialog({
   member,
   allTags = [],
   allCourses = [],
+  allAreas = [],
 }: {
   member: Member
   allTags?: Tag[]
   allCourses?: Course[]
+  allAreas?: Area[]
 }) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [isDeleting, startDelete] = useTransition()
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(member.tagIds ?? [])
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(member.courseIds ?? [])
+  const [selectedRole, setSelectedRole] = useState<Member['role']>(member.role)
+  const [selectedAreaId, setSelectedAreaId] = useState<string>(member.collaborator_area_id ?? '')
 
   function toggleCourse(id: string) {
     setSelectedCourseIds((prev) =>
@@ -69,15 +75,22 @@ export function EditMemberDialog({
     const form = e.currentTarget
     const data = new FormData(form)
     const newPassword = data.get('new_password') as string
+    const role = data.get('role') as Member['role']
+
+    if (role === 'collaborator' && !selectedAreaId) {
+      toast.error('Escolha a área do colaborador.')
+      return
+    }
 
     startTransition(async () => {
       const [memberResult] = await Promise.all([
         updateMember(member.id, {
           full_name: data.get('full_name') as string,
           email: data.get('email') as string,
-          role: data.get('role') as 'admin' | 'member',
+          role,
           active: data.get('active') === 'true',
           new_password: newPassword || undefined,
+          collaborator_area_id: role === 'collaborator' ? selectedAreaId : null,
         }),
         assignMemberTags(member.id, selectedTagIds),
         assignMemberCourses(member.id, selectedCourseIds),
@@ -140,14 +153,43 @@ export function EditMemberDialog({
 
           <div className="space-y-2">
             <Label>Tipo de acesso</Label>
-            <div className="flex gap-3">
-              {(['member', 'admin'] as const).map((r) => (
+            <div className="flex gap-3 flex-wrap">
+              {(['member', 'collaborator', 'admin'] as const).map((r) => (
                 <label key={r} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="role" value={r} defaultChecked={member.role === r} className="accent-black" />
-                  <span className="text-sm">{r === 'member' ? 'Membro' : 'Admin'}</span>
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r}
+                    checked={selectedRole === r}
+                    onChange={() => setSelectedRole(r)}
+                    className="accent-black"
+                  />
+                  <span className="text-sm">{r === 'member' ? 'Membro' : r === 'collaborator' ? 'Colaborador' : 'Admin'}</span>
                 </label>
               ))}
             </div>
+
+            {selectedRole === 'collaborator' && (
+              <div className="pt-1">
+                <Label htmlFor="collaborator_area" className="text-xs text-muted-foreground">Área do colaborador</Label>
+                <select
+                  id="collaborator_area"
+                  value={selectedAreaId}
+                  onChange={(e) => setSelectedAreaId(e.target.value)}
+                  className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Selecione a área...</option>
+                  {allAreas.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                {allAreas.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Nenhuma área criada ainda — crie uma em &quot;Áreas de Colaborador&quot; na tela de Membros.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

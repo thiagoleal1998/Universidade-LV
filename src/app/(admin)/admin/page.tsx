@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAdminContext } from '@/lib/authz'
 import { AdminDashboardShell } from '@/components/admin/admin-dashboard-shell'
 import type { ModuleStat, LessonWithCount, MemberStat, PendingLesson } from '@/components/admin/admin-dashboard-shell'
 
@@ -19,6 +21,13 @@ type RecentActivity = {
 }
 
 export default async function AdminDashboard() {
+  // Dashboard de métricas é admin-only — colaborador cai na primeira tela permitida
+  const ctx = await getAdminContext()
+  if (!ctx) redirect('/dashboard')
+  if (ctx.role === 'collaborator') {
+    redirect(ctx.capabilities.includes('courses') ? '/admin/cursos' : '/admin/marketing')
+  }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
 

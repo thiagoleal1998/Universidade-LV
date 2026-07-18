@@ -1,21 +1,25 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ModuleEditor } from '@/components/admin/module-editor'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Module, Lesson } from '@/lib/supabase/types'
+import { requireModulePage } from '@/lib/authz'
 
 export default async function EditModulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
+  await requireModulePage(id)
+
+  // adminClient: posse validada no guard; RLS esconderia rascunhos do colaborador
+  const db = createAdminClient()
 
   const [{ data: modData, error: modError }, { data: lessonsData }, { data: allModulesData }] = await Promise.all([
-    supabase.from('modules').select('*').eq('id', id).single(),
-    supabase.from('lessons').select('*').eq('module_id', id).order('order_index'),
-    supabase.from('modules').select('id, title').order('order_index'),
+    db.from('modules').select('*').eq('id', id).single(),
+    db.from('lessons').select('*').eq('module_id', id).order('order_index'),
+    db.from('modules').select('id, title').order('order_index'),
   ])
 
   if (modError) console.error('[Admin] Erro ao buscar módulo id=%s:', id, modError)

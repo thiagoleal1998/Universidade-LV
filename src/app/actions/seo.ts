@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireAdmin } from '@/lib/authz'
 
 const SEO_KEYS = [
   'seo_title',
@@ -20,6 +21,9 @@ const SEO_KEYS = [
 ] as const
 
 export async function saveSeoSettings(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
 
   const upserts = SEO_KEYS.map((key) => ({

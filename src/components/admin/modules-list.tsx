@@ -44,7 +44,7 @@ function ReorderButtons({ mod, isFirst, isLast }: { mod: ModuleWithCount; isFirs
   )
 }
 
-export function ModulesList({ modules }: { modules: ModuleWithCount[] }) {
+export function ModulesList({ modules, isAdmin = true }: { modules: ModuleWithCount[]; isAdmin?: boolean }) {
   if (modules.length === 0) return (
     <p className="text-muted-foreground text-center py-12">
       Nenhum módulo criado ainda. Clique em "Novo Módulo" para começar.
@@ -56,7 +56,8 @@ export function ModulesList({ modules }: { modules: ModuleWithCount[] }) {
       {modules.map((mod, i) => (
         <div key={mod.id} className="flex items-center justify-between bg-card border rounded-lg px-5 py-4 gap-4">
           <div className="flex items-center gap-3">
-            <ReorderButtons mod={mod} isFirst={i === 0} isLast={i === modules.length - 1} />
+            {/* Reordenar é global — colaborador (lista parcial) não vê */}
+            {isAdmin && <ReorderButtons mod={mod} isFirst={i === 0} isLast={i === modules.length - 1} />}
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">{mod.title}</span>

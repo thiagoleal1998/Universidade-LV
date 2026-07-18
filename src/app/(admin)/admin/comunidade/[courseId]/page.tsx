@@ -5,6 +5,7 @@ import { CommunityPosts } from '@/components/members/community-posts'
 import { buttonVariants } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { requireAdminPage } from '@/lib/authz'
 
 type Post = {
   id: string
@@ -27,6 +28,8 @@ export default async function AdminCourseComunidadePage({
 }: {
   params: Promise<{ courseId: string }>
 }) {
+  await requireAdminPage()
+
   const { courseId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

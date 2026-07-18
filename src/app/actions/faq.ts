@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/authz'
 
 export type FaqItem = {
   id: string
@@ -22,6 +23,9 @@ export async function getFaqItems(): Promise<FaqItem[]> {
 }
 
 export async function createFaqItem(formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const question = formData.get('question') as string
   const answer = formData.get('answer') as string
@@ -41,6 +45,9 @@ export async function createFaqItem(formData: FormData) {
 }
 
 export async function updateFaqItem(id: string, formData: FormData) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const question = formData.get('question') as string
   const answer = formData.get('answer') as string
@@ -53,6 +60,9 @@ export async function updateFaqItem(id: string, formData: FormData) {
 }
 
 export async function toggleFaqItem(id: string, is_active: boolean) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const { error } = await supabase.from('faq_items').update({ is_active }).eq('id', id)
   if (error) return { error: error.message }
@@ -61,6 +71,9 @@ export async function toggleFaqItem(id: string, is_active: boolean) {
 }
 
 export async function deleteFaqItem(id: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   const { error } = await supabase.from('faq_items').delete().eq('id', id)
   if (error) return { error: error.message }
@@ -69,6 +82,9 @@ export async function deleteFaqItem(id: string) {
 }
 
 export async function reorderFaqItems(ids: string[]) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
   const supabase = await createClient()
   await Promise.all(ids.map((id, i) => supabase.from('faq_items').update({ order_index: i }).eq('id', id)))
   revalidatePath('/admin/faq')

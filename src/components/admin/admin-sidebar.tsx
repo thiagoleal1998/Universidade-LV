@@ -39,6 +39,8 @@ type Props = {
   avatarUrl: string
   navOrder?: string[]
   unreadCount?: number
+  // null = admin (todos os itens); array = colaborador (só os hrefs listados)
+  allowedHrefs?: string[] | null
 }
 
 function slideText(collapsed: boolean, maxW = 180): CSSProperties {
@@ -55,12 +57,17 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
 
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, navOrder, unreadCount = 0,
+  allowedHrefs = null,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
 
+  const visibleNavItems = allowedHrefs === null
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => allowedHrefs.includes(item.href))
+
   const sortedNavItems = navOrder && navOrder.length > 0
-    ? [...NAV_ITEMS].sort((a, b) => {
+    ? [...visibleNavItems].sort((a, b) => {
         const ai = navOrder.indexOf(a.href)
         const bi = navOrder.indexOf(b.href)
         if (ai === -1 && bi === -1) return 0
@@ -68,7 +75,7 @@ function SidebarContent({
         if (bi === -1) return -1
         return ai - bi
       })
-    : NAV_ITEMS
+    : visibleNavItems
 
   const initials = userName
     ? userName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()

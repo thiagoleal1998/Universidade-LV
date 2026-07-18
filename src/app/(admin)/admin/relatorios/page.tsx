@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RelatoriosMarketing } from '@/components/admin/relatorios-marketing'
+import { requireAdminPage } from '@/lib/authz'
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -49,6 +50,8 @@ export default async function RelatoriosPage({
 }: {
   searchParams: Promise<{ tab?: string }>
 }) {
+  await requireAdminPage()
+
   const { tab: rawTab = 'ensino' } = await searchParams
   const tab: Tab = (rawTab === 'marketing' ? 'marketing' : 'ensino')
 
