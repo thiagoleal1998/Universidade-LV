@@ -119,5 +119,18 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 - **`addFeedbackNote` (`src/app/actions/feedback.ts`) é bidirecional**: tanto admin quanto o membro dono do chamado podem chamá-la para responder (mesmo botão "Enviar resposta" nos dois lados, usando `RichTextEditor` para negrito/itálico/lista/etc — texto sanitizado com o mesmo `SANITIZE_CONFIG` da mensagem original, já que agora é conteúdo de duas origens diferentes renderizado pro outro lado). Autorização: admin sempre pode; membro só no próprio chamado (`actor.id === report.user_id`), checado no server (não só escondido na UI). Notificação vai para "quem não escreveu": admin responde → avisa o membro; membro responde → avisa o `assigned_to` se houver, senão todos os admins (`notifyAllAdmins`). `assignFeedback`/`updateFeedbackStatus` são admin-only via `requireAdmin()` — antes dessa checagem, a RLS bloqueava o UPDATE de qualquer não-admin silenciosamente (0 linhas, sem erro), mas o código seguia inserindo evento/notificação como se tivesse funcionado.
 - `admin-notification-sound.tsx` também tocava som só para `new_feedback`/`new_member_pending` — agora inclui `feedback_update` também, pois esse tipo passou a cobrir "membro respondeu"/"chamado atribuído a mim", que o admin quer ouvir na hora.
 
+## Notion — documentação viva do projeto (MANTER ATUALIZADO)
+
+O projeto tem uma página no Notion que funciona como documentação central para a equipe (não-devs incluídos). **Sempre que concluir um conjunto de mudanças, atualize o Notion junto** — mesma regra do commit/push, é parte do "terminar a tarefa". Acesso via conector "claude.ai Notion" (ferramentas `mcp__claude_ai_Notion__*`; se não aparecerem, buscar com ToolSearch por "notion").
+
+- **Página raiz "Universidade LV"**: ID `39f6c40ae40880ca892de170cda199c2`. Subpáginas: Visão Geral, Arquitetura & Stack, Funcionalidades, Histórico de Versões, Roadmap de Rollout.
+- **O que atualizar quando**:
+  - **Todo bump de versão** → adicionar linha na tabela de "Histórico de Versões" (versão, data, descrição em linguagem de negócio, não técnica).
+  - **Feature nova ou mudança de stack/infra** → refletir em "Funcionalidades" e/ou "Arquitetura & Stack".
+  - **Mudança de datas/fases do rollout** → base "Cronograma de Rollout" (data source `28d46862-2b2c-49f3-bb28-b442d0d2bb26`, dentro da página Roadmap; tem views de tabela/timeline/calendário). Datas das fases intermediárias estão como "Proposta — confirmar datas"; só 31/08/2026 é fixa.
+  - **Chamados de feedback** → base "Chamados" (data source `cae77ba3-60af-4e67-ae31-e81cb7c2f362`): espelho de `feedback_reports`/`feedback_events` (a coluna de ligação dos events é `feedback_id`, não `report_id`). Não sincroniza sozinho — atualizar quando o usuário pedir ou quando mexer no fluxo de feedback. Formato por chamado: propriedades na tabela (Título/Tipo/Status/Aberto por/Responsável/Data) + conteúdo da página com "Mensagem original" (autor, data/hora em BRT = UTC−3), "Timeline" (tabela com todos os eventos: abertura, atribuição, mudanças de status, respostas dos dois lados) e "Resolução" (resumo).
+- Escrever sempre em pt-BR, tom de documentação para equipe (o Notion é lido por gente de negócio, não só devs).
+- O `.mcp.json` na raiz do repo (servidor `notion` via mcp.notion.com) acabou não sendo a via usada — a conexão real vem do conector da conta claude.ai do usuário. O arquivo ficou no repo por ser inócuo (e útil para quem usar o CLI standalone).
+
 ## Atualização deste arquivo
 Mantenha este CLAUDE.md atualizado com decisões arquiteturais, convenções novas ou contexto relevante descoberto durante o desenvolvimento. Não documente o óbvio — apenas o que um novo Claude não conseguiria derivar lendo o código.
