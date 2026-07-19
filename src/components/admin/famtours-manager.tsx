@@ -57,6 +57,14 @@ export function FamtoursManager({ items }: { items: Famtour[] }) {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    // Foto de celular facilmente passa de 5-10MB — enviar isso cru pro server
+    // action (que só comprime DEPOIS de receber) estoura o limite de body do
+    // Next.js e derruba a página sem erro amigável. Barra aqui, antes do envio.
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx. 8MB). Escolha uma foto menor ou comprima antes de enviar.')
+      e.target.value = ''
+      return
+    }
     setCoverFile(file)
     setCoverPreview(URL.createObjectURL(file))
   }
@@ -65,17 +73,21 @@ export function FamtoursManager({ items }: { items: Famtour[] }) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
-      if (coverFile) {
-        const upload = await uploadFamtourCover(coverFile)
-        if (upload.error) { toast.error(upload.error); return }
-        fd.set('cover_url', upload.url ?? '')
-      }
-      const result = editing ? await updateFamtour(editing.id, fd) : await createFamtour(fd)
-      if (result?.error) toast.error(result.error)
-      else {
-        toast.success(editing ? 'Famtour atualizado!' : 'Famtour criado!')
-        resetForm()
-        router.refresh()
+      try {
+        if (coverFile) {
+          const upload = await uploadFamtourCover(coverFile)
+          if (upload.error) { toast.error(upload.error); return }
+          fd.set('cover_url', upload.url ?? '')
+        }
+        const result = editing ? await updateFamtour(editing.id, fd) : await createFamtour(fd)
+        if (result?.error) toast.error(result.error)
+        else {
+          toast.success(editing ? 'Famtour atualizado!' : 'Famtour criado!')
+          resetForm()
+          router.refresh()
+        }
+      } catch {
+        toast.error('Não foi possível salvar o famtour. Tente novamente com uma imagem menor.')
       }
     })
   }

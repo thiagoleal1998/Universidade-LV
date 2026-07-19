@@ -108,6 +108,10 @@ Plataforma de ensino para agentes de viagem. Next.js App Router + Supabase.
 - Sem `order_index`: listagem ordena por `start_date` (viagem mais próxima primeiro) — evita o problema de reorder parcial por colaborador (mesmo motivo do reorder de treinamentos ser admin-only).
 - Home do aluno: a seção só aparece se houver famtour `is_active = true` com `end_date` (ou `start_date`, se sem fim) ainda não passado — mesmo padrão "por conteúdo" da Corrida de Vendas, sem toggle de admin. Fica em `src/app/(members)/dashboard/page.tsx`, entre a seção Corrida de Vendas e "Vencedores TamoJunto LV" (posição pedida pelo usuário).
 
+## Upload de imagem de capa (padrão `uploadXCover`) — cuidado com foto de celular
+- Padrão usado em `famtours-manager.tsx`/`trainings-manager.tsx` (e potencialmente outros managers com capa): o `<input type="file">` guarda o `File` cru no state; o upload/compressão (`toWebP` em `src/lib/image.ts`, via `sharp`) só acontece **depois**, dentro da server action (`uploadFamtourCover`/`uploadTrainingCover`), chamada como Server Action do Next.js. Isso significa que o **arquivo original (não comprimido)** é quem precisa caber no limite de `experimental.serverActions.bodySizeLimit` (`next.config.ts`, hoje `10mb` — era `5mb`, subido na v1.68.1).
+- **Bug real (v1.68.1)**: uma foto de celular direto da câmera (facilmente 5–15MB) estourava esse limite, e como não havia `try/catch` em volta do `await uploadXCover(file)`, o erro do Next.js (corpo grande demais) não virava um toast — quebrava a página inteira (`This page couldn't load`) sem log útil no servidor. Corrigido com duas camadas: (1) guard no `handleFileChange` recusando arquivo `> 8MB` na hora da seleção, com toast explicando; (2) `try/catch` em volta do bloco inteiro do `startTransition` do submit, com toast de fallback genérico. **Ao criar um novo manager com upload de capa, replicar as duas camadas** — não é só copiar o padrão de `cover_url`/preview.
+
 ## Convenções
 - Server actions ficam em `src/app/actions/`
 - Componentes admin em `src/components/admin/`

@@ -257,6 +257,14 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    // Foto de celular facilmente passa de 5-10MB — enviar isso cru pro server
+    // action (que só comprime DEPOIS de receber) estoura o limite de body do
+    // Next.js e derruba a página sem erro amigável. Barra aqui, antes do envio.
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx. 8MB). Escolha uma foto menor ou comprima antes de enviar.')
+      e.target.value = ''
+      return
+    }
     setCoverFile(file)
     setCoverPreview(URL.createObjectURL(file))
   }
@@ -265,24 +273,28 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
-      if (coverFile) {
-        const upload = await uploadTrainingCover(coverFile)
-        if (upload.error) { toast.error(upload.error); return }
-        fd.set('cover_url', upload.url ?? '')
-      }
-      const result = editing
-        ? await updateTrainingItem(editing.id, fd)
-        : await createTrainingItem(fd)
-      if (result?.error) toast.error(result.error)
-      else {
-        toast.success(editing ? 'Treinamento atualizado!' : 'Treinamento criado!')
-        if (result?.notify) {
-          if ('notified' in result.notify) toast.success(`${result.notify.notified} membro(s) notificado(s)`)
-          else if (result.notify.error === 'no_members') toast.info('Nenhum membro ativo para notificar')
-          else toast.error(`Falha ao notificar: ${result.notify.error}`)
+      try {
+        if (coverFile) {
+          const upload = await uploadTrainingCover(coverFile)
+          if (upload.error) { toast.error(upload.error); return }
+          fd.set('cover_url', upload.url ?? '')
         }
-        resetForm()
-        router.refresh()
+        const result = editing
+          ? await updateTrainingItem(editing.id, fd)
+          : await createTrainingItem(fd)
+        if (result?.error) toast.error(result.error)
+        else {
+          toast.success(editing ? 'Treinamento atualizado!' : 'Treinamento criado!')
+          if (result?.notify) {
+            if ('notified' in result.notify) toast.success(`${result.notify.notified} membro(s) notificado(s)`)
+            else if (result.notify.error === 'no_members') toast.info('Nenhum membro ativo para notificar')
+            else toast.error(`Falha ao notificar: ${result.notify.error}`)
+          }
+          resetForm()
+          router.refresh()
+        }
+      } catch {
+        toast.error('Não foi possível salvar o treinamento. Tente novamente com uma imagem menor.')
       }
     })
   }
