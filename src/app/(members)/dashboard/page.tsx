@@ -11,7 +11,7 @@ import {
   Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
   TrendingUp, CheckCircle2, Trophy, Star, Headphones,
-  MapPin, Calendar,
+  MapPin, Calendar, Luggage,
 } from 'lucide-react'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
@@ -62,6 +62,16 @@ function parseCorridasPreview(raw: string): CorridaPreview[] {
     if (p && typeof p === 'object') return [parseCorridaPreview(p as Record<string, unknown>)]
     return []
   } catch { return [] }
+}
+
+function formatFamtourPeriod(start: string | null, end: string | null): string {
+  if (!start) return ''
+  const fmt = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+  if (end && end !== start) return `${fmt(start)} — ${fmt(end)}`
+  return fmt(start)
 }
 
 const TWO_HOURS = 2 * 3_600_000
@@ -362,6 +372,7 @@ export default async function DashboardPage() {
     { data: progressData },
     settings,
     allTrainings,
+    { data: famtoursData },
   ] = await Promise.all([
     isAdmin || accessibleCourseIds.length > 0
       ? coursesQuery
@@ -375,6 +386,11 @@ export default async function DashboardPage() {
     supabase.from('member_progress').select('lesson_id, completed_at').eq('user_id', user!.id),
     getSettings(),
     getTrainingItems(),
+    adminClient
+      .from('famtours')
+      .select('id, title, description, cover_url, url, start_date, end_date')
+      .eq('is_active', true)
+      .order('start_date', { ascending: true, nullsFirst: false }),
   ])
 
   const courses = (coursesData ?? []) as CourseWithModules[]
@@ -448,6 +464,10 @@ export default async function DashboardPage() {
   const corridaPreview = corridaPreviewAll.filter(
     (c) => c.status === 'em_andamento' || c.status === 'proxima' || c.vencedores.length > 0,
   )
+
+  // Famtours — esconde viagens já encerradas
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const famtours = (famtoursData ?? []).filter((f) => (f.end_date ?? f.start_date ?? '9999-99-99') >= todayStr)
 
   // TamoJunto
   type TamojuntoSection = { active: boolean; title: string; description: string; url: string; image_url: string; button_text: string; badge: string }
@@ -763,6 +783,50 @@ export default async function DashboardPage() {
                     </Link>
                   )
                 })}
+              </div>
+            </section></>
+          )}
+
+          {/* ── Famtours ── */}
+          {famtours.length > 0 && (
+            <><hr className="border-border/50" /><section>
+              <div className="flex items-center gap-2 mb-4">
+                <Luggage className="w-4 h-4 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">Famtours</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {famtours.map((f) => (
+                  <a
+                    key={f.id}
+                    href={f.url || undefined}
+                    target={f.url ? '_blank' : undefined}
+                    rel={f.url ? 'noreferrer' : undefined}
+                    className="group block rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all"
+                  >
+                    {f.cover_url ? (
+                      <img src={f.cover_url} alt={f.title} className="w-full aspect-video object-cover" />
+                    ) : (
+                      <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
+                        <Luggage className="w-8 h-8 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
+                        {f.title}
+                      </p>
+                      {(f.start_date || f.end_date) && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Calendar className="w-3 h-3 shrink-0" />
+                          {formatFamtourPeriod(f.start_date, f.end_date)}
+                        </span>
+                      )}
+                      {f.description && (
+                        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{f.description}</p>
+                      )}
+                    </div>
+                  </a>
+                ))}
               </div>
             </section></>
           )}

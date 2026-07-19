@@ -26,6 +26,7 @@ const CAP_TO_TAB: Record<string, string> = {
   trainings: 'treinamentos',
   comercial: 'comercial',
   aereo: 'aereo',
+  famtours: 'famtours',
 }
 
 export default async function MarketingPage() {
@@ -49,13 +50,17 @@ export default async function MarketingPage() {
     .order('order_index')
   if (isCollaborator) trainingQuery = trainingQuery.eq('owner_area_id', ctx.areaId!)
 
-  const [{ data }, settings, { data: trainingData }, products, periods, { data: tagsData }] = await Promise.all([
+  let famtoursQuery = db.from('famtours').select('*').order('start_date', { ascending: true, nullsFirst: false })
+  if (isCollaborator) famtoursQuery = famtoursQuery.eq('owner_area_id', ctx.areaId!)
+
+  const [{ data }, settings, { data: trainingData }, products, periods, { data: tagsData }, { data: famtoursData }] = await Promise.all([
     marketingQuery,
     getSettings(),
     trainingQuery,
     getMarketingProducts(),
     getMarketingPeriods(),
     supabase.from('tags').select('*').order('name'),
+    famtoursQuery,
   ])
 
   const visibleTrainingItems = (trainingData ?? []) as Awaited<ReturnType<typeof getTrainingItems>>
@@ -70,6 +75,7 @@ export default async function MarketingPage() {
         marketingItems={data ?? []}
         sections={parseSections(settings.marketing_sections)}
         trainingItems={visibleTrainingItems}
+        famtours={famtoursData ?? []}
         products={products}
         periods={periods}
         tags={tagsData ?? []}

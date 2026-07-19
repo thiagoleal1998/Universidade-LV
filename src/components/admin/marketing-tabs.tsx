@@ -1,19 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap } from 'lucide-react'
+import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap, Luggage } from 'lucide-react'
 import { MarketingManager } from '@/components/admin/marketing-manager'
 import { TrainingsManager } from '@/components/admin/trainings-manager'
+import { FamtoursManager } from '@/components/admin/famtours-manager'
 import { TamoJuntoWinnersManager } from '@/components/admin/tamojunto-winners-manager'
 import { PodviajarManager } from '@/components/admin/podviajar-manager'
 import { CorridaVendasManager } from '@/components/admin/corrida-vendas-manager'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import type { TrainingItem } from '@/app/actions/training'
+import type { Famtour } from '@/app/actions/famtours'
 import type { MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
 import type { Tag } from '@/components/admin/marketing-manager'
 import { cn } from '@/lib/utils'
 
-type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'premiacao' | 'podviajar'
+type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'famtours' | 'premiacao' | 'podviajar'
 type ComercialSubTab = 'links' | 'corrida'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] = [
@@ -40,6 +42,12 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] 
     label: 'Aéreo',
     icon: Plane,
     desc: 'Links e materiais de treinamento aéreo.',
+  },
+  {
+    id: 'famtours',
+    label: 'Famtours',
+    icon: Luggage,
+    desc: 'Divulgue viagens de familiarização para os agentes na home deles.',
   },
   {
     id: 'premiacao',
@@ -72,6 +80,7 @@ export function MarketingTabs({
   marketingItems,
   sections,
   trainingItems,
+  famtours = [],
   products = [],
   periods = [],
   tags = [],
@@ -84,6 +93,7 @@ export function MarketingTabs({
   marketingItems: object[]
   sections: MarketingSection[]
   trainingItems: TrainingItem[]
+  famtours?: Famtour[]
   products?: MarketingProduct[]
   periods?: MarketingPeriod[]
   tags?: Tag[]
@@ -174,6 +184,9 @@ export function MarketingTabs({
       {tab === 'aereo' && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <MarketingManager items={marketingItems as any} sections={AEREO_SECTIONS} />
+      )}
+      {tab === 'famtours' && (
+        <FamtoursManager items={famtours} />
       )}
       {tab === 'premiacao' && (
         <TamoJuntoWinnersManager raw={tamojuntoWinnersRaw} />
