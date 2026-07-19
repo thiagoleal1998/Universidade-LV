@@ -4,8 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { emailAdminNewMemberPending } from '@/lib/email'
+import { emailAdminNewMemberPending, emailWelcomeOnRegister } from '@/lib/email'
 import { notifyAllAdmins } from '@/app/actions/notifications'
+import { getSettings } from '@/lib/settings'
 
 export async function login(_state: unknown, formData: FormData) {
   const supabase = await createClient()
@@ -96,6 +97,7 @@ export async function register(_state: unknown, formData: FormData) {
   if (data.user) {
     await adminClient.from('profiles').update({ active: false, full_name }).eq('id', data.user.id)
     emailAdminNewMemberPending(full_name, email)
+    getSettings().then((settings) => emailWelcomeOnRegister(email, full_name, settings.site_name))
     await notifyAllAdmins(data.user.id, {
       type: 'new_member_pending',
       title: `Novo cadastro pendente: ${full_name || email}`,

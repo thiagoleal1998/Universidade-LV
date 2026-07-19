@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 const apiKey = process.env.RESEND_API_KEY
 const fromEmail = process.env.NOTIFY_FROM_EMAIL ?? 'onboarding@resend.dev'
 const adminEmail = process.env.ADMIN_EMAIL ?? ''
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://universidadelv.com.br'
 
 const resend = apiKey ? new Resend(apiKey) : null
 
@@ -63,5 +64,35 @@ export async function emailAdminNewFeedback(memberName: string, memberEmail: str
      <p><strong>${escapeHtml(title)}</strong></p>
      <p>${escapeHtml(excerpt)}</p>
      <p>Acesse o painel administrativo (Feedback) para ver os detalhes e responder.</p>`
+  )
+}
+
+export async function emailWelcomeOnRegister(memberEmail: string, memberName: string, siteName: string) {
+  await send(
+    memberEmail,
+    `Recebemos seu cadastro — ${siteName}`,
+    `<p>Olá, ${memberName || 'tudo bem'}!</p>
+     <p>Recebemos seu cadastro na <strong>${siteName}</strong> e ele já está em análise pela nossa equipe.</p>
+     <p>Assim que for aprovado, você recebe um novo e-mail liberando o acesso.</p>`
+  )
+}
+
+export async function emailCourseContentPublished(emails: string[], title: string, body: string, link: string, siteName: string) {
+  if (emails.length === 0) return
+  await send(
+    emails,
+    `[${siteName}] ${title}`,
+    `<p><strong>${title}</strong></p><p>${body.replace(/\n/g, '<br/>')}</p>
+     <p><a href="${siteUrl}${link}">Acessar na plataforma</a></p>`
+  )
+}
+
+export async function emailNewTraining(emails: string[], title: string, body: string, link: string, siteName: string) {
+  if (emails.length === 0) return
+  await send(
+    emails,
+    `[${siteName}] ${title}`,
+    `<p><strong>${title}</strong></p><p>${body.replace(/\n/g, '<br/>')}</p>
+     <p><a href="${siteUrl}${link}">Acessar na plataforma</a></p>`
   )
 }

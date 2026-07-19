@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin, requireCapability, requireContentAccess, type AdminContext } from '@/lib/authz'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+import { emailNewTraining } from '@/lib/email'
+import { getSettings } from '@/lib/settings'
 
 // Guard de posse: colaborador só mexe em treinamento da própria área
 async function requireTrainingAccess(id: string): Promise<AdminContext | { error: string }> {
@@ -43,17 +45,29 @@ async function notifyMembers(payload: {
   if (membersErr) return { error: membersErr.message, memberCount: 0 }
   if (!members?.length) return { error: 'no_members', memberCount: 0 }
 
+  const link = `/dashboard/treinamentos/${payload.id}`
   const { error: insertErr } = await adminClient.from('notifications').insert(
     members.map((m) => ({
       user_id: m.id,
       type: payload.notifType,
       title: payload.notifTitle,
       body: payload.body,
-      link: `/dashboard/treinamentos/${payload.id}`,
+      link,
     }))
   )
 
   if (insertErr) return { error: insertErr.message, memberCount: members.length }
+
+  const memberIds = new Set(members.map((m) => m.id))
+  const [{ data: usersData }, settings] = await Promise.all([
+    adminClient.auth.admin.listUsers(),
+    getSettings(),
+  ])
+  const emails = (usersData?.users ?? [])
+    .filter((u) => memberIds.has(u.id) && u.email)
+    .map((u) => u.email!)
+  emailNewTraining(emails, payload.notifTitle, payload.body, link, settings.site_name)
+
   return { notified: members.length }
 }
 
