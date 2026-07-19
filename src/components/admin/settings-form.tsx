@@ -13,9 +13,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { ImagePlus, Sun, Moon, Settings2, LogIn, Presentation, Plus, Trash2, Menu, ChevronUp, ChevronDown, GraduationCap, MessageCircle, Layers, Globe, Home, Radio, BookOpen, Award, Star, Users, Zap, Shield, Megaphone, FileText, Gift, Plane, Ticket, Trophy } from 'lucide-react'
+import { ImagePlus, Sun, Moon, Settings2, LogIn, Presentation, Plus, Trash2, Menu, ChevronUp, ChevronDown, GraduationCap, MessageCircle, Layers, Globe, Home, Radio, BookOpen, Award, Star, Users, Zap, Shield, Megaphone, FileText, Gift, Plane, Ticket, Trophy, Mail } from 'lucide-react'
 import type { LucideProps } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
+import { EmailTemplatesManager } from '@/components/admin/email-templates-manager'
+import type { EmailTemplate } from '@/app/actions/email-templates'
 
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   Radio, BookOpen, GraduationCap, MessageCircle, Award, Star,
@@ -170,10 +172,11 @@ const TABS = [
   { id: 'login',     label: 'Página de Login',       icon: LogIn          },
   { id: 'marketing', label: 'Marketing',             icon: Presentation   },
   { id: 'membro',    label: 'Área do Membro',        icon: GraduationCap  },
+  { id: 'emails',    label: 'E-mails',               icon: Mail           },
   { id: 'menu',      label: 'Menu Admin',            icon: Menu           },
 ] as const
 
-type TabId = 'landing' | 'geral' | 'login' | 'marketing' | 'membro' | 'menu'
+type TabId = 'landing' | 'geral' | 'login' | 'marketing' | 'membro' | 'emails' | 'menu'
 
 const LANDING_ICON_OPTIONS = [
   { value: 'Radio',         label: 'Transmissão ao vivo' },
@@ -353,7 +356,7 @@ function parseOnboardingSteps(json: string): OnboardingStep[] {
   return DEFAULT_ONBOARDING_STEPS
 }
 
-export function SettingsForm({ settings }: { settings: Settings }) {
+export function SettingsForm({ settings, emailTemplates }: { settings: Settings; emailTemplates: EmailTemplate[] }) {
   const [activeTab, setActiveTab] = useState<TabId>('geral')
   const [memberSubTab, setMemberSubTab] = useState<MemberSubTabId>('menu')
   const [landingSubTab, setLandingSubTab] = useState<LandingSubTabId>('hero')
@@ -2192,6 +2195,11 @@ export function SettingsForm({ settings }: { settings: Settings }) {
 
         </div>
 
+      </div>
+
+      {/* ── Aba: E-mails ── */}
+      <div className={cn('space-y-6', activeTab !== 'emails' && 'hidden')}>
+        <EmailTemplatesManager templates={emailTemplates} />
       </div>
 
       {/* ── Botão salvar ── */}
