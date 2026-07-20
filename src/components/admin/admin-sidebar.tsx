@@ -126,6 +126,10 @@ function SidebarContent({
           const isActive = exact
             ? pathname === href
             : pathname === href || pathname.startsWith(href + '/')
+          // Feedback é roxo em todo lugar (admin, colaborador, área do aluno)
+          // — mesmo esquema de cor do MemberFeedbackWidget, pra ficar
+          // reconhecível como a mesma funcionalidade em qualquer ambiente.
+          const isFeedback = href === '/admin/feedback'
           return (
             <Link
               key={href}
@@ -135,12 +139,16 @@ function SidebarContent({
               className={cn(
                 'flex items-center rounded-lg font-medium transition-colors',
                 collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
-                isActive
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent',
+                isFeedback
+                  ? (isActive
+                      ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20'
+                      : 'text-violet-600 dark:text-violet-400 hover:bg-violet-500/10 border border-transparent')
+                  : (isActive
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent'),
               )}
             >
-              <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
+              <Icon className={cn('w-4 h-4 shrink-0', isActive && !isFeedback && 'text-primary')} />
               <span style={slideText(collapsed, 140)}>{label}</span>
             </Link>
           )
