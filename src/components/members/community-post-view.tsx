@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { createReply, deleteReply, togglePinPost, toggleLockPost, deletePost } from '@/app/actions/community'
+import { createReply, deleteReply, togglePinPost, toggleLockPost, deletePost, hidePost, hideReply } from '@/app/actions/community'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,7 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Pin, Lock, Trash2, MessageSquare, Send } from 'lucide-react'
+import { Pin, Lock, Trash2, MessageSquare, Send, EyeOff, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from '@/lib/time'
@@ -24,6 +24,7 @@ type Post = {
   body: string
   is_pinned: boolean
   is_locked: boolean
+  is_hidden: boolean
   created_at: string
   user_id: string
   course_id: string
@@ -33,6 +34,7 @@ type Post = {
 type Reply = {
   id: string
   body: string
+  is_hidden: boolean
   created_at: string
   user_id: string
   profiles: { full_name: string; role: string } | null
@@ -80,6 +82,11 @@ export function CommunityPostView({
   const [isPinning, startPin] = useTransition()
   const [isLocking, startLock] = useTransition()
   const [isDeleting, startDelete] = useTransition()
+  const [isHiding, startHide] = useTransition()
+
+  const isAuthor = post.user_id === currentUserId
+  // Autor ainda vê o próprio conteúdo (com aviso); outros membros veem só um aviso genérico.
+  const isMaskedForViewer = post.is_hidden && !isAdmin && !isAuthor
 
   function handleReply(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -108,6 +115,14 @@ export function CommunityPostView({
     })
   }
 
+  function handleHidePost() {
+    startHide(async () => {
+      const r = await hidePost(post.id, !post.is_hidden, courseId)
+      if (r?.error) toast.error(r.error)
+      else { toast.success(post.is_hidden ? 'Post reexibido.' : 'Post ocultado.'); setPost((p) => ({ ...p, is_hidden: !p.is_hidden })) }
+    })
+  }
+
   function handleDeletePost() {
     startDelete(async () => {
       const r = await deletePost(post.id, courseId)
@@ -123,7 +138,11 @@ export function CommunityPostView({
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h1 className="text-xl font-bold text-foreground">{post.title}</h1>
+              {isMaskedForViewer ? (
+                <h1 className="text-xl font-bold text-muted-foreground italic">Este post foi removido pela moderação</h1>
+              ) : (
+                <h1 className="text-xl font-bold text-foreground">{post.title}</h1>
+              )}
               {post.is_pinned && (
                 <Badge variant="outline" className="text-xs text-primary border-primary/40">
                   <Pin className="w-3 h-3 mr-1" />Fixado
@@ -134,7 +153,15 @@ export function CommunityPostView({
                   <Lock className="w-3 h-3 mr-1" />Encerrado
                 </Badge>
               )}
+              {post.is_hidden && (
+                <Badge variant="outline" className="text-xs text-muted-foreground border-muted-foreground/40">
+                  Oculto
+                </Badge>
+              )}
             </div>
+            {post.is_hidden && isAuthor && !isAdmin && (
+              <p className="text-xs text-amber-500 mb-1.5">Ocultado pela moderação — só você e admins veem.</p>
+            )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {post.profiles?.role === 'admin' ? (
                 <span className="font-medium flex items-center gap-1">
@@ -173,6 +200,17 @@ export function CommunityPostView({
               >
                 <Lock className="w-4 h-4" />
               </button>
+              <button
+                onClick={handleHidePost}
+                disabled={isHiding}
+                title={post.is_hidden ? 'Reexibir post' : 'Ocultar post'}
+                className={cn(
+                  'p-1.5 rounded-md text-muted-foreground hover:bg-muted transition-colors',
+                  post.is_hidden ? 'text-red-500' : 'hover:text-red-500'
+                )}
+              >
+                {post.is_hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
               <AlertDialog>
                 <AlertDialogTrigger render={
                   <button
@@ -198,12 +236,12 @@ export function CommunityPostView({
           )}
         </div>
 
-        {post.body && (
+        {!isMaskedForViewer && post.body && (
           <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{post.body}</p>
         )}
 
         {/* Poll */}
-        {poll && (
+        {!isMaskedForViewer && poll && (
           <div className="mt-4">
             <CommunityPoll
               poll={poll}
@@ -278,12 +316,24 @@ function ReplyItem({
   isAdmin: boolean
 }) {
   const [isDeleting, startDelete] = useTransition()
-  const canDelete = isAdmin || reply.user_id === currentUserId
+  const [isHiding, startHide] = useTransition()
+  const [isHidden, setIsHidden] = useState(reply.is_hidden)
+  const isAuthor = reply.user_id === currentUserId
+  const canDelete = isAdmin || isAuthor
+  const isMaskedForViewer = isHidden && !isAdmin && !isAuthor
 
   function handleDelete() {
     startDelete(async () => {
       const r = await deleteReply(reply.id, postId, courseId)
       if (r?.error) toast.error(r.error)
+    })
+  }
+
+  function handleHide() {
+    startHide(async () => {
+      const r = await hideReply(reply.id, !isHidden, postId, courseId)
+      if (r?.error) toast.error(r.error)
+      else { toast.success(isHidden ? 'Resposta reexibida.' : 'Resposta ocultada.'); setIsHidden((h) => !h) }
     })
   }
 
@@ -307,31 +357,55 @@ function ReplyItem({
               <span className="font-medium text-foreground">{name}</span>
             )}
             <span className="text-muted-foreground">{formatDistanceToNow(reply.created_at)}</span>
+            {isHidden && (
+              <Badge variant="outline" className="text-[10px] text-muted-foreground border-muted-foreground/40 py-0">Oculto</Badge>
+            )}
           </div>
-          {canDelete && (
-            <AlertDialog>
-              <AlertDialogTrigger render={
-                <button
-                  className="p-1 rounded text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                  disabled={isDeleting}
-                />
-              }>
-                <Trash2 className="w-3.5 h-3.5" />
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir resposta?</AlertDialogTitle>
-                  <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+            {isAdmin && (
+              <button
+                onClick={handleHide}
+                disabled={isHiding}
+                title={isHidden ? 'Reexibir resposta' : 'Ocultar resposta'}
+                className={cn('p-1 rounded text-muted-foreground hover:bg-muted', isHidden ? 'text-red-500' : 'hover:text-red-500')}
+              >
+                {isHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            {canDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger render={
+                  <button
+                    className="p-1 rounded text-muted-foreground hover:text-red-500"
+                    disabled={isDeleting}
+                  />
+                }>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir resposta?</AlertDialogTitle>
+                    <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
-        <p className="text-sm text-foreground mt-1.5 whitespace-pre-wrap leading-relaxed">{reply.body}</p>
+        {isMaskedForViewer ? (
+          <p className="text-sm text-muted-foreground italic mt-1.5">Esta resposta foi removida pela moderação.</p>
+        ) : (
+          <>
+            <p className="text-sm text-foreground mt-1.5 whitespace-pre-wrap leading-relaxed">{reply.body}</p>
+            {isHidden && isAuthor && !isAdmin && (
+              <p className="text-xs text-amber-500 mt-1">Ocultado pela moderação — só você e admins veem.</p>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

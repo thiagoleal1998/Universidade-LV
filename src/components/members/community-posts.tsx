@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { createPost, deletePost, togglePinPost, toggleLockPost } from '@/app/actions/community'
+import { createPost, deletePost, togglePinPost, toggleLockPost, hidePost } from '@/app/actions/community'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,7 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Pin, Lock, Trash2, MessageSquare, Plus, X, ChevronRight, BarChart2, Minus } from 'lucide-react'
+import { Pin, Lock, Trash2, MessageSquare, Plus, X, ChevronRight, BarChart2, Minus, EyeOff, Eye } from 'lucide-react'
 import { CommunityPoll } from '@/components/members/community-poll'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,7 @@ type Post = {
   body: string
   is_pinned: boolean
   is_locked: boolean
+  is_hidden: boolean
   created_at: string
   user_id: string
   profiles: { full_name: string; role: string } | null
@@ -216,9 +217,13 @@ function PostCard({
   const [isDeleting, startDelete] = useTransition()
   const [isPinning, startPin] = useTransition()
   const [isLocking, startLock] = useTransition()
+  const [isHiding, startHide] = useTransition()
 
   const replyCount = post.reply_count?.[0]?.count ?? 0
-  const canDelete = isAdmin || post.user_id === currentUserId
+  const isAuthor = post.user_id === currentUserId
+  const canDelete = isAdmin || isAuthor
+  // Autor ainda vê o próprio conteúdo (com aviso); outros membros veem só um aviso genérico.
+  const isMaskedForViewer = post.is_hidden && !isAdmin && !isAuthor
 
   function handlePin() {
     startPin(async () => {
@@ -231,6 +236,14 @@ function PostCard({
     startLock(async () => {
       const r = await toggleLockPost(post.id, !post.is_locked, courseId)
       if (r?.error) toast.error(r.error)
+    })
+  }
+
+  function handleHide() {
+    startHide(async () => {
+      const r = await hidePost(post.id, !post.is_hidden, courseId)
+      if (r?.error) toast.error(r.error)
+      else toast.success(post.is_hidden ? 'Post reexibido.' : 'Post ocultado.')
     })
   }
 
@@ -258,24 +271,35 @@ function PostCard({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-2 flex-wrap mb-1">
-          <Link
-            href={`${basePath}/${courseId}/${post.id}`}
-            className="font-semibold text-foreground hover:text-primary transition-colors line-clamp-1 flex-1"
-          >
-            {post.title}
-          </Link>
+          {isMaskedForViewer ? (
+            <span className="font-semibold text-muted-foreground italic line-clamp-1 flex-1">
+              Este post foi removido pela moderação
+            </span>
+          ) : (
+            <Link
+              href={`${basePath}/${courseId}/${post.id}`}
+              className="font-semibold text-foreground hover:text-primary transition-colors line-clamp-1 flex-1"
+            >
+              {post.title}
+            </Link>
+          )}
           <div className="flex items-center gap-1 shrink-0">
             {post.is_pinned && <Badge variant="outline" className="text-xs text-primary border-primary/40 py-0">Fixado</Badge>}
             {post.is_locked && <Badge variant="secondary" className="text-xs py-0">Encerrado</Badge>}
+            {post.is_hidden && <Badge variant="outline" className="text-xs text-muted-foreground border-muted-foreground/40 py-0">Oculto</Badge>}
           </div>
         </div>
 
-        {post.body && (
+        {post.is_hidden && isAuthor && !isAdmin && (
+          <p className="text-xs text-amber-500 mb-1.5">Ocultado pela moderação — só você e admins veem.</p>
+        )}
+
+        {!isMaskedForViewer && post.body && (
           <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{post.body}</p>
         )}
 
         {/* Inline poll */}
-        {poll && (
+        {!isMaskedForViewer && poll && (
           <div className="my-2">
             <CommunityPoll
               poll={poll}
@@ -331,6 +355,17 @@ function PostCard({
                   )}
                 >
                   <Lock className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleHide}
+                  disabled={isHiding}
+                  title={post.is_hidden ? 'Reexibir post' : 'Ocultar post'}
+                  className={cn(
+                    'p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-muted transition-colors',
+                    post.is_hidden && 'text-red-500'
+                  )}
+                >
+                  {post.is_hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
               </>
             )}

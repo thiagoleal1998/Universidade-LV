@@ -13,6 +13,7 @@ type Post = {
   body: string
   is_pinned: boolean
   is_locked: boolean
+  is_hidden: boolean
   created_at: string
   user_id: string
   profiles: {
@@ -40,7 +41,7 @@ export default async function AdminCourseComunidadePage({
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase
       .from('community_posts')
-      .select('id, title, body, is_pinned, is_locked, created_at, user_id, profiles(full_name, role), reply_count:community_replies(count), polls:community_polls(id, question, options, ends_at, votes:community_poll_votes(option_index, user_id))')
+      .select('id, title, body, is_pinned, is_locked, is_hidden, created_at, user_id, profiles(full_name, role), reply_count:community_replies(count), polls:community_polls(id, question, options, ends_at, votes:community_poll_votes(option_index, user_id))')
       .eq('course_id', courseId)
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false }),

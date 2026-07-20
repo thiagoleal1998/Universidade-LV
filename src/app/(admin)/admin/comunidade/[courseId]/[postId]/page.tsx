@@ -28,12 +28,12 @@ export default async function AdminPostPage({
   ] = await Promise.all([
     supabase
       .from('community_posts')
-      .select('id, title, body, is_pinned, is_locked, created_at, user_id, course_id, profiles(full_name, role)')
+      .select('id, title, body, is_pinned, is_locked, is_hidden, created_at, user_id, course_id, profiles(full_name, role)')
       .eq('id', postId)
       .single(),
     supabase
       .from('community_replies')
-      .select('id, body, created_at, user_id, profiles(full_name, role)')
+      .select('id, body, is_hidden, created_at, user_id, profiles(full_name, role)')
       .eq('post_id', postId)
       .order('created_at'),
     supabase.from('profiles').select('role').eq('id', user.id).single(),

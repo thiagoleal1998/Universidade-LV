@@ -27,6 +27,7 @@ const CAP_TO_TAB: Record<string, string> = {
   comercial: 'comercial',
   aereo: 'aereo',
   famtours: 'famtours',
+  grupos: 'grupos',
 }
 
 export default async function MarketingPage() {
@@ -53,7 +54,16 @@ export default async function MarketingPage() {
   let famtoursQuery = db.from('famtours').select('*').order('start_date', { ascending: true, nullsFirst: false })
   if (isCollaborator) famtoursQuery = famtoursQuery.eq('owner_area_id', ctx.areaId!)
 
-  const [{ data }, settings, { data: trainingData }, products, periods, { data: tagsData }, { data: famtoursData }] = await Promise.all([
+  let gruposQuery = db.from('grupos').select('*').order('start_date', { ascending: true, nullsFirst: false })
+  if (isCollaborator) gruposQuery = gruposQuery.eq('owner_area_id', ctx.areaId!)
+
+  let commercialConditionsQuery = db.from('commercial_conditions').select('*').order('created_at', { ascending: false })
+  if (isCollaborator) commercialConditionsQuery = commercialConditionsQuery.eq('owner_area_id', ctx.areaId!)
+
+  const [
+    { data }, settings, { data: trainingData }, products, periods, { data: tagsData },
+    { data: famtoursData }, { data: gruposData }, { data: commercialConditionsData },
+  ] = await Promise.all([
     marketingQuery,
     getSettings(),
     trainingQuery,
@@ -61,6 +71,8 @@ export default async function MarketingPage() {
     getMarketingPeriods(),
     supabase.from('tags').select('*').order('name'),
     famtoursQuery,
+    gruposQuery,
+    commercialConditionsQuery,
   ])
 
   const visibleTrainingItems = (trainingData ?? []) as Awaited<ReturnType<typeof getTrainingItems>>
@@ -76,6 +88,8 @@ export default async function MarketingPage() {
         sections={parseSections(settings.marketing_sections)}
         trainingItems={visibleTrainingItems}
         famtours={famtoursData ?? []}
+        grupos={gruposData ?? []}
+        commercialConditions={commercialConditionsData ?? []}
         products={products}
         periods={periods}
         tags={tagsData ?? []}

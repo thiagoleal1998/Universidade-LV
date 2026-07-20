@@ -80,6 +80,23 @@ export async function toggleLockPost(postId: string, locked: boolean, courseId: 
   return { success: true }
 }
 
+export async function hidePost(postId: string, hidden: boolean, courseId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('community_posts').update({ is_hidden: hidden }).eq('id', postId)
+  if (error) return { error: error.message }
+  revalidatePath(`/dashboard/comunidade/${courseId}`)
+  revalidatePath(`/dashboard/comunidade/${courseId}/${postId}`)
+  return { success: true }
+}
+
+export async function hideReply(replyId: string, hidden: boolean, postId: string, courseId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('community_replies').update({ is_hidden: hidden }).eq('id', replyId)
+  if (error) return { error: error.message }
+  revalidatePath(`/dashboard/comunidade/${courseId}/${postId}`)
+  return { success: true }
+}
+
 export async function createReply(postId: string, courseId: string, formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

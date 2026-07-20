@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Search, Menu, X, BookOpen,
-  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane, Briefcase,
+  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane, Briefcase, Users2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -20,7 +20,7 @@ type NavLabels = Record<string, string>
 
 const DEFAULT_NAV_LABELS: NavLabels = {
   home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
-  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais',
+  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', grupos: 'Grupos',
   podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
 }
 
@@ -30,10 +30,17 @@ function parseNavLabels(json: string): NavLabels {
 }
 
 function parseMemberNavOrder(json: string): string[] {
-  const DEFAULT = ['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'comercial', 'podviajar', 'comunidade', 'documentos', 'configuracoes']
+  const DEFAULT = ['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'comercial', 'grupos', 'podviajar', 'comunidade', 'documentos', 'configuracoes']
   try {
     const parsed = JSON.parse(json)
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Chaves novas (ex.: item de menu adicionado depois que o admin já
+      // salvou a ordem) não existem no array salvo — sem isso, o item novo
+      // nunca aparece até o admin reabrir e salvar Configurações de novo.
+      const known = new Set(parsed)
+      const missing = DEFAULT.filter((k) => !known.has(k))
+      return [...parsed.filter((k: string) => DEFAULT.includes(k)), ...missing]
+    }
   } catch {}
   return DEFAULT
 }
@@ -50,6 +57,7 @@ type Props = {
   podviajarActive?: boolean
   aereoActive?: boolean
   comercialActive?: boolean
+  gruposActive?: boolean
   memberNavOrder?: string
   showFeedbackButton?: boolean
 }
@@ -67,13 +75,14 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
   }
 }
 
-const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{ className?: string }>; exact: boolean; conditional?: 'aereo' | 'podviajar' | 'comercial' }> = {
+const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{ className?: string }>; exact: boolean; conditional?: 'aereo' | 'podviajar' | 'comercial' | 'grupos' }> = {
   home:          { href: '/dashboard',               icon: Home,          exact: true  },
   cursos:        { href: '/dashboard/cursos',        icon: GraduationCap, exact: false },
   treinamentos:  { href: '/dashboard/treinamentos',  icon: BookOpen,      exact: false },
   marketing:     { href: '/dashboard/marketing',     icon: Megaphone,     exact: false },
   aereo:         { href: '/dashboard/aereo',         icon: Plane,         exact: false, conditional: 'aereo'      },
   comercial:     { href: '/dashboard/comercial',     icon: Briefcase,     exact: false, conditional: 'comercial'  },
+  grupos:        { href: '/dashboard/grupos',        icon: Users2,        exact: false, conditional: 'grupos'     },
   podviajar:     { href: '/dashboard/podviajar',     icon: Headphones,    exact: false, conditional: 'podviajar'  },
   comunidade:    { href: '/dashboard/comunidade',    icon: MessageSquare, exact: false },
   documentos:    { href: '/dashboard/documentos',    icon: FileText,      exact: false },
@@ -82,7 +91,7 @@ const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{
 
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, unreadCount = 0,
-  areaSubtitle = 'Área do Aluno', memberNavLabels = '', memberNavOrder = '', podviajarActive = false, aereoActive = false, comercialActive = false,
+  areaSubtitle = 'Área do Aluno', memberNavLabels = '', memberNavOrder = '', podviajarActive = false, aereoActive = false, comercialActive = false, gruposActive = false,
   showFeedbackButton = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
@@ -96,6 +105,7 @@ function SidebarContent({
       if (!def) return false
       if (def.conditional === 'aereo') return aereoActive
       if (def.conditional === 'comercial') return comercialActive
+      if (def.conditional === 'grupos') return gruposActive
       if (def.conditional === 'podviajar') return podviajarActive
       return true
     })

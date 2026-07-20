@@ -1,22 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap, Luggage } from 'lucide-react'
+import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap, Luggage, Users2 } from 'lucide-react'
 import { MarketingManager } from '@/components/admin/marketing-manager'
 import { TrainingsManager } from '@/components/admin/trainings-manager'
 import { FamtoursManager } from '@/components/admin/famtours-manager'
+import { GruposManager } from '@/components/admin/grupos-manager'
+import { CommercialConditionsManager } from '@/components/admin/commercial-conditions-manager'
 import { TamoJuntoWinnersManager } from '@/components/admin/tamojunto-winners-manager'
 import { PodviajarManager } from '@/components/admin/podviajar-manager'
 import { CorridaVendasManager } from '@/components/admin/corrida-vendas-manager'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import type { TrainingItem } from '@/app/actions/training'
 import type { Famtour } from '@/app/actions/famtours'
+import type { Grupo } from '@/app/actions/grupos'
+import type { CommercialCondition } from '@/app/actions/commercial-conditions'
 import type { MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
 import type { Tag } from '@/components/admin/marketing-manager'
 import { cn } from '@/lib/utils'
 
-type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'famtours' | 'premiacao' | 'podviajar'
-type ComercialSubTab = 'links' | 'corrida'
+type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'famtours' | 'grupos' | 'premiacao' | 'podviajar'
+type ComercialSubTab = 'condicoes' | 'corrida'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] = [
   {
@@ -50,6 +54,12 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] 
     desc: 'Divulgue viagens de familiarização para os agentes na home deles.',
   },
   {
+    id: 'grupos',
+    label: 'Grupos',
+    icon: Users2,
+    desc: 'Destaque condições comerciais para reservas em grupo.',
+  },
+  {
     id: 'premiacao',
     label: 'Premiação',
     icon: Trophy,
@@ -63,17 +73,13 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] 
   },
 ]
 
-const COMERCIAL_LINKS_SECTIONS: MarketingSection[] = [
-  { key: 'comercial', label: 'Links Comercial', type: 'link' },
-]
-
 const AEREO_SECTIONS: MarketingSection[] = [
   { key: 'aereo', label: 'Links Aéreo', type: 'link' },
 ]
 
 const COMERCIAL_SUBTABS: { id: ComercialSubTab; label: string; icon: React.ElementType }[] = [
-  { id: 'links',   label: 'Links Comercial',   icon: Link2 },
-  { id: 'corrida', label: 'Corrida de vendas', icon: Zap   },
+  { id: 'condicoes', label: 'Condições Comerciais', icon: Link2 },
+  { id: 'corrida',   label: 'Corrida de vendas',    icon: Zap   },
 ]
 
 export function MarketingTabs({
@@ -81,6 +87,8 @@ export function MarketingTabs({
   sections,
   trainingItems,
   famtours = [],
+  grupos = [],
+  commercialConditions = [],
   products = [],
   periods = [],
   tags = [],
@@ -94,6 +102,8 @@ export function MarketingTabs({
   sections: MarketingSection[]
   trainingItems: TrainingItem[]
   famtours?: Famtour[]
+  grupos?: Grupo[]
+  commercialConditions?: CommercialCondition[]
   products?: MarketingProduct[]
   periods?: MarketingPeriod[]
   tags?: Tag[]
@@ -106,7 +116,7 @@ export function MarketingTabs({
 }) {
   const visibleTabs = allowedTabs === null ? TABS : TABS.filter((t) => allowedTabs.includes(t.id))
   const [tab, setTab] = useState<Tab>(visibleTabs[0]?.id ?? 'marketing')
-  const [comercialSubTab, setComercialSubTab] = useState<ComercialSubTab>('links')
+  const [comercialSubTab, setComercialSubTab] = useState<ComercialSubTab>('condicoes')
 
   const current = visibleTabs.find((t) => t.id === tab) ?? visibleTabs[0]
   if (!current) return null
@@ -172,9 +182,8 @@ export function MarketingTabs({
             ))}
           </div>
 
-          {comercialSubTab === 'links' && (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <MarketingManager items={marketingItems as any} sections={COMERCIAL_LINKS_SECTIONS} />
+          {comercialSubTab === 'condicoes' && (
+            <CommercialConditionsManager items={commercialConditions} />
           )}
           {comercialSubTab === 'corrida' && (
             <CorridaVendasManager raw={corridaVendasRaw} />
@@ -187,6 +196,9 @@ export function MarketingTabs({
       )}
       {tab === 'famtours' && (
         <FamtoursManager items={famtours} />
+      )}
+      {tab === 'grupos' && (
+        <GruposManager items={grupos} />
       )}
       {tab === 'premiacao' && (
         <TamoJuntoWinnersManager raw={tamojuntoWinnersRaw} />

@@ -12,12 +12,6 @@ import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 
 export const metadata = { title: 'Condições Comerciais' }
 
-function toEmbedUrl(url: string): string {
-  const sheetsMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([^/]+)/)
-  if (sheetsMatch) return `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/htmlview?embedded=true`
-  return url
-}
-
 // ── Tipos ──────────────────────────────────────────────────────────────────
 
 type Status = 'proxima' | 'em_andamento' | 'finalizada'
@@ -426,21 +420,17 @@ export default async function ComercialPage({
     : 'em_andamento'
 
   const adminClient = createAdminClient()
-  const now = new Date().toISOString()
 
-  const [{ data: itemsData }, settings] = await Promise.all([
+  const [{ data: conditionsData }, settings] = await Promise.all([
     adminClient
-      .from('marketing_items')
-      .select('url, title')
-      .eq('category', 'comercial')
-      .neq('status', 'draft')
-      .or(`expires_at.is.null,expires_at.gt.${now}`)
-      .order('order_index')
-      .limit(1),
+      .from('commercial_conditions')
+      .select('id, title, description, cover_url, url')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false }),
     getSettings(),
   ])
 
-  const comercialItem = itemsData?.[0] as { url: string; title: string } | undefined
+  const commercialConditions = conditionsData ?? []
   const allCorridas = parseList(settings.corrida_vendas)
 
   const subtabData = SUBTABS.find((s) => s.key === activeSubtab)!
@@ -467,13 +457,47 @@ export default async function ComercialPage({
 
       {/* Condições Comerciais */}
       {activeTab === 'comercial' && (
-        !comercialItem?.url ? (
+        commercialConditions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-3 text-muted-foreground p-8">
             <Briefcase className="w-10 h-10 opacity-30" />
             <p className="text-sm">Nenhuma condição comercial disponível no momento.</p>
           </div>
         ) : (
-          <iframe src={toEmbedUrl(comercialItem.url)} className="flex-1 w-full border-0" title="Condições Comerciais" allow="clipboard-read; clipboard-write" />
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
+              {commercialConditions.map((c) => (
+                <a
+                  key={c.id}
+                  href={c.url || undefined}
+                  target={c.url ? '_blank' : undefined}
+                  rel={c.url ? 'noreferrer' : undefined}
+                  className="group block rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all"
+                >
+                  {c.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.cover_url} alt={c.title} className="w-full aspect-video object-cover" />
+                  ) : (
+                    <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
+                      <Briefcase className="w-8 h-8 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  <div className="p-4">
+                    <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
+                      {c.title}
+                    </p>
+                    {c.description && (
+                      <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>
+                    )}
+                    {c.url && (
+                      <span className="flex items-center gap-1 text-xs text-primary mt-2">
+                        <ExternalLink className="w-3 h-3" /> Saber mais
+                      </span>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
         )
       )}
 
