@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/authz'
+import { logActivity } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 
 export type EmailTemplate = {
@@ -30,6 +31,8 @@ export async function updateEmailTemplate(type: string, subject: string, bodyHtm
     .update({ subject: trimmedSubject, body_html: bodyHtml, updated_at: new Date().toISOString() })
     .eq('type', type)
   if (error) return { error: error.message }
+
+  logActivity(authz, { action: 'update', entityType: 'template_email', entityId: type, entityLabel: type, detail: 'alterou: assunto, corpo' })
 
   revalidatePath('/admin/configuracoes')
   return { success: true }

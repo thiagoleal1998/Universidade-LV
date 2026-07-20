@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireModuleAccess, requireLessonAccess } from '@/lib/authz'
+import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { notifyCourseMembers } from '@/app/actions/notifications'
 import { toWebP } from '@/lib/image'
@@ -34,6 +35,8 @@ export async function createLesson(moduleId: string, formData: FormData) {
 
   if (error) return { error: error.message }
 
+  logActivity(ctx, { action: 'create', entityType: 'aula', entityLabel: title, entityId: data?.id })
+
   revalidatePath(`/admin/modulos/${moduleId}`)
   return { data }
 }
@@ -57,16 +60,26 @@ export async function updateLesson(id: string, moduleId: string, formData: FormD
   // Get previous state to detect first-publish event
   const { data: prev } = await adminClient
     .from('lessons')
-    .select('is_published, modules(course_id)')
+    .select('title, description, youtube_url, content_text, sheet_url, is_published, publish_at, task_start_date, task_end_date, modules(course_id)')
     .eq('id', id)
     .single()
 
+  const after = { title, description, youtube_url, content_text, sheet_url, is_published, publish_at, task_start_date, task_end_date }
   const { error } = await adminClient
     .from('lessons')
-    .update({ title, description, youtube_url, content_text, sheet_url, is_published, publish_at, task_start_date, task_end_date })
+    .update(after)
     .eq('id', id)
 
   if (error) return { error: error.message }
+
+  const changed = diffFields(prev ?? {}, after, {
+    title: 'título', description: 'descrição', youtube_url: 'vídeo', content_text: 'conteúdo',
+    sheet_url: 'planilha', is_published: 'publicação', publish_at: 'agendamento',
+    task_start_date: 'início da tarefa', task_end_date: 'fim da tarefa',
+  })
+  if (changed.length > 0) {
+    logActivity(ctx, { action: 'update', entityType: 'aula', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })
+  }
 
   // Notify course members when publishing for the first time
   if (is_published && !prev?.is_published) {
@@ -105,6 +118,8 @@ export async function setLessonPublished(id: string, moduleId: string, is_publis
 
   if (error) return { error: error.message }
 
+  logActivity(ctx, { action: 'toggle', entityType: 'aula', entityId: id, entityLabel: prev?.title ?? id, detail: is_published ? 'publicou' : 'despublicou' })
+
   if (is_published && !prev?.is_published) {
     const courseId = (prev?.modules as { course_id?: string } | null)?.course_id
     if (courseId) {
@@ -128,12 +143,15 @@ export async function scheduleLesson(id: string, moduleId: string, publish_at: s
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', id).single()
   const { error } = await adminClient
     .from('lessons')
     .update({ publish_at: new Date(publish_at).toISOString(), is_published: false })
     .eq('id', id)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'update', entityType: 'aula', entityId: id, entityLabel: lesson?.title ?? id, detail: `agendou publicação para ${new Date(publish_at).toLocaleString('pt-BR')}` })
 
   revalidatePath(`/admin/aulas/${id}`)
   revalidatePath(`/admin/modulos/${moduleId}`)
@@ -148,7 +166,7 @@ export async function reorderLesson(id: string, moduleId: string, direction: 'up
 
   const adminClient = createAdminClient()
   const { data: current } = await adminClient
-    .from('lessons').select('order_index').eq('id', id).single()
+    .from('lessons').select('order_index, title').eq('id', id).single()
   if (!current) return { error: 'Aula não encontrada' }
 
   const { data: neighbor } = await adminClient
@@ -161,6 +179,8 @@ export async function reorderLesson(id: string, moduleId: string, direction: 'up
 
   await adminClient.from('lessons').update({ order_index: neighbor.order_index }).eq('id', id)
   await adminClient.from('lessons').update({ order_index: current.order_index }).eq('id', neighbor.id)
+
+  logActivity(ctx, { action: 'reorder', entityType: 'aula', entityId: id, entityLabel: current.title ?? id, detail: `moveu para ${direction === 'up' ? 'cima' : 'baixo'}` })
 
   revalidatePath(`/admin/modulos/${moduleId}`)
   return { success: true }
@@ -186,6 +206,8 @@ export async function publishAllLessons(moduleId: string) {
     .eq('is_published', false)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'modulo', entityId: moduleId, entityLabel: moduleId, detail: `publicou todas as aulas (${lessons.length})` })
 
   const courseId = (lessons[0]?.modules as { course_id?: string } | null)?.course_id
   if (courseId) {
@@ -216,6 +238,9 @@ export async function uploadContentImage(lessonId: string, file: File) {
   const { error } = await adminClient.storage.from('uploads').upload(path, webpFile, { contentType: webpFile.type })
   if (error) return { error: error.message }
   const { data: { publicUrl } } = adminClient.storage.from('uploads').getPublicUrl(path)
+
+  logActivity(ctx, { action: 'upload', entityType: 'aula', entityId: lessonId, entityLabel: lessonId, detail: `imagem no conteúdo: ${file.name}` })
+
   return { url: publicUrl }
 }
 
@@ -224,9 +249,12 @@ export async function deleteLesson(id: string, moduleId: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', id).single()
   const { error } = await adminClient.from('lessons').delete().eq('id', id)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'aula', entityId: id, entityLabel: lesson?.title ?? id })
 
   revalidatePath(`/admin/modulos/${moduleId}`)
   return { success: true }
@@ -265,6 +293,9 @@ export async function uploadLessonPhoto(
 
   if (dbError) return { error: dbError.message }
 
+  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', lessonId).single()
+  logActivity(ctx, { action: 'upload', entityType: 'aula', entityId: lessonId, entityLabel: lesson?.title ?? lessonId, detail: `foto: ${caption || file.name}` })
+
   revalidatePath(`/admin/aulas/${lessonId}`)
   revalidatePath(`/dashboard/aulas/${lessonId}`)
   return { success: true }
@@ -280,6 +311,8 @@ export async function deleteLessonPhoto(photoId: string, storagePath: string, le
   const { error } = await adminClient.from('lesson_photos').delete().eq('id', photoId)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'aula', entityId: lessonId, entityLabel: lessonId, detail: 'excluiu foto' })
 
   revalidatePath(`/admin/aulas/${lessonId}`)
   revalidatePath(`/dashboard/aulas/${lessonId}`)
@@ -319,6 +352,9 @@ export async function uploadLessonAttachment(lessonId: string, file: File) {
 
   if (dbError) return { error: dbError.message }
 
+  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', lessonId).single()
+  logActivity(ctx, { action: 'upload', entityType: 'aula', entityId: lessonId, entityLabel: lesson?.title ?? lessonId, detail: `anexo: ${file.name}` })
+
   revalidatePath(`/admin/aulas/${lessonId}`)
   revalidatePath(`/dashboard/aulas/${lessonId}`)
   return { success: true }
@@ -334,6 +370,8 @@ export async function deleteLessonAttachment(attachmentId: string, storagePath: 
   const { error } = await adminClient.from('lesson_attachments').delete().eq('id', attachmentId)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'aula', entityId: lessonId, entityLabel: lessonId, detail: 'excluiu anexo' })
 
   revalidatePath(`/admin/aulas/${lessonId}`)
   revalidatePath(`/dashboard/aulas/${lessonId}`)

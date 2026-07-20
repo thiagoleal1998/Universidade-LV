@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 import { requireAdmin } from '@/lib/authz'
+import { logActivity } from '@/lib/activity-log'
 
 export async function updateSettings(formData: FormData) {
   const authz = await requireAdmin()
@@ -104,6 +105,9 @@ export async function updateSettings(formData: FormData) {
     await supabase.from('site_settings').upsert(entry, { onConflict: 'key' })
   }
 
+  // Diff granular impraticável aqui (75+ chaves) — log genérico, sem lista de campos.
+  logActivity(authz, { action: 'update', entityType: 'configuracao_site', entityLabel: 'Configurações do site' })
+
   revalidatePath('/', 'layout')
   revalidatePath('/login')
   return { success: true }
@@ -131,6 +135,8 @@ export async function uploadSiteLogo(formData: FormData) {
 
   const { data } = adminClient.storage.from('lesson-photos').getPublicUrl(path)
 
+  logActivity(authz, { action: 'upload', entityType: 'configuracao_site', entityLabel: 'Logo do site', detail: file.name })
+
   return { success: true, url: data.publicUrl }
 }
 
@@ -156,6 +162,8 @@ export async function uploadSiteFavicon(formData: FormData) {
   if (error) return { error: error.message }
 
   const { data } = adminClient.storage.from('lesson-photos').getPublicUrl(path)
+
+  logActivity(authz, { action: 'upload', entityType: 'configuracao_site', entityLabel: 'Favicon do site', detail: file.name })
 
   return { success: true, url: data.publicUrl }
 }

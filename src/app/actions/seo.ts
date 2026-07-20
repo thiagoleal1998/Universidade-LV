@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/authz'
+import { logActivity } from '@/lib/activity-log'
 
 const SEO_KEYS = [
   'seo_title',
@@ -36,6 +37,8 @@ export async function saveSeoSettings(formData: FormData) {
     .upsert(upserts, { onConflict: 'key' })
 
   if (error) return { error: error.message }
+
+  logActivity(authz, { action: 'update', entityType: 'seo', entityLabel: 'Configurações de SEO' })
 
   revalidatePath('/', 'layout')
   return { success: true }

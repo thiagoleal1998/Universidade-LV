@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/authz'
+import { logActivity } from '@/lib/activity-log'
 
 async function upsertSetting(key: string, value: string) {
   const supabase = await createClient()
@@ -19,7 +20,9 @@ export async function saveTamojuntoWinners(formData: FormData) {
   if ('error' in authz) return { error: authz.error }
 
   const value = (formData.get('tamojunto_winners') as string) || '{}'
-  return upsertSetting('tamojunto_winners', value)
+  const result = await upsertSetting('tamojunto_winners', value)
+  if ('success' in result) logActivity(authz,{ action: 'update', entityType: 'premiacao', entityLabel: 'Vencedores TamoJunto' })
+  return result
 }
 
 export async function savePodviajar(formData: FormData) {
@@ -27,7 +30,9 @@ export async function savePodviajar(formData: FormData) {
   if ('error' in authz) return { error: authz.error }
 
   const value = (formData.get('podviajar') as string) || '{}'
-  return upsertSetting('podviajar', value)
+  const result = await upsertSetting('podviajar', value)
+  if ('success' in result) logActivity(authz,{ action: 'update', entityType: 'premiacao', entityLabel: 'PodViajar' })
+  return result
 }
 
 export async function saveCorridaVendas(formData: FormData) {
@@ -35,5 +40,7 @@ export async function saveCorridaVendas(formData: FormData) {
   if ('error' in authz) return { error: authz.error }
 
   const value = (formData.get('corrida_vendas') as string) || '{}'
-  return upsertSetting('corrida_vendas', value)
+  const result = await upsertSetting('corrida_vendas', value)
+  if ('success' in result) logActivity(authz,{ action: 'update', entityType: 'premiacao', entityLabel: 'Corrida de Vendas' })
+  return result
 }

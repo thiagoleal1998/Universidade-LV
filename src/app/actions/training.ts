@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin, requireCapability, requireContentAccess, type AdminContext } from '@/lib/authz'
+import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 import { emailNewTraining } from '@/lib/email'
@@ -182,6 +183,8 @@ export async function createTrainingItem(formData: FormData) {
 
   if (error) return { error: error.message }
 
+  logActivity(ctx, { action: 'create', entityType: 'treinamento', entityId: inserted?.id, entityLabel: title })
+
   let notifyResult: NotifyResult | null = null
   if (isActive && inserted) {
     notifyResult = await notifyNewTraining(inserted)
@@ -201,15 +204,16 @@ export async function updateTrainingItem(id: string, formData: FormData) {
 
   const { data: prev } = await adminClient
     .from('training_items')
-    .select('type, is_active, title')
+    .select('type, is_active, title, description, url, cover_url, order_index, live_at')
     .eq('id', id)
     .single()
 
   const newType = (formData.get('type') as string) || 'link'
   const newActive = formData.get('is_active') === 'true'
+  const newTitle = (formData.get('title') as string).trim()
 
-  const { error } = await adminClient.from('training_items').update({
-    title: (formData.get('title') as string).trim(),
+  const after = {
+    title: newTitle,
     description: (formData.get('description') as string)?.trim() || null,
     url: (formData.get('url') as string).trim(),
     cover_url: (formData.get('cover_url') as string)?.trim() || null,
@@ -217,9 +221,18 @@ export async function updateTrainingItem(id: string, formData: FormData) {
     is_active: newActive,
     type: newType,
     live_at: parseLiveAt(formData.get('live_at') as string | null),
-  }).eq('id', id)
+  }
+  const { error } = await adminClient.from('training_items').update(after).eq('id', id)
 
   if (error) return { error: error.message }
+
+  const changed = diffFields(prev ?? {}, after, {
+    title: 'título', description: 'descrição', url: 'link', cover_url: 'capa',
+    order_index: 'ordem', is_active: 'ativação', type: 'tipo', live_at: 'data ao vivo',
+  })
+  if (changed.length > 0) {
+    logActivity(ctx, { action: 'update', entityType: 'treinamento', entityId: id, entityLabel: newTitle, detail: `alterou: ${changed.join(', ')}` })
+  }
 
   let notifyResult: NotifyResult | null = null
   const becameActive = !prev?.is_active && newActive
@@ -247,8 +260,11 @@ export async function toggleTrainingActive(id: string, is_active: boolean) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('training_items').select('title').eq('id', id).single()
   const { error } = await adminClient.from('training_items').update({ is_active }).eq('id', id)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'treinamento', entityId: id, entityLabel: item?.title ?? id, detail: is_active ? 'ativou' : 'desativou' })
 
   let notifyResult: NotifyResult | null = null
   if (is_active) {
@@ -273,8 +289,10 @@ export async function deleteTrainingItem(id: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('training_items').select('title').eq('id', id).single()
   const { error } = await adminClient.from('training_items').delete().eq('id', id)
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'delete', entityType: 'treinamento', entityId: id, entityLabel: item?.title ?? id })
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
   return { success: true }
@@ -300,15 +318,17 @@ export async function createTrainingMaterial(trainingId: string, formData: FormD
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const materialTitle = (formData.get('title') as string).trim()
   const { error } = await adminClient.from('training_materials').insert({
     training_id: trainingId,
-    title: (formData.get('title') as string).trim(),
+    title: materialTitle,
     url: (formData.get('url') as string).trim(),
     type: (formData.get('type') as string) || 'link',
     order_index: Number(formData.get('order_index') ?? 0),
   })
 
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'create', entityType: 'material_treinamento', entityLabel: materialTitle, detail: `treinamento ${trainingId}` })
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
   return { success: true }
@@ -316,7 +336,7 @@ export async function createTrainingMaterial(trainingId: string, formData: FormD
 
 export async function deleteTrainingMaterial(id: string) {
   const adminClient = createAdminClient()
-  const { data: material } = await adminClient.from('training_materials').select('training_id').eq('id', id).single()
+  const { data: material } = await adminClient.from('training_materials').select('training_id, title').eq('id', id).single()
   if (!material) return { error: 'Material não encontrado.' }
 
   const ctx = await requireTrainingAccess(material.training_id)
@@ -324,6 +344,7 @@ export async function deleteTrainingMaterial(id: string) {
 
   const { error } = await adminClient.from('training_materials').delete().eq('id', id)
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'delete', entityType: 'material_treinamento', entityId: id, entityLabel: material.title })
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
   return { success: true }
@@ -374,6 +395,7 @@ export async function reorderTrainingItems(ids: string[]) {
       adminClient.from('training_items').update({ order_index: index }).eq('id', id)
     )
   )
+  logActivity(auth, { action: 'reorder', entityType: 'treinamento', entityLabel: 'Treinamentos', detail: `reordenou ${ids.length} itens` })
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
 }

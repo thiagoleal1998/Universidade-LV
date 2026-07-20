@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCapability, requireCourseAccess, requireAdmin } from '@/lib/authz'
+import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 
@@ -23,10 +24,14 @@ export async function createCourse(formData: FormData) {
 
   const nextIndex = (existing?.[0]?.order_index ?? -1) + 1
 
-  const { error } = await adminClient
+  const { data: inserted, error } = await adminClient
     .from('courses')
     .insert({ name, order_index: nextIndex, owner_area_id: ctx.areaId })
+    .select('id')
+    .single()
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'create', entityType: 'curso', entityLabel: name, entityId: inserted?.id })
 
   revalidatePath('/admin/cursos')
   revalidatePath('/dashboard')
@@ -44,12 +49,27 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const instructor_name = (formData.get('instructor_name') as string) || null
   const instructor_role = (formData.get('instructor_role') as string) || null
 
+  const { data: before } = await adminClient
+    .from('courses')
+    .select('name, description, is_published, instructor_name, instructor_role')
+    .eq('id', courseId)
+    .single()
+
+  const after = { name, description, is_published, instructor_name, instructor_role }
   const { error } = await adminClient
     .from('courses')
-    .update({ name, description, is_published, instructor_name, instructor_role })
+    .update(after)
     .eq('id', courseId)
 
   if (error) return { error: error.message }
+
+  const changed = diffFields(before ?? {}, after, {
+    name: 'título', description: 'descrição', is_published: 'publicação',
+    instructor_name: 'nome do instrutor', instructor_role: 'cargo do instrutor',
+  })
+  if (changed.length > 0) {
+    logActivity(ctx, { action: 'update', entityType: 'curso', entityId: courseId, entityLabel: name, detail: `alterou: ${changed.join(', ')}` })
+  }
 
   revalidatePath(`/admin/cursos/${courseId}`)
   revalidatePath('/admin/cursos')
@@ -73,8 +93,11 @@ export async function uploadInstructorPhoto(courseId: string, file: File) {
 
   const { data: { publicUrl } } = adminClient.storage.from('course-covers').getPublicUrl(path)
 
+  const { data: course } = await adminClient.from('courses').select('name').eq('id', courseId).single()
   const { error } = await adminClient.from('courses').update({ instructor_photo_url: publicUrl }).eq('id', courseId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'upload', entityType: 'curso', entityId: courseId, entityLabel: course?.name ?? courseId, detail: `foto do instrutor: ${file.name}` })
 
   revalidatePath(`/admin/cursos/${courseId}`)
   return { success: true, url: publicUrl }
@@ -85,8 +108,12 @@ export async function toggleCoursePublished(courseId: string, is_published: bool
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: course } = await adminClient.from('courses').select('name').eq('id', courseId).single()
   const { error } = await adminClient.from('courses').update({ is_published }).eq('id', courseId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'curso', entityId: courseId, entityLabel: course?.name ?? courseId, detail: is_published ? 'publicou' : 'despublicou' })
+
   revalidatePath(`/admin/cursos/${courseId}`)
   revalidatePath('/admin/cursos')
   revalidatePath('/dashboard')
@@ -98,12 +125,15 @@ export async function deleteCourse(courseId: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: course } = await adminClient.from('courses').select('name').eq('id', courseId).single()
 
   // Detach modules from this course before deleting
   await adminClient.from('modules').update({ course_id: null }).eq('course_id', courseId)
 
   const { error } = await adminClient.from('courses').delete().eq('id', courseId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'curso', entityId: courseId, entityLabel: course?.name ?? courseId })
 
   revalidatePath('/admin/cursos')
   revalidatePath('/dashboard')
@@ -126,8 +156,11 @@ export async function uploadCourseCover(courseId: string, file: File) {
 
   const { data: { publicUrl } } = adminClient.storage.from('course-covers').getPublicUrl(path)
 
+  const { data: course } = await adminClient.from('courses').select('name').eq('id', courseId).single()
   const { error } = await adminClient.from('courses').update({ cover_image_url: publicUrl }).eq('id', courseId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'upload', entityType: 'curso', entityId: courseId, entityLabel: course?.name ?? courseId, detail: `capa: ${file.name}` })
 
   revalidatePath(`/admin/cursos/${courseId}`)
   revalidatePath('/admin/cursos')
@@ -144,7 +177,7 @@ export async function reorderCourse(courseId: string, direction: 'up' | 'down') 
   const adminClient = createAdminClient()
 
   const { data: current } = await adminClient
-    .from('courses').select('order_index').eq('id', courseId).single()
+    .from('courses').select('order_index, name').eq('id', courseId).single()
   if (!current) return { error: 'Curso não encontrado' }
 
   const { data: neighbor } = await adminClient
@@ -156,6 +189,8 @@ export async function reorderCourse(courseId: string, direction: 'up' | 'down') 
 
   await adminClient.from('courses').update({ order_index: neighbor.order_index }).eq('id', courseId)
   await adminClient.from('courses').update({ order_index: current.order_index }).eq('id', neighbor.id)
+
+  logActivity(auth, { action: 'reorder', entityType: 'curso', entityId: courseId, entityLabel: current.name ?? courseId, detail: `moveu para ${direction === 'up' ? 'cima' : 'baixo'}` })
 
   revalidatePath('/admin/cursos')
   return { success: true }

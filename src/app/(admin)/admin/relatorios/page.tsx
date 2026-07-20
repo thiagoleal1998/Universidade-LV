@@ -4,9 +4,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { buttonVariants } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download, ShoppingBag } from 'lucide-react'
+import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download, ShoppingBag, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RelatoriosMarketing } from '@/components/admin/relatorios-marketing'
+import { AtividadesTab } from '@/components/admin/atividades-log'
 import { requireAdminPage } from '@/lib/authz'
 
 function ProgressBar({ value }: { value: number }) {
@@ -36,8 +37,9 @@ function KpiCard({ label, value, sub, icon: Icon }: { label: string; value: stri
 }
 
 const TABS = [
-  { key: 'ensino',    label: 'Ensino',              icon: BookOpen    },
-  { key: 'marketing', label: 'Ofertas & Marketing',  icon: ShoppingBag },
+  { key: 'ensino',     label: 'Ensino',              icon: BookOpen    },
+  { key: 'marketing',  label: 'Ofertas & Marketing', icon: ShoppingBag },
+  { key: 'atividades', label: 'Atividades',          icon: History     },
 ] as const
 
 type Tab = typeof TABS[number]['key']
@@ -48,12 +50,12 @@ type MktItem = Record<string, any>
 export default async function RelatoriosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; ator?: string; entidade?: string; acao?: string; de?: string; ate?: string; page?: string }>
 }) {
   await requireAdminPage()
 
-  const { tab: rawTab = 'ensino' } = await searchParams
-  const tab: Tab = (rawTab === 'marketing' ? 'marketing' : 'ensino')
+  const { tab: rawTab = 'ensino', ator, entidade, acao, de, ate, page } = await searchParams
+  const tab: Tab = rawTab === 'marketing' ? 'marketing' : rawTab === 'atividades' ? 'atividades' : 'ensino'
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -275,6 +277,11 @@ export default async function RelatoriosPage({
           laminasRaw={laminasRaw}
           products={products}
         />
+      )}
+
+      {/* ── Aba: Atividades ── */}
+      {tab === 'atividades' && (
+        <AtividadesTab filters={{ ator, entidade, acao, de, ate, page }} />
       )}
     </div>
   )

@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin, requireCapability, requireAnyCapability, requireContentAccess } from '@/lib/authz'
 import { capabilityForMarketingCategory, MARKETING_CAPABILITIES } from '@/lib/capabilities'
+import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 import { extractYouTubeId } from '@/lib/youtube'
@@ -35,6 +36,7 @@ export async function createMarketingProduct(name: string) {
   if (!name.trim()) return { error: 'Nome obrigatório' }
   const { error } = await adminClient.from('marketing_products').insert({ name: name.trim() })
   if (error) return { error: error.message }
+  logActivity(auth, { action: 'create', entityType: 'produto_marketing', entityLabel: name.trim() })
   revalidatePath('/admin/marketing')
   return { success: true }
 }
@@ -47,6 +49,7 @@ export async function updateMarketingProduct(id: string, name: string) {
   if (!name.trim()) return { error: 'Nome obrigatório' }
   const { error } = await adminClient.from('marketing_products').update({ name: name.trim() }).eq('id', id)
   if (error) return { error: error.message }
+  logActivity(auth, { action: 'update', entityType: 'produto_marketing', entityId: id, entityLabel: name.trim() })
   revalidatePath('/admin/marketing')
   return { success: true }
 }
@@ -56,8 +59,10 @@ export async function deleteMarketingProduct(id: string) {
   if ('error' in auth) return { error: auth.error }
 
   const adminClient = createAdminClient()
+  const { data: product } = await adminClient.from('marketing_products').select('name').eq('id', id).single()
   const { error } = await adminClient.from('marketing_products').delete().eq('id', id)
   if (error) return { error: error.message }
+  logActivity(auth, { action: 'delete', entityType: 'produto_marketing', entityId: id, entityLabel: product?.name ?? id })
   revalidatePath('/admin/marketing')
   return { success: true }
 }
@@ -76,6 +81,7 @@ export async function createMarketingPeriod(name: string) {
   if (!name.trim()) return { error: 'Nome obrigatório' }
   const { error } = await adminClient.from('marketing_periods').insert({ name: name.trim() })
   if (error) return { error: error.message }
+  logActivity(auth, { action: 'create', entityType: 'periodo_marketing', entityLabel: name.trim() })
   revalidatePath('/admin/marketing')
   return { success: true }
 }
@@ -85,8 +91,10 @@ export async function deleteMarketingPeriod(id: string) {
   if ('error' in auth) return { error: auth.error }
 
   const adminClient = createAdminClient()
+  const { data: period } = await adminClient.from('marketing_periods').select('name').eq('id', id).single()
   const { error } = await adminClient.from('marketing_periods').delete().eq('id', id)
   if (error) return { error: error.message }
+  logActivity(auth, { action: 'delete', entityType: 'periodo_marketing', entityId: id, entityLabel: period?.name ?? id })
   revalidatePath('/admin/marketing')
   return { success: true }
 }
@@ -122,7 +130,7 @@ export async function createMarketingItem(data: {
 
   const nextIndex = (existing?.[0]?.order_index ?? -1) + 1
 
-  const { error } = await adminClient.from('marketing_items').insert({
+  const { data: inserted, error } = await adminClient.from('marketing_items').insert({
     category: data.category,
     title: data.title.trim(),
     description: data.description.trim(),
@@ -139,9 +147,10 @@ export async function createMarketingItem(data: {
     allowed_tag_ids: data.allowed_tag_ids ?? [],
     order_index: nextIndex,
     owner_area_id: ctx.areaId,
-  })
+  }).select('id').single()
 
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'create', entityType: 'item_marketing', entityId: inserted?.id, entityLabel: data.title.trim(), detail: `categoria: ${data.category}` })
   revalidatePath('/admin/marketing')
   return { success: true }
 }
@@ -182,26 +191,42 @@ export async function updateMarketingItem(
   const adminClient = createAdminClient()
   if (!data.title.trim()) return { error: 'Título obrigatório' }
 
+  const { data: prev } = await adminClient
+    .from('marketing_items')
+    .select('title, description, content, url, status, publish_at, expires_at')
+    .eq('id', id)
+    .single()
+
+  const after = {
+    title: data.title.trim(),
+    description: data.description.trim(),
+    content: data.content,
+    url: data.url.trim(),
+    audience: data.audience || null,
+    scope: data.scope || null,
+    product_id: data.product_id || null,
+    period_id: data.period_id || null,
+    travel_period: data.travel_period?.trim() || null,
+    status: data.status || 'published',
+    publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
+    expires_at: data.expires_at || null,
+    allowed_tag_ids: data.allowed_tag_ids ?? [],
+  }
   const { error } = await adminClient
     .from('marketing_items')
-    .update({
-      title: data.title.trim(),
-      description: data.description.trim(),
-      content: data.content,
-      url: data.url.trim(),
-      audience: data.audience || null,
-      scope: data.scope || null,
-      product_id: data.product_id || null,
-      period_id: data.period_id || null,
-      travel_period: data.travel_period?.trim() || null,
-      status: data.status || 'published',
-      publish_at: data.publish_at || ((data.status ?? 'published') === 'published' ? new Date().toISOString() : null),
-      expires_at: data.expires_at || null,
-      allowed_tag_ids: data.allowed_tag_ids ?? [],
-    })
+    .update(after)
     .eq('id', id)
 
   if (error) return { error: error.message }
+
+  const changed = diffFields(prev ?? {}, after, {
+    title: 'título', description: 'descrição', content: 'conteúdo', url: 'link',
+    status: 'status', publish_at: 'publicação', expires_at: 'expiração',
+  })
+  if (changed.length > 0) {
+    logActivity(ctx, { action: 'update', entityType: 'item_marketing', entityId: id, entityLabel: data.title.trim(), detail: `alterou: ${changed.join(', ')}` })
+  }
+
   revalidatePath('/admin/marketing')
   return { success: true }
 }
@@ -211,8 +236,10 @@ export async function deleteMarketingItem(id: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('marketing_items').select('title').eq('id', id).single()
   const { error } = await adminClient.from('marketing_items').delete().eq('id', id)
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'delete', entityType: 'item_marketing', entityId: id, entityLabel: item?.title ?? id })
   revalidatePath('/admin/marketing')
   return { success: true }
 }

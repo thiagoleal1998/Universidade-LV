@@ -8,6 +8,16 @@ import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
 import { toWebP } from '@/lib/image'
 import DOMPurify from 'isomorphic-dompurify'
+import { logActivity } from '@/lib/activity-log'
+import type { AdminContext } from '@/lib/authz'
+
+// feedback.ts tem seu próprio requireAdmin() local (retorna só { userId }),
+// não o AdminContext completo de authz.ts — este helper monta um AdminContext
+// mínimo (role sempre 'admin', já que o guard local só deixa admin passar)
+// só para poder chamar logActivity com a mesma assinatura do resto do projeto.
+function toAdminContext(userId: string): AdminContext {
+  return { userId, role: 'admin', areaId: null, capabilities: [] }
+}
 
 // Conteúdo agora é gerado por membros comuns (não só admins) e renderizado como HTML
 // no painel admin — precisa ser sanitizado antes de guardar. Allowlist casada com o
@@ -307,6 +317,11 @@ export async function assignFeedback(id: string, assignedTo: string | null) {
     assigned_name: assignedName,
   })
 
+  logActivity(toAdminContext(auth.userId), {
+    action: 'update', entityType: 'feedback', entityId: id, entityLabel: report.title || 'Sem título',
+    detail: assignedTo ? `atribuiu a ${assignedName}` : 'removeu atribuição',
+  })
+
   const title = report.title || 'Sem título'
   await notifyUser(report.user_id, {
     type: 'feedback_update',
@@ -343,6 +358,11 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
     actor_name: '',
     from_status: report.status,
     to_status: status,
+  })
+
+  logActivity(toAdminContext(auth.userId), {
+    action: 'toggle', entityType: 'feedback', entityId: id, entityLabel: report.title || 'Sem título',
+    detail: `status: ${STATUS_LABEL[report.status as FeedbackStatus]} → ${STATUS_LABEL[status]}`,
   })
 
   const title = report.title || 'Sem título'
@@ -390,6 +410,15 @@ export async function addFeedbackNote(id: string, note: string) {
     actor_name: actorProfile?.full_name ?? '',
     note_text: sanitized,
   })
+
+  // Só loga em admin_activity_log quando quem respondeu é admin — resposta do
+  // próprio membro no seu chamado não é "atividade administrativa" (já fica
+  // registrada em feedback_events, que cobre a timeline de ambos os lados).
+  if (isAdminActor) {
+    logActivity(toAdminContext(actor.id), {
+      action: 'update', entityType: 'feedback', entityId: id, entityLabel: report.title || 'Sem título', detail: 'respondeu',
+    })
+  }
 
   const title = report.title || 'Sem título'
   const body = preview.slice(0, 140)

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { emailMemberApproved } from '@/lib/email'
 import { getSettings } from '@/lib/settings'
 import { requireAdmin } from '@/lib/authz'
+import { logActivity } from '@/lib/activity-log'
 
 export async function createMember(formData: FormData) {
   const authz = await requireAdmin()
@@ -32,6 +33,8 @@ export async function createMember(formData: FormData) {
       .update({ full_name: fullName })
       .eq('id', data.user.id)
   }
+
+  logActivity(authz, { action: 'create', entityType: 'membro', entityId: data.user?.id, entityLabel: fullName || email })
 
   revalidatePath('/admin/membros')
   return { success: true }
@@ -69,6 +72,12 @@ export async function updateMember(
   }
 
   // Atualiza nome, role, status e área no perfil (área só existe para colaborador)
+  const { data: prevProfile } = await supabase
+    .from('profiles')
+    .select('full_name, role, active, collaborator_area_id')
+    .eq('id', userId)
+    .single()
+
   const { error: profileError } = await supabase
     .from('profiles')
     .update({
@@ -81,6 +90,14 @@ export async function updateMember(
 
   if (profileError) return { error: profileError.message }
 
+  const changed: string[] = []
+  if (prevProfile?.full_name !== data.full_name) changed.push('nome')
+  if (prevProfile?.role !== data.role) changed.push('papel')
+  if (prevProfile?.active !== data.active) changed.push('status')
+  if (data.new_password) changed.push('senha')
+  if (data.email) changed.push('e-mail')
+  logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
+
   revalidatePath('/admin/membros')
   return { success: true }
 }
@@ -90,9 +107,12 @@ export async function deleteMember(userId: string) {
   if ('error' in authz) return { error: authz.error }
 
   const adminClient = createAdminClient()
+  const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single()
 
   const { error } = await adminClient.auth.admin.deleteUser(userId)
   if (error) return { error: error.message }
+
+  logActivity(authz, { action: 'delete', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId })
 
   revalidatePath('/admin/membros')
   return { success: true }
@@ -112,13 +132,13 @@ export async function toggleMemberActive(userId: string, active: boolean) {
 
   if (error) return { error: error.message }
 
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single()
+  logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: active ? 'ativou' : 'desativou' })
+
   // Envia email de boas-vindas quando aprovado
   if (active) {
-    const [{ data: profile }, { data: userData }, settings] = await Promise.all([
-      supabase.from('profiles').select('full_name').eq('id', userId).single(),
-      adminClient.auth.admin.getUserById(userId),
-      getSettings(),
-    ])
+    const { data: userData } = await adminClient.auth.admin.getUserById(userId)
+    const settings = await getSettings()
     const email = userData.user?.email ?? ''
     if (email) emailMemberApproved(email, profile?.full_name ?? '', settings.site_name)
   }
@@ -132,11 +152,13 @@ export async function updateMemberNotes(userId: string, notes: string) {
   if ('error' in authz) return { error: authz.error }
 
   const supabase = await createClient()
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single()
   const { error } = await supabase
     .from('profiles')
     .update({ admin_notes: notes || null })
     .eq('id', userId)
   if (error) return { error: error.message }
+  logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'alterou: anotações internas' })
   return { success: true }
 }
 
@@ -145,6 +167,7 @@ export async function assignMemberCourses(memberId: string, courseIds: string[])
   if ('error' in authz) return { error: authz.error }
 
   const supabase = await createClient()
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', memberId).single()
   const { error: delError } = await supabase
     .from('member_courses')
     .delete()
@@ -156,6 +179,7 @@ export async function assignMemberCourses(memberId: string, courseIds: string[])
       .insert(courseIds.map((course_id) => ({ member_id: memberId, course_id })))
     if (error) return { error: error.message }
   }
+  logActivity(authz, { action: 'update', entityType: 'membro', entityId: memberId, entityLabel: profile?.full_name || memberId, detail: `matriculou em ${courseIds.length} curso(s)` })
   revalidatePath('/admin/membros')
   return { success: true }
 }
@@ -189,6 +213,8 @@ export async function approveMember(userId: string, courseIds: string[]) {
   const email = userData.user?.email ?? ''
   if (email) emailMemberApproved(email, profile?.full_name ?? '', settings.site_name)
 
+  logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'aprovou' })
+
   revalidatePath('/admin/membros')
   return { success: true }
 }
@@ -202,6 +228,7 @@ export async function updateMemberRole(userId: string, role: 'admin' | 'member' 
   }
 
   const supabase = await createClient()
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single()
 
   const { error } = await supabase
     .from('profiles')
@@ -209,6 +236,8 @@ export async function updateMemberRole(userId: string, role: 'admin' | 'member' 
     .eq('id', userId)
 
   if (error) return { error: error.message }
+
+  logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: `alterou papel para: ${role}` })
 
   revalidatePath('/admin/membros')
   return { success: true }

@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCapability, requireContentAccess, type AdminContext } from '@/lib/authz'
+import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 
@@ -34,7 +35,7 @@ export async function createFamtour(formData: FormData) {
   if (!title) return { error: 'Informe o nome/destino do famtour.' }
 
   const adminClient = createAdminClient()
-  const { error } = await adminClient.from('famtours').insert({
+  const { data: inserted, error } = await adminClient.from('famtours').insert({
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
@@ -43,8 +44,10 @@ export async function createFamtour(formData: FormData) {
     end_date: (formData.get('end_date') as string) || null,
     is_active: formData.get('is_active') === 'true',
     owner_area_id: ctx.areaId,
-  })
+  }).select('id').single()
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'create', entityType: 'famtour', entityId: inserted?.id, entityLabel: title })
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard')
@@ -59,7 +62,13 @@ export async function updateFamtour(id: string, formData: FormData) {
   if (!title) return { error: 'Informe o nome/destino do famtour.' }
 
   const adminClient = createAdminClient()
-  const { error } = await adminClient.from('famtours').update({
+  const { data: prev } = await adminClient
+    .from('famtours')
+    .select('title, description, cover_url, url, start_date, end_date, is_active')
+    .eq('id', id)
+    .single()
+
+  const after = {
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
@@ -67,8 +76,17 @@ export async function updateFamtour(id: string, formData: FormData) {
     start_date: (formData.get('start_date') as string) || null,
     end_date: (formData.get('end_date') as string) || null,
     is_active: formData.get('is_active') === 'true',
-  }).eq('id', id)
+  }
+  const { error } = await adminClient.from('famtours').update(after).eq('id', id)
   if (error) return { error: error.message }
+
+  const changed = diffFields(prev ?? {}, after, {
+    title: 'título', description: 'descrição', cover_url: 'capa', url: 'link',
+    start_date: 'data de início', end_date: 'data de fim', is_active: 'ativação',
+  })
+  if (changed.length > 0) {
+    logActivity(ctx, { action: 'update', entityType: 'famtour', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })
+  }
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard')
@@ -80,8 +98,11 @@ export async function toggleFamtourActive(id: string, active: boolean) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('famtours').select('title').eq('id', id).single()
   const { error } = await adminClient.from('famtours').update({ is_active: active }).eq('id', id)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'famtour', entityId: id, entityLabel: item?.title ?? id, detail: active ? 'ativou' : 'desativou' })
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard')
@@ -93,8 +114,11 @@ export async function deleteFamtour(id: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('famtours').select('title').eq('id', id).single()
   const { error } = await adminClient.from('famtours').delete().eq('id', id)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'famtour', entityId: id, entityLabel: item?.title ?? id })
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard')

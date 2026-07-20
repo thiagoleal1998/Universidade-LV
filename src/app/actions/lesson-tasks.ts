@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireLessonAccess } from '@/lib/authz'
+import { logActivity } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 
@@ -58,6 +59,7 @@ export async function createTask(lessonId: string) {
     .select()
     .single()
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'create', entityType: 'tarefa_aula', entityId: data?.id, entityLabel: 'Tarefa', detail: `aula ${lessonId}` })
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { data }
 }
@@ -72,6 +74,7 @@ export async function updateTask(taskId: string, lessonId: string, title: string
     .update({ title, description })
     .eq('id', taskId)
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'update', entityType: 'tarefa_aula', entityId: taskId, entityLabel: title, detail: 'alterou: título, descrição' })
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
 }
@@ -81,8 +84,10 @@ export async function deleteTask(taskId: string, lessonId: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: task } = await adminClient.from('lesson_tasks').select('title').eq('id', taskId).single()
   const { error } = await adminClient.from('lesson_tasks').delete().eq('id', taskId)
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'delete', entityType: 'tarefa_aula', entityId: taskId, entityLabel: task?.title ?? taskId })
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
 }
@@ -105,6 +110,7 @@ export async function addQuestion(taskId: string, lessonId: string) {
     .select()
     .single()
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'create', entityType: 'pergunta_aula', entityId: data?.id, entityLabel: `tarefa ${taskId}` })
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { data }
 }
@@ -123,6 +129,7 @@ export async function updateQuestion(
     .update(payload)
     .eq('id', questionId)
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'update', entityType: 'pergunta_aula', entityId: questionId, entityLabel: payload.question || questionId })
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
 }
@@ -132,8 +139,10 @@ export async function deleteQuestion(questionId: string, lessonId: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: question } = await adminClient.from('lesson_task_questions').select('question').eq('id', questionId).single()
   const { error } = await adminClient.from('lesson_task_questions').delete().eq('id', questionId)
   if (error) return { error: error.message }
+  logActivity(ctx, { action: 'delete', entityType: 'pergunta_aula', entityId: questionId, entityLabel: question?.question || questionId })
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
 }
@@ -160,6 +169,7 @@ export async function reorderQuestion(
   if (!neighbor) return { error: 'Não é possível mover' }
   await adminClient.from('lesson_task_questions').update({ order_index: neighbor.order_index }).eq('id', questionId)
   await adminClient.from('lesson_task_questions').update({ order_index: current.order_index }).eq('id', neighbor.id)
+  logActivity(ctx, { action: 'reorder', entityType: 'pergunta_aula', entityId: questionId, entityLabel: questionId, detail: `moveu para ${direction === 'up' ? 'cima' : 'baixo'}` })
   revalidatePath(`/admin/aulas/${lessonId}`)
   return { success: true }
 }
@@ -233,6 +243,8 @@ export async function gradeTaskResponse(
     .eq('id', responseId)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'update', entityType: 'tarefa_aula', entityId: responseId, entityLabel: `resposta ${responseId}`, detail: `nota: ${grade}/10` })
 
   // Salva nota por questão
   for (const ag of answerGrades) {

@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCapability, requireContentAccess, type AdminContext } from '@/lib/authz'
+import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 
@@ -32,15 +33,17 @@ export async function createCommercialCondition(formData: FormData) {
   if (!title) return { error: 'Informe o título da condição comercial.' }
 
   const adminClient = createAdminClient()
-  const { error } = await adminClient.from('commercial_conditions').insert({
+  const { data: inserted, error } = await adminClient.from('commercial_conditions').insert({
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     owner_area_id: ctx.areaId,
-  })
+  }).select('id').single()
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'create', entityType: 'condicao_comercial', entityId: inserted?.id, entityLabel: title })
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/comercial')
@@ -55,14 +58,28 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   if (!title) return { error: 'Informe o título da condição comercial.' }
 
   const adminClient = createAdminClient()
-  const { error } = await adminClient.from('commercial_conditions').update({
+  const { data: prev } = await adminClient
+    .from('commercial_conditions')
+    .select('title, description, cover_url, url, is_active')
+    .eq('id', id)
+    .single()
+
+  const after = {
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
-  }).eq('id', id)
+  }
+  const { error } = await adminClient.from('commercial_conditions').update(after).eq('id', id)
   if (error) return { error: error.message }
+
+  const changed = diffFields(prev ?? {}, after, {
+    title: 'título', description: 'descrição', cover_url: 'capa', url: 'link', is_active: 'ativação',
+  })
+  if (changed.length > 0) {
+    logActivity(ctx, { action: 'update', entityType: 'condicao_comercial', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })
+  }
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/comercial')
@@ -74,8 +91,11 @@ export async function toggleCommercialConditionActive(id: string, active: boolea
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('commercial_conditions').select('title').eq('id', id).single()
   const { error } = await adminClient.from('commercial_conditions').update({ is_active: active }).eq('id', id)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'condicao_comercial', entityId: id, entityLabel: item?.title ?? id, detail: active ? 'ativou' : 'desativou' })
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/comercial')
@@ -87,8 +107,11 @@ export async function deleteCommercialCondition(id: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: item } = await adminClient.from('commercial_conditions').select('title').eq('id', id).single()
   const { error } = await adminClient.from('commercial_conditions').delete().eq('id', id)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'condicao_comercial', entityId: id, entityLabel: item?.title ?? id })
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/comercial')

@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin, requireCourseAccess, requireModuleAccess } from '@/lib/authz'
+import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { notifyCourseMembers } from '@/app/actions/notifications'
 
@@ -34,6 +35,8 @@ export async function createModule(formData: FormData) {
 
   if (error) return { error: error.message }
 
+  logActivity(ctx, { action: 'create', entityType: 'modulo', entityLabel: title, entityId: data?.id })
+
   revalidatePath('/admin/modulos')
   revalidatePath('/admin/cursos')
   if (course_id) revalidatePath(`/admin/cursos/${course_id}`)
@@ -53,16 +56,24 @@ export async function updateModule(id: string, formData: FormData) {
 
   const { data: prev } = await adminClient
     .from('modules')
-    .select('is_published, course_id')
+    .select('title, description, is_published, prerequisite_module_id, course_id')
     .eq('id', id)
     .single()
 
+  const after = { title, description, is_published, prerequisite_module_id }
   const { error } = await adminClient
     .from('modules')
-    .update({ title, description, is_published, prerequisite_module_id })
+    .update(after)
     .eq('id', id)
 
   if (error) return { error: error.message }
+
+  const changed = diffFields(prev ?? {}, after, {
+    title: 'título', description: 'descrição', is_published: 'publicação', prerequisite_module_id: 'pré-requisito',
+  })
+  if (changed.length > 0) {
+    logActivity(ctx, { action: 'update', entityType: 'modulo', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })
+  }
 
   if (is_published && prev && !prev.is_published && prev.course_id) {
     notifyCourseMembers(prev.course_id, {
@@ -84,9 +95,12 @@ export async function deleteModule(id: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
+  const { data: mod } = await adminClient.from('modules').select('title').eq('id', id).single()
   const { error } = await adminClient.from('modules').delete().eq('id', id)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'modulo', entityId: id, entityLabel: mod?.title ?? id })
 
   revalidatePath('/admin/modulos')
   revalidatePath('/dashboard')
@@ -102,7 +116,7 @@ export async function reorderModule(id: string, direction: 'up' | 'down') {
   const adminClient = createAdminClient()
 
   const { data: current } = await adminClient
-    .from('modules').select('order_index').eq('id', id).single()
+    .from('modules').select('order_index, title').eq('id', id).single()
   if (!current) return { error: 'Módulo não encontrado' }
 
   const { data: neighbor } = await adminClient
@@ -114,6 +128,8 @@ export async function reorderModule(id: string, direction: 'up' | 'down') {
 
   await adminClient.from('modules').update({ order_index: neighbor.order_index }).eq('id', id)
   await adminClient.from('modules').update({ order_index: current.order_index }).eq('id', neighbor.id)
+
+  logActivity(auth, { action: 'reorder', entityType: 'modulo', entityId: id, entityLabel: current.title ?? id, detail: `moveu para ${direction === 'up' ? 'cima' : 'baixo'}` })
 
   revalidatePath('/admin/modulos')
   revalidatePath('/dashboard')
@@ -137,6 +153,8 @@ export async function toggleModulePublished(id: string, is_published: boolean) {
     .eq('id', id)
 
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'modulo', entityId: id, entityLabel: mod?.title ?? id, detail: is_published ? 'publicou' : 'despublicou' })
 
   if (is_published && mod && !mod.is_published && mod.course_id) {
     notifyCourseMembers(mod.course_id, {

@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { notifyUser, notifyAllAdmins } from '@/app/actions/notifications'
+import { requireAdmin } from '@/lib/authz'
+import { logActivity } from '@/lib/activity-log'
 
 export async function createPost(courseId: string, formData: FormData) {
   const supabase = await createClient()
@@ -55,44 +57,80 @@ export async function createPost(courseId: string, formData: FormData) {
 }
 
 export async function deletePost(postId: string, courseId: string) {
+  const ctx = await requireAdmin()
+  if ('error' in ctx) return { error: ctx.error }
+
   const supabase = await createClient()
+  const { data: post } = await supabase.from('community_posts').select('title').eq('id', postId).single()
   const { error } = await supabase.from('community_posts').delete().eq('id', postId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'delete', entityType: 'post_comunidade', entityId: postId, entityLabel: post?.title ?? postId })
+
   revalidatePath(`/dashboard/comunidade/${courseId}`)
   return { success: true }
 }
 
 export async function togglePinPost(postId: string, pinned: boolean, courseId: string) {
+  const ctx = await requireAdmin()
+  if ('error' in ctx) return { error: ctx.error }
+
   const supabase = await createClient()
+  const { data: post } = await supabase.from('community_posts').select('title').eq('id', postId).single()
   const { error } = await supabase.from('community_posts').update({ is_pinned: pinned }).eq('id', postId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'post_comunidade', entityId: postId, entityLabel: post?.title ?? postId, detail: pinned ? 'fixou' : 'desafixou' })
+
   revalidatePath(`/dashboard/comunidade/${courseId}`)
   revalidatePath(`/dashboard/comunidade/${courseId}/${postId}`)
   return { success: true }
 }
 
 export async function toggleLockPost(postId: string, locked: boolean, courseId: string) {
+  const ctx = await requireAdmin()
+  if ('error' in ctx) return { error: ctx.error }
+
   const supabase = await createClient()
+  const { data: post } = await supabase.from('community_posts').select('title').eq('id', postId).single()
   const { error } = await supabase.from('community_posts').update({ is_locked: locked }).eq('id', postId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'post_comunidade', entityId: postId, entityLabel: post?.title ?? postId, detail: locked ? 'bloqueou' : 'reabriu' })
+
   revalidatePath(`/dashboard/comunidade/${courseId}`)
   revalidatePath(`/dashboard/comunidade/${courseId}/${postId}`)
   return { success: true }
 }
 
 export async function hidePost(postId: string, hidden: boolean, courseId: string) {
+  const ctx = await requireAdmin()
+  if ('error' in ctx) return { error: ctx.error }
+
   const supabase = await createClient()
+  const { data: post } = await supabase.from('community_posts').select('title').eq('id', postId).single()
   const { error } = await supabase.from('community_posts').update({ is_hidden: hidden }).eq('id', postId)
   if (error) return { error: error.message }
+
+  logActivity(ctx, { action: 'toggle', entityType: 'post_comunidade', entityId: postId, entityLabel: post?.title ?? postId, detail: hidden ? 'ocultou' : 'reexibiu' })
+
   revalidatePath(`/dashboard/comunidade/${courseId}`)
   revalidatePath(`/dashboard/comunidade/${courseId}/${postId}`)
   return { success: true }
 }
 
 export async function hideReply(replyId: string, hidden: boolean, postId: string, courseId: string) {
+  const ctx = await requireAdmin()
+  if ('error' in ctx) return { error: ctx.error }
+
   const supabase = await createClient()
+  const { data: reply } = await supabase.from('community_replies').select('body').eq('id', replyId).single()
   const { error } = await supabase.from('community_replies').update({ is_hidden: hidden }).eq('id', replyId)
   if (error) return { error: error.message }
+
+  const label = (reply?.body ?? '').slice(0, 60)
+  logActivity(ctx, { action: 'toggle', entityType: 'resposta_comunidade', entityId: replyId, entityLabel: label || replyId, detail: hidden ? 'ocultou' : 'reexibiu' })
+
   revalidatePath(`/dashboard/comunidade/${courseId}/${postId}`)
   return { success: true }
 }
