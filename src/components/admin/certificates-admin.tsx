@@ -115,6 +115,7 @@ interface CertificatesAdminProps {
   nameColor: string
   siteName: string
   logoUrl: string
+  canManageSettings?: boolean
 }
 
 // ---- Live preview section ----
@@ -352,6 +353,7 @@ export function CertificatesAdmin({
   nameColor,
   siteName,
   logoUrl,
+  canManageSettings = true,
 }: CertificatesAdminProps) {
   const [selectedTemplate, setSelectedTemplate] = useState(currentTemplate)
   const [signatoryNameValue, setSignatoryNameValue] = useState(signatoryName)
@@ -402,7 +404,8 @@ export function CertificatesAdmin({
 
   return (
     <div className="space-y-10">
-      {/* Template picker + live preview */}
+      {/* Template picker + live preview — configuração global, admin-only */}
+      {canManageSettings && (
       <div className="space-y-6">
         <div>
           <h3 className="font-semibold text-foreground mb-1">Modelo do Certificado</h3>
@@ -482,6 +485,7 @@ export function CertificatesAdmin({
           />
         )}
       </div>
+      )}
 
       {/* Issuance workflow */}
       <div>

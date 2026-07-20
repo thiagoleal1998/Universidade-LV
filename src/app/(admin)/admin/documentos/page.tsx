@@ -3,10 +3,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { CertificatesAdmin } from '@/components/admin/certificates-admin'
 import { FileText } from 'lucide-react'
-import { requireAdminPage } from '@/lib/authz'
+import { requireContentPage } from '@/lib/authz'
 
 export default async function DocumentosPage() {
-  await requireAdminPage()
+  const ctx = await requireContentPage()
+  const isAdmin = ctx.role === 'admin'
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -19,16 +20,23 @@ export default async function DocumentosPage() {
     { data: certificatesData },
     { data: profilesData },
     { data: usersData },
+    { data: coursesData },
   ] = await Promise.all([
-    supabase.from('modules').select('id, title').eq('is_published', true).order('order_index'),
+    supabase.from('modules').select('id, title, course_id').eq('is_published', true).order('order_index'),
     supabase.from('lessons').select('id, module_id').eq('is_published', true),
     supabase.from('member_progress').select('user_id, lesson_id'),
     supabase.from('certificates').select('id, user_id, module_id, template, issued_at, status'),
     supabase.from('profiles').select('id, full_name').eq('role', 'member').eq('active', true),
     adminClient.auth.admin.listUsers(),
+    // Só precisa pra colaborador filtrar por posse — módulo sem curso é global (admin-only).
+    isAdmin ? Promise.resolve({ data: null }) : adminClient.from('courses').select('id, owner_area_id'),
   ])
 
-  const modules = modulesData ?? []
+  const courseOwnerMap = new Map((coursesData ?? []).map((c) => [c.id, c.owner_area_id]))
+  const allModules = modulesData ?? []
+  const modules = isAdmin
+    ? allModules
+    : allModules.filter((m) => m.course_id && courseOwnerMap.get(m.course_id) === ctx.areaId)
   const lessons = lessonsData ?? []
   const progress = progressData ?? []
   const certificates = (certificatesData ?? []) as {
@@ -104,6 +112,7 @@ export default async function DocumentosPage() {
         nameColor={settings.certificate_name_color}
         siteName={settings.site_name}
         logoUrl={settings.logo_url}
+        canManageSettings={isAdmin}
       />
     </div>
   )

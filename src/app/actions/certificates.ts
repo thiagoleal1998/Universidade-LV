@@ -1,18 +1,23 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireAdmin } from '@/lib/authz'
+import { requireAdmin, requireModuleAccess } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 import { toOne } from '@/lib/supabase/relations'
 import { revalidatePath } from 'next/cache'
 
+// Emitir/aprovar/revogar certificado exige posse do curso do módulo (mesma
+// regra de requireModuleAccess já usada em courses/modules/lessons — reusa a
+// capacidade 'courses', já que quem tem curso próprio já tem essa capacidade).
+// As configurações GLOBAIS do certificado (template/assinatura/posição do
+// nome), mais abaixo neste arquivo, continuam requireAdmin() — não são por curso.
 export async function issueCertificate(
   userId: string,
   moduleId: string,
   template: string,
   status: 'internal' | 'approved' = 'internal',
 ) {
-  const ctx = await requireAdmin()
+  const ctx = await requireModuleAccess(moduleId)
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
@@ -43,7 +48,11 @@ export async function issueCertificate(
 }
 
 export async function approveCertificate(certificateId: string) {
-  const ctx = await requireAdmin()
+  const adminClientPre = createAdminClient()
+  const { data: certPre } = await adminClientPre.from('certificates').select('module_id').eq('id', certificateId).single()
+  if (!certPre) return { error: 'Certificado não encontrado.' }
+
+  const ctx = await requireModuleAccess(certPre.module_id)
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
@@ -75,7 +84,11 @@ export async function approveCertificate(certificateId: string) {
 }
 
 export async function revokeCertificate(certificateId: string) {
-  const ctx = await requireAdmin()
+  const adminClientPre = createAdminClient()
+  const { data: certPre } = await adminClientPre.from('certificates').select('module_id').eq('id', certificateId).single()
+  if (!certPre) return { error: 'Certificado não encontrado.' }
+
+  const ctx = await requireModuleAccess(certPre.module_id)
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()

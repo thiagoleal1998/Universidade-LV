@@ -8,7 +8,7 @@ import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download, Shoppin
 import { cn } from '@/lib/utils'
 import { RelatoriosMarketing } from '@/components/admin/relatorios-marketing'
 import { AtividadesTab } from '@/components/admin/atividades-log'
-import { requireAdminPage } from '@/lib/authz'
+import { requireContentPage } from '@/lib/authz'
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -52,13 +52,31 @@ export default async function RelatoriosPage({
 }: {
   searchParams: Promise<{ tab?: string; ator?: string; entidade?: string; acao?: string; de?: string; ate?: string; page?: string }>
 }) {
-  await requireAdminPage()
+  const ctx = await requireContentPage()
 
   const { tab: rawTab = 'ensino', ator, entidade, acao, de, ate, page } = await searchParams
   const tab: Tab = rawTab === 'marketing' ? 'marketing' : rawTab === 'atividades' ? 'atividades' : 'ensino'
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
+
+  // Colaborador só vê, na aba Atividades, o que aconteceu em cursos/módulos/
+  // aulas da própria área — as abas Ensino e Ofertas & Marketing continuam
+  // sem filtro (não é conteúdo "de posse", é visão geral, decisão do usuário).
+  let scopeToOwnCourses: { courseIds: string[]; moduleIds: string[]; lessonIds: string[] } | null = null
+  if (ctx.role !== 'admin' && tab === 'atividades') {
+    const { data: ownedCourses } = await adminClient.from('courses').select('id').eq('owner_area_id', ctx.areaId)
+    const courseIds = (ownedCourses ?? []).map((c) => c.id)
+    const { data: ownedModules } = courseIds.length
+      ? await adminClient.from('modules').select('id').in('course_id', courseIds)
+      : { data: [] }
+    const moduleIds = (ownedModules ?? []).map((m) => m.id)
+    const { data: ownedLessons } = moduleIds.length
+      ? await adminClient.from('lessons').select('id').in('module_id', moduleIds)
+      : { data: [] }
+    const lessonIds = (ownedLessons ?? []).map((l) => l.id)
+    scopeToOwnCourses = { courseIds, moduleIds, lessonIds }
+  }
 
   // Always fetch learning data (lightweight)
   const [
@@ -281,7 +299,7 @@ export default async function RelatoriosPage({
 
       {/* ── Aba: Atividades ── */}
       {tab === 'atividades' && (
-        <AtividadesTab filters={{ ator, entidade, acao, de, ate, page }} />
+        <AtividadesTab filters={{ ator, entidade, acao, de, ate, page }} scope={scopeToOwnCourses} />
       )}
     </div>
   )

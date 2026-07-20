@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementPublished } from '@/app/actions/announcements'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -226,7 +227,8 @@ function formatDate(isoDate: string) {
   })
 }
 
-function AnnouncementRow({ ann }: { ann: Announcement }) {
+function AnnouncementRow({ ann, isAdmin = true }: { ann: Announcement; isAdmin?: boolean }) {
+  const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -241,7 +243,7 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
       formData.set('is_published', String(ann.is_published))
       const result = await updateAnnouncement(ann.id, formData)
       if (result?.error) toast.error(result.error)
-      else { toast.success('Comunicado atualizado!'); setEditing(false) }
+      else { toast.success('Comunicado atualizado!'); setEditing(false); router.refresh() }
     })
   }
 
@@ -249,7 +251,7 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
     startTransition(async () => {
       const result = await toggleAnnouncementPublished(ann.id, !ann.is_published)
       if (result?.error) toast.error(result.error)
-      else toast.success(ann.is_published ? 'Comunicado despublicado.' : 'Comunicado publicado!')
+      else { toast.success(ann.is_published ? 'Comunicado despublicado.' : 'Comunicado publicado!'); router.refresh() }
     })
   }
 
@@ -257,7 +259,7 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
     startTransition(async () => {
       const result = await deleteAnnouncement(ann.id)
       if (result?.error) toast.error(result.error)
-      else toast.success('Comunicado excluído.')
+      else { toast.success('Comunicado excluído.'); router.refresh() }
     })
   }
 
@@ -317,41 +319,44 @@ function AnnouncementRow({ ann }: { ann: Announcement }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            title={ann.is_published ? 'Despublicar' : 'Publicar agora'}
-            disabled={isPending}
-            onClick={handleToggle}
-          >
-            <Check className={cn('w-4 h-4', ann.is_published ? 'text-green-600' : 'text-muted-foreground')} />
-          </Button>
-          <Button variant="ghost" size="icon" disabled={isPending} onClick={() => setEditing(true)}>
-            <Pencil className="w-4 h-4" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" />}>
-              <Trash2 className="w-4 h-4" />
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir comunicado?</AlertDialogTitle>
-                <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              title={ann.is_published ? 'Despublicar' : 'Publicar agora'}
+              disabled={isPending}
+              onClick={handleToggle}
+            >
+              <Check className={cn('w-4 h-4', ann.is_published ? 'text-green-600' : 'text-muted-foreground')} />
+            </Button>
+            <Button variant="ghost" size="icon" disabled={isPending} onClick={() => setEditing(true)}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" />}>
+                <Trash2 className="w-4 h-4" />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir comunicado?</AlertDialogTitle>
+                  <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-export function AnnouncementsManager({ announcements }: { announcements: Announcement[] }) {
+export function AnnouncementsManager({ announcements, isAdmin = true }: { announcements: Announcement[]; isAdmin?: boolean }) {
+  const router = useRouter()
   const [showForm, setShowForm] = useState(false)
   const [isCreating, startCreate] = useTransition()
 
@@ -359,7 +364,7 @@ export function AnnouncementsManager({ announcements }: { announcements: Announc
     startCreate(async () => {
       const result = await createAnnouncement(formData)
       if (result?.error) toast.error(result.error)
-      else { toast.success('Comunicado criado!'); setShowForm(false) }
+      else { toast.success('Comunicado criado!'); setShowForm(false); router.refresh() }
     })
   }
 
@@ -390,7 +395,7 @@ export function AnnouncementsManager({ announcements }: { announcements: Announc
       )}
 
       {announcements.map((ann) => (
-        <AnnouncementRow key={ann.id} ann={ann} />
+        <AnnouncementRow key={ann.id} ann={ann} isAdmin={isAdmin} />
       ))}
     </div>
   )

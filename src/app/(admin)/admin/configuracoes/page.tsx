@@ -1,10 +1,17 @@
 import { getSettings } from '@/lib/settings'
 import { SettingsForm } from '@/components/admin/settings-form'
-import { requireAdminPage } from '@/lib/authz'
+import { PreferencesForm } from '@/components/members/preferences-form'
+import { requireContentPage } from '@/lib/authz'
 import { getEmailTemplates } from '@/app/actions/email-templates'
 
 export default async function ConfiguracoesPage() {
-  await requireAdminPage()
+  const ctx = await requireContentPage()
+
+  // Colaborador não mexe em configurações globais do site — vê a mesma tela
+  // de preferências que um membro comum (tema, som, velocidade de vídeo).
+  if (ctx.role !== 'admin') {
+    return <PreferencesForm />
+  }
 
   const [settings, emailTemplates] = await Promise.all([
     getSettings(),

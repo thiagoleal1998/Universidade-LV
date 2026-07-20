@@ -29,13 +29,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const profile = profileData as { full_name: string; avatar_url: string; role: string } | null
 
-  // Admin vê tudo (null = sem filtro). Colaborador vê Cursos e Marketing
-  // sempre, independente de capacidade — ele enxerga todo o conteúdo da
-  // plataforma nessas duas telas, só não consegue editar o que não é seu
-  // (checado por item dentro de cada tela, e de verdade nas server actions).
+  // Admin vê tudo (null = sem filtro). Colaborador vê o mesmo menu do admin,
+  // exceto Membros/SEO/FAQ (decisão do usuário) — cada tela aberta tem sua
+  // própria regra de permissão (ver CLAUDE.md): Cursos/Marketing = capacidade
+  // + posse por item; Comunicados = cria mas não edita/exclui; Documentos =
+  // só certificados dos próprios cursos; Comunidade = só visualiza; Relatórios
+  // = Atividades filtrada por posse. Dashboard/Feedback/Configurações mostram
+  // versão de membro ou dados reais sem restrição adicional.
   const allowedHrefs = ctx.role === 'admin'
     ? null
-    : ['/admin/cursos', '/admin/marketing']
+    : [
+        '/admin', '/admin/cursos', '/admin/comunicados', '/admin/documentos',
+        '/admin/comunidade', '/admin/feedback', '/admin/marketing',
+        '/admin/relatorios', '/admin/configuracoes',
+      ]
 
   return (
     <div className="flex h-screen bg-muted/30">

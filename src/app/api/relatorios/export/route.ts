@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAdminContext } from '@/lib/authz'
 
 export async function GET() {
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
-  // Verify requester is admin
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return new NextResponse('Unauthorized', { status: 401 })
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return new NextResponse('Forbidden', { status: 403 })
+  // Aba Ensino é igual pra admin e colaborador — exportação acompanha.
+  const ctx = await getAdminContext()
+  if (!ctx) return new NextResponse('Unauthorized', { status: 401 })
 
   const [{ data: profiles }, { data: usersData }, { data: modules }, { data: lessons }, { data: progress }] = await Promise.all([
     supabase.from('profiles').select('id, full_name, role, active').eq('role', 'member'),

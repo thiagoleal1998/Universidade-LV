@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { MessageSquare } from 'lucide-react'
-import { requireAdminPage } from '@/lib/authz'
+import { requireContentPage } from '@/lib/authz'
 
 type CourseRow = {
   id: string
@@ -14,7 +14,7 @@ type CourseRow = {
 }
 
 export default async function AdminComunidadePage() {
-  await requireAdminPage()
+  await requireContentPage()
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

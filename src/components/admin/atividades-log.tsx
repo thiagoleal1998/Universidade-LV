@@ -42,7 +42,9 @@ function buildHref(filters: AtividadesFilters, overrides: Partial<AtividadesFilt
   return `/admin/relatorios?${params.toString()}`
 }
 
-export async function AtividadesTab({ filters }: { filters: AtividadesFilters }) {
+export type AtividadesScope = { courseIds: string[]; moduleIds: string[]; lessonIds: string[] } | null
+
+export async function AtividadesTab({ filters, scope = null }: { filters: AtividadesFilters; scope?: AtividadesScope }) {
   const adminClient = createAdminClient()
   const page = Math.max(1, Number(filters.page ?? '1') || 1)
   const offset = (page - 1) * PAGE_SIZE
@@ -52,6 +54,17 @@ export async function AtividadesTab({ filters }: { filters: AtividadesFilters })
     .select('id, actor_name, actor_role, action, entity_type, entity_label, detail, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1)
+
+  // Colaborador só vê atividades de cursos/módulos/aulas da própria área.
+  if (scope) {
+    const parts: string[] = []
+    if (scope.courseIds.length) parts.push(`and(entity_type.eq.curso,entity_id.in.(${scope.courseIds.join(',')}))`)
+    if (scope.moduleIds.length) parts.push(`and(entity_type.eq.modulo,entity_id.in.(${scope.moduleIds.join(',')}))`)
+    if (scope.lessonIds.length) parts.push(`and(entity_type.eq.aula,entity_id.in.(${scope.lessonIds.join(',')}))`)
+    query = parts.length > 0
+      ? query.or(parts.join(','))
+      : query.eq('id', '00000000-0000-0000-0000-000000000000') // não é dono de curso nenhum ainda → lista vazia
+  }
 
   if (filters.ator) query = query.eq('actor_name', filters.ator)
   if (filters.entidade) query = query.eq('entity_type', filters.entidade)
@@ -69,7 +82,9 @@ export async function AtividadesTab({ filters }: { filters: AtividadesFilters })
   const actors = Array.from(new Set((actorsData ?? []).map((a) => a.actor_name).filter(Boolean))).sort()
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  const entityOptions = Object.entries(ACTIVITY_ENTITY_LABELS) as [ActivityEntityType, string][]
+  // Colaborador só pode filtrar por tipos de conteúdo que podem aparecer pra ele.
+  const entityOptions = (Object.entries(ACTIVITY_ENTITY_LABELS) as [ActivityEntityType, string][])
+    .filter(([key]) => !scope || ['curso', 'modulo', 'aula'].includes(key))
   const actionOptions = Object.entries(ACTIVITY_ACTION_LABELS) as [ActivityAction, string][]
 
   const hasFilters = !!(filters.ator || filters.entidade || filters.acao || filters.de || filters.ate)
