@@ -19,7 +19,7 @@ type Tag = { id: string; name: string; color: string }
 type Course = { id: string; name: string }
 type Area = { id: string; name: string }
 
-type MemberWithEmail = {
+export type MemberWithEmail = {
   id: string
   full_name: string
   role: 'admin' | 'member' | 'collaborator'

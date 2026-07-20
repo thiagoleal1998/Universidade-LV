@@ -1,10 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { MembersTable } from '@/components/admin/members-table'
-import { PendingMembers } from '@/components/admin/pending-members'
 import { CreateMemberDialog } from '@/components/admin/create-member-dialog'
-import { TagsManager } from '@/components/admin/tags-manager'
-import { CollaboratorAreasManager } from '@/components/admin/collaborator-areas-manager'
+import { MembrosTabs } from '@/components/admin/membros-tabs'
 import { getCollaboratorAreas } from '@/app/actions/collaborator-areas'
 import { requireAdminPage } from '@/lib/authz'
 import { presenceSinceIso } from '@/lib/presence'
@@ -76,15 +73,7 @@ export default async function MembrosPage() {
         <CreateMemberDialog />
       </div>
 
-      <TagsManager tags={allTags} />
-
-      <CollaboratorAreasManager areas={areas} />
-
-      <PendingMembers members={pending} courses={allCourses} />
-
-      <div className="bg-card border rounded-lg overflow-hidden">
-        <MembersTable members={active} allTags={allTags} allCourses={allCourses} allAreas={areas} />
-      </div>
+      <MembrosTabs pending={pending} active={active} allTags={allTags} allCourses={allCourses} areas={areas} />
       <DashboardAutoRefresh />
     </div>
   )
