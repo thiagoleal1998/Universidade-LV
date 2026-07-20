@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Course } from '@/lib/supabase/types'
 
-type CourseWithCount = Course & { modules: { count: number }[] }
+type CourseWithCount = Course & { modules: { count: number }[]; canEdit?: boolean }
 
 function ReorderButtons({ course, isFirst, isLast }: { course: CourseWithCount; isFirst: boolean; isLast: boolean }) {
   const [isPending, start] = useTransition()
@@ -112,12 +112,14 @@ export function CoursesList({ courses, isAdmin = true }: { courses: CourseWithCo
               </p>
             </div>
 
-            {/* Actions */}
+            {/* Actions — o link pro detalhe fica sempre visível (é a porta de
+                entrada pro modo leitura de conteúdo de outra área); só a
+                exclusão exige posse. */}
             <div className="flex items-center gap-1 shrink-0">
               <Link href={`/admin/cursos/${course.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
                 <Pencil className="w-4 h-4" />
               </Link>
-              <DeleteButton course={course} />
+              {(course.canEdit ?? true) && <DeleteButton course={course} />}
             </div>
           </div>
         )

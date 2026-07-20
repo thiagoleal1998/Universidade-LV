@@ -110,11 +110,13 @@ export function LessonEditor({
   photos,
   attachments = [],
   task = null,
+  canEdit = true,
 }: {
   lesson: Lesson & { publish_at?: string | null }
   photos: PhotoWithUrl[]
   attachments?: AttachmentWithUrl[]
   task?: LessonTask | null
+  canEdit?: boolean
 }) {
   const [isPending, startTransition] = useTransition()
   const [isPublishPending, startPublishTransition] = useTransition()
@@ -203,7 +205,7 @@ export function LessonEditor({
   function handlePhotoDrop(e: React.DragEvent) {
     e.preventDefault()
     setIsDraggingPhoto(false)
-    if (pendingFile) return
+    if (!canEdit || pendingFile) return
     const file = e.dataTransfer.files[0]
     if (!file || !file.type.startsWith('image/')) {
       toast.error('Solte uma imagem válida.')
@@ -218,6 +220,7 @@ export function LessonEditor({
   function handleAttachmentDrop(e: React.DragEvent) {
     e.preventDefault()
     setIsDraggingAttachment(false)
+    if (!canEdit) return
     const file = e.dataTransfer.files[0]
     if (!file) return
     startAttachmentUpload(async () => {
@@ -228,7 +231,7 @@ export function LessonEditor({
   }
 
   return (
-    <div className="space-y-8">
+    <fieldset disabled={!canEdit} className="space-y-8 border-0 p-0 m-0">
       <form id="lesson-form" action={handleSave} className="space-y-6 bg-card border rounded-lg p-6">
         <div className="space-y-2">
           <Label>Título</Label>
@@ -324,6 +327,7 @@ export function LessonEditor({
           <RichTextEditor
             content={contentText}
             onChange={setContentText}
+            editable={canEdit}
             onImageUpload={async (file) => {
               const r = await uploadContentImage(lesson.id, file)
               if (r?.error) { toast.error(r.error); return null }
@@ -635,6 +639,6 @@ export function LessonEditor({
           </span>
         </div>
       </div>
-    </div>
+    </fieldset>
   )
 }

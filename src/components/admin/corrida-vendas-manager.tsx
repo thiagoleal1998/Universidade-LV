@@ -141,7 +141,7 @@ function parseList(raw: string): CorridaData[] {
 
 // ── Componente ───────────────────────────────────────────────────────────────
 
-export function CorridaVendasManager({ raw }: { raw: string }) {
+export function CorridaVendasManager({ raw, isAdmin = true }: { raw: string; isAdmin?: boolean }) {
   const [list, setList] = useState<CorridaData[]>(() => parseList(raw))
   const [openSet, setOpenSet] = useState<number[]>(() => (parseList(raw).length === 1 ? [0] : []))
   const [isPending, startTransition] = useTransition()
@@ -270,7 +270,8 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl mt-4">
+    <form onSubmit={handleSubmit} className="max-w-2xl mt-4">
+    <fieldset disabled={!isAdmin} className="space-y-4 border-0 p-0 m-0">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {list.length === 0 ? 'Nenhuma corrida cadastrada.' : `${list.length} corrida${list.length > 1 ? 's' : ''} cadastrada${list.length > 1 ? 's' : ''}.`}
@@ -352,7 +353,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                 {/* Descrição */}
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground font-medium">Descrição</Label>
-                  <RichTextEditor content={corrida.descricao} onChange={(html) => updateAt(cIdx, { descricao: html })} />
+                  <RichTextEditor content={corrida.descricao} onChange={(html) => updateAt(cIdx, { descricao: html })} editable={isAdmin} />
                 </div>
 
                 {/* Destino */}
@@ -544,7 +545,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
                     <ScrollText className="w-4 h-4 text-primary" />
                     <Label className="text-xs text-muted-foreground font-medium">Regras</Label>
                   </div>
-                  <RichTextEditor content={corrida.regras} onChange={(html) => updateAt(cIdx, { regras: html })} />
+                  <RichTextEditor content={corrida.regras} onChange={(html) => updateAt(cIdx, { regras: html })} editable={isAdmin} />
                 </div>
               </div>
             )}
@@ -563,6 +564,7 @@ export function CorridaVendasManager({ raw }: { raw: string }) {
           </Button>
         </div>
       )}
+    </fieldset>
     </form>
   )
 }

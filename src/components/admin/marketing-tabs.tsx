@@ -17,6 +17,7 @@ import type { Grupo } from '@/app/actions/grupos'
 import type { CommercialCondition } from '@/app/actions/commercial-conditions'
 import type { MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
 import type { Tag } from '@/components/admin/marketing-manager'
+import type { Capability } from '@/lib/capabilities'
 import { cn } from '@/lib/utils'
 
 type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'famtours' | 'grupos' | 'premiacao' | 'podviajar'
@@ -95,26 +96,39 @@ export function MarketingTabs({
   tamojuntoWinnersRaw = '{}',
   podviajarRaw = '{}',
   corridaVendasRaw = '{}',
-  allowedTabs = null,
+  canCreateTraining = true,
+  canCreateFamtour = true,
+  canCreateGrupo = true,
+  canCreateComercial = true,
+  userRole = 'admin',
+  userAreaId = null,
+  userCapabilities = [],
   isAdmin = true,
 }: {
   marketingItems: object[]
   sections: MarketingSection[]
-  trainingItems: TrainingItem[]
-  famtours?: Famtour[]
-  grupos?: Grupo[]
-  commercialConditions?: CommercialCondition[]
+  trainingItems: (TrainingItem & { canEdit?: boolean })[]
+  famtours?: (Famtour & { canEdit?: boolean })[]
+  grupos?: (Grupo & { canEdit?: boolean })[]
+  commercialConditions?: (CommercialCondition & { canEdit?: boolean })[]
   products?: MarketingProduct[]
   periods?: MarketingPeriod[]
   tags?: Tag[]
   tamojuntoWinnersRaw?: string
   podviajarRaw?: string
   corridaVendasRaw?: string
-  // null = admin (todas as abas); array = colaborador (só as abas listadas)
-  allowedTabs?: string[] | null
+  canCreateTraining?: boolean
+  canCreateFamtour?: boolean
+  canCreateGrupo?: boolean
+  canCreateComercial?: boolean
+  userRole?: 'admin' | 'collaborator'
+  userAreaId?: string | null
+  userCapabilities?: Capability[]
   isAdmin?: boolean
 }) {
-  const visibleTabs = allowedTabs === null ? TABS : TABS.filter((t) => allowedTabs.includes(t.id))
+  // Todas as abas sempre visíveis — colaborador vê tudo, só edita o que tem
+  // capacidade + posse (controlado item a item dentro de cada manager).
+  const visibleTabs = TABS
   const [tab, setTab] = useState<Tab>(visibleTabs[0]?.id ?? 'marketing')
   const [comercialSubTab, setComercialSubTab] = useState<ComercialSubTab>('condicoes')
 
@@ -122,8 +136,7 @@ export function MarketingTabs({
   if (!current) return null
   const Icon = current.icon
 
-  // Corrida de vendas grava settings globais — admin-only
-  const comercialSubtabs = isAdmin ? COMERCIAL_SUBTABS : COMERCIAL_SUBTABS.filter((s) => s.id !== 'corrida')
+  const comercialSubtabs = COMERCIAL_SUBTABS
 
   return (
     <>
@@ -155,10 +168,10 @@ export function MarketingTabs({
 
       {tab === 'marketing' && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <MarketingManager items={marketingItems as any} sections={sections} products={products} periods={periods} tags={tags} />
+        <MarketingManager items={marketingItems as any} sections={sections} products={products} periods={periods} tags={tags} userRole={userRole} userAreaId={userAreaId} userCapabilities={userCapabilities} />
       )}
       {tab === 'treinamentos' && (
-        <TrainingsManager items={trainingItems} />
+        <TrainingsManager items={trainingItems} canCreate={canCreateTraining} />
       )}
       {tab === 'comercial' && (
         <>
@@ -183,28 +196,28 @@ export function MarketingTabs({
           </div>
 
           {comercialSubTab === 'condicoes' && (
-            <CommercialConditionsManager items={commercialConditions} />
+            <CommercialConditionsManager items={commercialConditions} canCreate={canCreateComercial} />
           )}
           {comercialSubTab === 'corrida' && (
-            <CorridaVendasManager raw={corridaVendasRaw} />
+            <CorridaVendasManager raw={corridaVendasRaw} isAdmin={isAdmin} />
           )}
         </>
       )}
       {tab === 'aereo' && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <MarketingManager items={marketingItems as any} sections={AEREO_SECTIONS} />
+        <MarketingManager items={marketingItems as any} sections={AEREO_SECTIONS} userRole={userRole} userAreaId={userAreaId} userCapabilities={userCapabilities} />
       )}
       {tab === 'famtours' && (
-        <FamtoursManager items={famtours} />
+        <FamtoursManager items={famtours} canCreate={canCreateFamtour} />
       )}
       {tab === 'grupos' && (
-        <GruposManager items={grupos} />
+        <GruposManager items={grupos} canCreate={canCreateGrupo} />
       )}
       {tab === 'premiacao' && (
-        <TamoJuntoWinnersManager raw={tamojuntoWinnersRaw} />
+        <TamoJuntoWinnersManager raw={tamojuntoWinnersRaw} isAdmin={isAdmin} />
       )}
       {tab === 'podviajar' && (
-        <PodviajarManager raw={podviajarRaw} />
+        <PodviajarManager raw={podviajarRaw} isAdmin={isAdmin} />
       )}
     </>
   )

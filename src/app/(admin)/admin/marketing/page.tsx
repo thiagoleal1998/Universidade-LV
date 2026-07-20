@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
-import { requirePageCapability } from '@/lib/authz'
-import { MARKETING_CAPABILITIES } from '@/lib/capabilities'
+import { requireContentPage } from '@/lib/authz'
 import { MarketingTabs } from '@/components/admin/marketing-tabs'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import { getTrainingItems } from '@/app/actions/training'
@@ -19,85 +18,77 @@ function parseSections(json: string): MarketingSection[] {
   return []
 }
 
-// Capacidade → aba da tela. Premiação e PodViajar gravam settings globais
-// e ficam admin-only.
-const CAP_TO_TAB: Record<string, string> = {
-  marketing: 'marketing',
-  trainings: 'treinamentos',
-  comercial: 'comercial',
-  aereo: 'aereo',
-  famtours: 'famtours',
-  grupos: 'grupos',
-}
-
 export default async function MarketingPage() {
-  const ctx = await requirePageCapability(MARKETING_CAPABILITIES)
+  const ctx = await requireContentPage()
+  const isAdmin = ctx.role === 'admin'
 
   const supabase = await createClient()
-  const isCollaborator = ctx.role === 'collaborator'
-
-  // Colaborador: queries via adminClient (RLS de rascunhos é admin-only) com
-  // filtro explícito por dono — só vê o conteúdo da própria área.
-  const db = isCollaborator ? createAdminClient() : supabase
-
-  let marketingQuery = db.from('marketing_items').select('*').order('order_index')
-  if (isCollaborator) marketingQuery = marketingQuery.eq('owner_area_id', ctx.areaId!)
-
-  // Treinamentos: para colaborador, busca via adminClient com filtro por dono —
-  // getTrainingItems() usa o client de sessão e a RLS esconderia os inativos dele.
-  let trainingQuery = db
-    .from('training_items')
-    .select('*, materials:training_materials(id, training_id, title, url, type, order_index, created_at)')
-    .order('order_index')
-  if (isCollaborator) trainingQuery = trainingQuery.eq('owner_area_id', ctx.areaId!)
-
-  let famtoursQuery = db.from('famtours').select('*').order('start_date', { ascending: true, nullsFirst: false })
-  if (isCollaborator) famtoursQuery = famtoursQuery.eq('owner_area_id', ctx.areaId!)
-
-  let gruposQuery = db.from('grupos').select('*').order('start_date', { ascending: true, nullsFirst: false })
-  if (isCollaborator) gruposQuery = gruposQuery.eq('owner_area_id', ctx.areaId!)
-
-  let commercialConditionsQuery = db.from('commercial_conditions').select('*').order('created_at', { ascending: false })
-  if (isCollaborator) commercialConditionsQuery = commercialConditionsQuery.eq('owner_area_id', ctx.areaId!)
+  // Todo mundo vê tudo, de qualquer área — editar exige capacidade + posse,
+  // checado por item (canEdit) e de verdade nas actions de mutação.
+  const db = createAdminClient()
 
   const [
     { data }, settings, { data: trainingData }, products, periods, { data: tagsData },
     { data: famtoursData }, { data: gruposData }, { data: commercialConditionsData },
   ] = await Promise.all([
-    marketingQuery,
+    db.from('marketing_items').select('*').order('order_index'),
     getSettings(),
-    trainingQuery,
+    db.from('training_items').select('*, materials:training_materials(id, training_id, title, url, type, order_index, created_at)').order('order_index'),
     getMarketingProducts(),
     getMarketingPeriods(),
     supabase.from('tags').select('*').order('name'),
-    famtoursQuery,
-    gruposQuery,
-    commercialConditionsQuery,
+    db.from('famtours').select('*').order('start_date', { ascending: true, nullsFirst: false }),
+    db.from('grupos').select('*').order('start_date', { ascending: true, nullsFirst: false }),
+    db.from('commercial_conditions').select('*').order('created_at', { ascending: false }),
   ])
 
   const visibleTrainingItems = (trainingData ?? []) as Awaited<ReturnType<typeof getTrainingItems>>
 
-  const allowedTabs = isCollaborator
-    ? ctx.capabilities.map((c) => CAP_TO_TAB[c]).filter(Boolean)
-    : null
+  const canEditTraining = isAdmin || ctx.capabilities.includes('trainings')
+  const canEditFamtour = isAdmin || ctx.capabilities.includes('famtours')
+  const canEditGrupo = isAdmin || ctx.capabilities.includes('grupos')
+  const canEditComercial = isAdmin || ctx.capabilities.includes('comercial')
+
+  const trainingItemsWithEdit = visibleTrainingItems.map((t) => ({
+    ...t,
+    canEdit: isAdmin || (canEditTraining && t.owner_area_id === ctx.areaId),
+  }))
+  const famtoursWithEdit = (famtoursData ?? []).map((f) => ({
+    ...f,
+    canEdit: isAdmin || (canEditFamtour && f.owner_area_id === ctx.areaId),
+  }))
+  const gruposWithEdit = (gruposData ?? []).map((g) => ({
+    ...g,
+    canEdit: isAdmin || (canEditGrupo && g.owner_area_id === ctx.areaId),
+  }))
+  const commercialConditionsWithEdit = (commercialConditionsData ?? []).map((c) => ({
+    ...c,
+    canEdit: isAdmin || (canEditComercial && c.owner_area_id === ctx.areaId),
+  }))
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
       <MarketingTabs
         marketingItems={data ?? []}
         sections={parseSections(settings.marketing_sections)}
-        trainingItems={visibleTrainingItems}
-        famtours={famtoursData ?? []}
-        grupos={gruposData ?? []}
-        commercialConditions={commercialConditionsData ?? []}
+        trainingItems={trainingItemsWithEdit}
+        famtours={famtoursWithEdit}
+        grupos={gruposWithEdit}
+        commercialConditions={commercialConditionsWithEdit}
         products={products}
         periods={periods}
         tags={tagsData ?? []}
         tamojuntoWinnersRaw={settings.tamojunto_winners}
         podviajarRaw={settings.podviajar}
         corridaVendasRaw={settings.corrida_vendas}
-        allowedTabs={allowedTabs}
-        isAdmin={!isCollaborator}
+        canCreateTraining={canEditTraining}
+        canCreateFamtour={canEditFamtour}
+        canCreateGrupo={canEditGrupo}
+        canCreateComercial={canEditComercial}
+        userRole={ctx.role}
+        userAreaId={ctx.areaId}
+        userCapabilities={ctx.capabilities}
+        isAdmin={isAdmin}
       />
     </div>
   )

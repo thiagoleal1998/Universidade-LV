@@ -83,7 +83,7 @@ function parse(raw: string): WinnersData {
   }
 }
 
-export function TamoJuntoWinnersManager({ raw }: { raw: string }) {
+export function TamoJuntoWinnersManager({ raw, isAdmin = true }: { raw: string; isAdmin?: boolean }) {
   const [data, setData] = useState<WinnersData>(() => parse(raw))
   const [openSet, setOpenSet] = useState<number[]>(() => (parse(raw).months.length === 1 ? [0] : []))
   const [isPending, startTransition] = useTransition()
@@ -128,7 +128,8 @@ export function TamoJuntoWinnersManager({ raw }: { raw: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit} className="max-w-2xl">
+    <fieldset disabled={!isAdmin} className="space-y-6 border-0 p-0 m-0">
       {/* Ativar */}
       <div className="bg-card border rounded-xl p-6 flex items-center justify-between">
         <div>
@@ -283,6 +284,7 @@ export function TamoJuntoWinnersManager({ raw }: { raw: string }) {
           {isPending ? 'Salvando...' : 'Salvar premiação'}
         </Button>
       </div>
+    </fieldset>
     </form>
   )
 }

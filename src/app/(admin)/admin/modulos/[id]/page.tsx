@@ -11,9 +11,9 @@ import { requireModulePage } from '@/lib/authz'
 
 export default async function EditModulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await requireModulePage(id)
+  const ctx = await requireModulePage(id)
 
-  // adminClient: posse validada no guard; RLS esconderia rascunhos do colaborador
+  // adminClient: precisa enxergar módulo de qualquer área (modo leitura)
   const db = createAdminClient()
 
   const [{ data: modData, error: modError }, { data: lessonsData }, { data: allModulesData }] = await Promise.all([
@@ -31,6 +31,13 @@ export default async function EditModulePage({ params }: { params: Promise<{ id:
 
   if (!mod) notFound()
 
+  // Módulo sem curso é global (só admin edita); com curso, posse vem do curso pai.
+  let canEdit = ctx.role === 'admin'
+  if (!canEdit && mod.course_id) {
+    const { data: course } = await db.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
+    canEdit = ctx.capabilities.includes('courses') && course?.owner_area_id === ctx.areaId
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -43,7 +50,7 @@ export default async function EditModulePage({ params }: { params: Promise<{ id:
         </Badge>
       </div>
 
-      <ModuleEditor mod={{ ...mod, lessons }} allModules={allModules} />
+      <ModuleEditor mod={{ ...mod, lessons }} allModules={allModules} canEdit={canEdit} />
     </div>
   )
 }

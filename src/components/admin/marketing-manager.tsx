@@ -32,6 +32,7 @@ import {
 } from '@/app/actions/marketing'
 import type { MarketingCategory, MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
 import { getTagColor } from '@/lib/tag-colors'
+import { capabilityForMarketingCategory, type Capability } from '@/lib/capabilities'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -44,6 +45,7 @@ type ItemStatus = 'draft' | 'published' | 'scheduled'
 type MarketingItem = {
   id: string
   category: string
+  owner_area_id?: string | null
   title: string
   description: string
   content: string
@@ -563,7 +565,7 @@ function StatusBadge({ item }: { item: MarketingItem }) {
   return null
 }
 
-function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; periods?: MarketingPeriod[]; tags?: Tag[] }) {
+function VisualCard({ item, cat, products, periods = [], tags = [], canEdit = true }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; periods?: MarketingPeriod[]; tags?: Tag[]; canEdit?: boolean }) {
   const [editing, setEditing] = useState(false)
   const [lightbox, setLightbox] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -671,10 +673,14 @@ function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: Ma
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
-            <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+            {canEdit && (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+              </>
+            )}
           </div>
         </div>
         {(item.audience || item.scope || product || period || item.publish_at || item.expires_at || (item.status && item.status !== 'published') || restrictedToTags) && (
@@ -715,7 +721,7 @@ function VisualCard({ item, cat, products, periods = [], tags = [] }: { item: Ma
   )
 }
 
-function LinkRow({ item, cat, products, tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[] }) {
+function LinkRow({ item, cat, products, tags = [], canEdit = true }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[]; canEdit?: boolean }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -774,16 +780,20 @@ function LinkRow({ item, cat, products, tags = [] }: { item: MarketingItem; cat:
         >
           <ExternalLink className="w-4 h-4" />
         </a>
-        <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
-          <Pencil className="w-4 h-4" />
-        </Button>
-        <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+        {canEdit && (
+          <>
+            <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+          </>
+        )}
       </div>
     </div>
   )
 }
 
-function TextRow({ item, cat, products, tags = [] }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[] }) {
+function TextRow({ item, cat, products, tags = [], canEdit = true }: { item: MarketingItem; cat: CatDef; products: MarketingProduct[]; tags?: Tag[]; canEdit?: boolean }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -833,10 +843,14 @@ function TextRow({ item, cat, products, tags = [] }: { item: MarketingItem; cat:
           >
             <Copy className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
-            <Pencil className="w-4 h-4" />
-          </Button>
-          <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+          {canEdit && (
+            <>
+              <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <DeleteConfirm label={cat.deleteLabel} onConfirm={handleDelete} />
+            </>
+          )}
         </div>
       </div>
       {expanded && item.content && (
@@ -1042,9 +1056,13 @@ function PeriodsManager({ periods }: { periods: MarketingPeriod[] }) {
   )
 }
 
-function CategorySection({ cat, items, products, periods = [], tags = [] }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[]; periods?: MarketingPeriod[]; tags?: Tag[] }) {
+function CategorySection({ cat, items, products, periods = [], tags = [], canCreate = true, isAdmin = true, userAreaId = null }: { cat: CatDef; items: MarketingItem[]; products: MarketingProduct[]; periods?: MarketingPeriod[]; tags?: Tag[]; canCreate?: boolean; isAdmin?: boolean; userAreaId?: string | null }) {
   const [showForm, setShowForm] = useState(false)
   const [isCreating, startCreate] = useTransition()
+
+  function canEditItem(item: MarketingItem) {
+    return isAdmin || (canCreate && item.owner_area_id === userAreaId)
+  }
 
   function handleCreate(data: SubmitData) {
     startCreate(async () => {
@@ -1056,14 +1074,14 @@ function CategorySection({ cat, items, products, periods = [], tags = [] }: { ca
 
   return (
     <div className="space-y-3">
-      {!showForm && (
+      {!showForm && canCreate && (
         <Button onClick={() => setShowForm(true)} size="sm" className="gap-2">
           <Plus className="w-4 h-4" />
           Adicionar
         </Button>
       )}
 
-      {showForm && (
+      {showForm && canCreate && (
         <div className="bg-muted/40 border border-dashed rounded-lg p-4">
           <p className="text-sm font-medium text-foreground mb-3">Novo item</p>
           <ItemForm cat={cat} products={products} periods={periods} tags={tags} onSubmit={handleCreate} isPending={isCreating} onCancel={() => setShowForm(false)} />
@@ -1078,15 +1096,15 @@ function CategorySection({ cat, items, products, periods = [], tags = [] }: { ca
 
       {cat.type === 'visual' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} products={products} periods={periods} tags={tags} />)}
+          {items.map((item) => <VisualCard key={item.id} item={item} cat={cat} products={products} periods={periods} tags={tags} canEdit={canEditItem(item)} />)}
         </div>
       ) : cat.type === 'link' ? (
         <div className="space-y-2">
-          {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} products={products} tags={tags} />)}
+          {items.map((item) => <LinkRow key={item.id} item={item} cat={cat} products={products} tags={tags} canEdit={canEditItem(item)} />)}
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((item) => <TextRow key={item.id} item={item} cat={cat} products={products} tags={tags} />)}
+          {items.map((item) => <TextRow key={item.id} item={item} cat={cat} products={products} tags={tags} canEdit={canEditItem(item)} />)}
         </div>
       )}
     </div>
@@ -1109,13 +1127,20 @@ export function MarketingManager({
   products = [],
   periods = [],
   tags = [],
+  userRole = 'admin',
+  userAreaId = null,
+  userCapabilities = [],
 }: {
   items: MarketingItem[]
   sections?: MarketingSection[]
   products?: MarketingProduct[]
   periods?: MarketingPeriod[]
   tags?: Tag[]
+  userRole?: 'admin' | 'collaborator'
+  userAreaId?: string | null
+  userCapabilities?: Capability[]
 }) {
+  const isAdmin = userRole === 'admin'
   const cats = (sections && sections.length > 0 ? sections : DEFAULT_SECTIONS).map(sectionToCatDef)
   const [activeTab, setActiveTab] = useState(cats[0]?.key ?? 'visual')
   const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
@@ -1125,6 +1150,9 @@ export function MarketingManager({
   const effectiveKey = isVisual ? visualSubTab : activeTab
   const tabItems = items.filter((i) => i.category === effectiveKey)
   const effectiveCat = isVisual && cat ? { ...cat, key: effectiveKey } : cat
+  // Categoria → capacidade exigida pra criar/editar (mesma regra das actions,
+  // capabilityForMarketingCategory já mapeia aereo/comercial/default→marketing).
+  const canCreate = isAdmin || userCapabilities.includes(capabilityForMarketingCategory(effectiveKey))
 
   if (cats.length === 0) return (
     <p className="text-sm text-muted-foreground text-center py-16">
@@ -1175,8 +1203,8 @@ export function MarketingManager({
         </div>
       )}
 
-      {/* Gerenciar Produtos e Períodos — exibidos apenas na aba visual */}
-      {isVisual && (
+      {/* Gerenciar Produtos e Períodos — exibidos apenas na aba visual, admin-only (mutação já é requireAdmin() nas actions) */}
+      {isVisual && isAdmin && (
         <div className="mt-3 mb-2 flex flex-wrap gap-6">
           <ProductsManager products={products} />
           <PeriodsManager periods={periods} />
@@ -1186,7 +1214,7 @@ export function MarketingManager({
       {!isVisual && <div className="mb-6" />}
 
       {effectiveCat && (
-        <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} products={products} periods={periods} tags={tags} />
+        <CategorySection key={effectiveKey} cat={effectiveCat} items={tabItems} products={products} periods={periods} tags={tags} canCreate={canCreate} isAdmin={isAdmin} userAreaId={userAreaId} />
       )}
     </div>
   )

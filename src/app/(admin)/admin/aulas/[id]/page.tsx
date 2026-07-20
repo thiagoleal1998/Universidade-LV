@@ -14,7 +14,7 @@ import { requireLessonPage } from '@/lib/authz'
 
 export default async function EditLessonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await requireLessonPage(id)
+  const ctx = await requireLessonPage(id)
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -42,6 +42,15 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   const attachments = (attachmentsData as LessonAttachment[] | null) ?? []
 
   if (!lesson) notFound()
+
+  let canEdit = ctx.role === 'admin'
+  if (!canEdit) {
+    const { data: mod } = await adminClient.from('modules').select('course_id').eq('id', lesson.module_id).single()
+    if (mod?.course_id) {
+      const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
+      canEdit = ctx.capabilities.includes('courses') && course?.owner_area_id === ctx.areaId
+    }
+  }
 
   const photoUrls = photos.map((p) => ({
     ...p,
@@ -96,7 +105,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
             {lesson.is_published ? 'Publicada' : 'Rascunho'}
           </Badge>
         </div>
-        <LessonEditor lesson={lesson} photos={photoUrls} attachments={attachmentUrls} task={task} />
+        <LessonEditor lesson={lesson} photos={photoUrls} attachments={attachmentUrls} task={task} canEdit={canEdit} />
       </div>
 
       {task && (
@@ -111,6 +120,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
             responses={responses}
             questions={task.questions}
             lessonId={id}
+            canGrade={canEdit}
           />
         </div>
       )}

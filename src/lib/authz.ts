@@ -125,37 +125,47 @@ export async function requireAdminPage(): Promise<AdminContext> {
   return ctx
 }
 
-// Guards de página de DETALHE com checagem de posse — colaborador não abre
-// conteúdo de outra área nem global digitando a URL direto.
+// Guard de página de CONTEÚDO (Cursos/Marketing): qualquer admin ou colaborador
+// ativo pode entrar — a visibilidade de conteúdo deixou de depender de
+// capacidade (colaborador vê tudo; só EDITAR continua exigindo
+// capacidade+posse, checado em requireContentAccess/require*Access nas
+// actions de mutação). getAdminContext() != null já é garantido pelo layout,
+// mas cada página revalida por padrão do projeto.
+export async function requireContentPage(): Promise<AdminContext> {
+  const ctx = await getAdminContext()
+  if (!ctx) redirect('/dashboard')
+  return ctx
+}
+
+// Guards de página de DETALHE — só confirmam que a entidade existe (404-like).
+// Não bloqueiam mais por posse: colaborador abre detalhe de conteúdo de
+// qualquer área, em modo leitura (a página calcula `canEdit` comparando
+// owner_area_id com ctx.areaId, e os componentes escondem os controles de
+// mutação quando canEdit é false — a mutação em si continua protegida pelos
+// guards de ACTION, que não mudaram).
 export async function requireCoursePage(courseId: string): Promise<AdminContext> {
-  const ctx = await requirePageCapability('courses')
+  const ctx = await requireContentPage()
   if (ctx.role === 'admin') return ctx
   const adminClient = createAdminClient()
-  const { data } = await adminClient.from('courses').select('owner_area_id').eq('id', courseId).single()
-  if (!data || data.owner_area_id !== ctx.areaId) redirect('/admin/cursos')
+  const { data } = await adminClient.from('courses').select('id').eq('id', courseId).single()
+  if (!data) redirect('/admin/cursos')
   return ctx
 }
 
 export async function requireModulePage(moduleId: string): Promise<AdminContext> {
-  const ctx = await requirePageCapability('courses')
+  const ctx = await requireContentPage()
   if (ctx.role === 'admin') return ctx
   const adminClient = createAdminClient()
-  const { data: mod } = await adminClient.from('modules').select('course_id').eq('id', moduleId).single()
-  if (!mod?.course_id) redirect('/admin/modulos')
-  const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
-  if (!course || course.owner_area_id !== ctx.areaId) redirect('/admin/modulos')
+  const { data: mod } = await adminClient.from('modules').select('id').eq('id', moduleId).single()
+  if (!mod) redirect('/admin/modulos')
   return ctx
 }
 
 export async function requireLessonPage(lessonId: string): Promise<AdminContext> {
-  const ctx = await requirePageCapability('courses')
+  const ctx = await requireContentPage()
   if (ctx.role === 'admin') return ctx
   const adminClient = createAdminClient()
-  const { data: lesson } = await adminClient.from('lessons').select('module_id').eq('id', lessonId).single()
+  const { data: lesson } = await adminClient.from('lessons').select('id').eq('id', lessonId).single()
   if (!lesson) redirect('/admin/modulos')
-  const { data: mod } = await adminClient.from('modules').select('course_id').eq('id', lesson.module_id).single()
-  if (!mod?.course_id) redirect('/admin/modulos')
-  const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
-  if (!course || course.owner_area_id !== ctx.areaId) redirect('/admin/modulos')
   return ctx
 }

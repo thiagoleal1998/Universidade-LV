@@ -42,10 +42,12 @@ export function TaskResponsesPanel({
   responses,
   questions,
   lessonId,
+  canGrade = true,
 }: {
   responses: Response[]
   questions: Question[]
   lessonId: string
+  canGrade?: boolean
 }) {
   const router = useRouter()
   const [openId, setOpenId] = useState<string | null>(null)
@@ -188,7 +190,8 @@ export function TaskResponsesPanel({
                             step={0.5}
                             value={qGradeVal}
                             onChange={(e) => handleAnswerGradeChange(resp.id, ans.question_id, e.target.value)}
-                            className="w-16 border border-input rounded-lg px-2 py-1 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-center"
+                            disabled={!canGrade}
+                            className="w-16 border border-input rounded-lg px-2 py-1 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-center disabled:opacity-50"
                             placeholder={`0–${maxPts}`}
                           />
                           <span className="text-xs text-muted-foreground">/ {maxPts}</span>
@@ -258,7 +261,7 @@ export function TaskResponsesPanel({
                 })}
 
                 {/* Correção — nota total + feedback */}
-                <div className="border-t border-border pt-4 space-y-3">
+                <fieldset disabled={!canGrade} className="border-0 border-t border-border pt-4 space-y-3 p-0 m-0">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Nota Final</p>
                     {auto > 0 && (
@@ -309,7 +312,7 @@ export function TaskResponsesPanel({
                       Corrigido em {new Date(resp.graded_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
                   )}
-                </div>
+                </fieldset>
               </div>
             )}
           </div>

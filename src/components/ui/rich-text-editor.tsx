@@ -28,9 +28,10 @@ interface RichTextEditorProps {
   content: string
   onChange: (value: string) => void
   onImageUpload?: (file: File) => Promise<string | null>
+  editable?: boolean
 }
 
-export function RichTextEditor({ content, onChange, onImageUpload }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, onImageUpload, editable = true }: RichTextEditorProps) {
   const imgInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingImg, setIsUploadingImg] = useState(false)
 
@@ -46,6 +47,7 @@ export function RichTextEditor({ content, onChange, onImageUpload }: RichTextEdi
       }),
     ],
     content,
+    editable,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
@@ -88,6 +90,7 @@ export function RichTextEditor({ content, onChange, onImageUpload }: RichTextEdi
 
   return (
     <div className="border rounded-lg overflow-hidden">
+      {editable && (
       <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/40">
         {toolbar.map(({ icon: Icon, action, active, label }) => (
           <Button
@@ -133,6 +136,7 @@ export function RichTextEditor({ content, onChange, onImageUpload }: RichTextEdi
           </>
         )}
       </div>
+      )}
       <EditorContent editor={editor} />
     </div>
   )

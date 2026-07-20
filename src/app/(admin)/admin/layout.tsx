@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getAdminContext } from '@/lib/authz'
-import { NAV_CAPABILITIES } from '@/lib/capabilities'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminNotificationSound } from '@/components/admin/admin-notification-sound'
 import { PresenceHeartbeat } from '@/components/ui/presence-heartbeat'
@@ -30,12 +29,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const profile = profileData as { full_name: string; avatar_url: string; role: string } | null
 
-  // Admin vê tudo (null = sem filtro); colaborador só os itens da área dele
+  // Admin vê tudo (null = sem filtro). Colaborador vê Cursos e Marketing
+  // sempre, independente de capacidade — ele enxerga todo o conteúdo da
+  // plataforma nessas duas telas, só não consegue editar o que não é seu
+  // (checado por item dentro de cada tela, e de verdade nas server actions).
   const allowedHrefs = ctx.role === 'admin'
     ? null
-    : Object.entries(NAV_CAPABILITIES)
-        .filter(([, caps]) => caps.some((c) => ctx.capabilities.includes(c)))
-        .map(([href]) => href)
+    : ['/admin/cursos', '/admin/marketing']
 
   return (
     <div className="flex h-screen bg-muted/30">

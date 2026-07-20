@@ -11,9 +11,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
 import { ImageIcon, Upload, UserCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import type { Course } from '@/lib/supabase/types'
 
-export function CourseEditor({ course }: { course: Course }) {
+export function CourseEditor({ course, canEdit = true }: { course: Course; canEdit?: boolean }) {
   const [isPending, startTransition] = useTransition()
   const [isToggling, startToggle] = useTransition()
   const [isUploading, startUpload] = useTransition()
@@ -85,30 +86,32 @@ export function CourseEditor({ course }: { course: Course }) {
     <form action={handleSave} className="bg-card border rounded-xl overflow-hidden">
       {/* Cover image */}
       <div
-        className="relative w-full bg-muted group cursor-pointer"
+        className={cn('relative w-full bg-muted group', canEdit && 'cursor-pointer')}
         style={{ aspectRatio: '16/9' }}
-        onClick={() => fileRef.current?.click()}
+        onClick={() => canEdit && fileRef.current?.click()}
       >
         {coverUrl ? (
           <Image src={coverUrl} alt={course.name} fill className="object-cover" />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
             <ImageIcon className="w-8 h-8" />
-            <span className="text-sm">Clique para adicionar imagem de capa</span>
+            {canEdit && <span className="text-sm">Clique para adicionar imagem de capa</span>}
           </div>
         )}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-sm font-medium">
-          <Upload className="w-4 h-4" />
-          {isUploading ? 'Enviando...' : 'Alterar imagem'}
-        </div>
+        {canEdit && (
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-sm font-medium">
+            <Upload className="w-4 h-4" />
+            {isUploading ? 'Enviando...' : 'Alterar imagem'}
+          </div>
+        )}
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
       </div>
       <p className="px-6 pt-2 pb-0 text-xs text-muted-foreground">
         Tamanho ideal: <strong>1280 × 720 px</strong> (proporção 16:9) · JPG ou PNG
       </p>
 
-      {/* Fields */}
-      <div className="p-6 space-y-4">
+      {/* Fields — fieldset desabilita em cascata inputs/botões quando não pode editar */}
+      <fieldset disabled={!canEdit} className="p-6 space-y-4">
         <div className="space-y-2">
           <Label htmlFor="name">Nome do curso</Label>
           <Input id="name" name="name" value={name} onChange={e => setName(e.target.value)} required />
@@ -214,7 +217,7 @@ export function CourseEditor({ course }: { course: Course }) {
             Status: <strong>{isPublished ? 'Publicado' : 'Rascunho'}</strong>
           </span>
         </div>
-      </div>
+      </fieldset>
       <ImageCropModal
         imageSrc={cropSrc}
         onClose={handleCropClose}

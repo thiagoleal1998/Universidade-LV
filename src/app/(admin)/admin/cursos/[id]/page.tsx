@@ -12,14 +12,16 @@ import { requireCoursePage } from '@/lib/authz'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 type ModuleWithCount = Module & { lessons: { count: number }[] }
+type CourseWithOwner = Course & { owner_area_id: string | null }
 
 export default async function EditCursoPpage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await requireCoursePage(id)
   const isAdmin = ctx.role === 'admin'
 
-  // adminClient: a posse já foi validada no guard; para colaborador, a RLS
-  // esconderia rascunhos do próprio curso via client de sessão.
+  // adminClient: precisa enxergar o curso mesmo que seja de outra área
+  // (colaborador agora vê tudo em modo leitura) — RLS via client de sessão
+  // esconderia rascunhos de qualquer forma.
   const db = createAdminClient()
 
   const [{ data: courseData, error: courseError }, { data: modulesData }] = await Promise.all([
@@ -29,10 +31,12 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
 
   if (courseError) console.error('[Admin] Erro ao buscar curso id=%s:', id, courseError)
 
-  const course = courseData as Course | null
+  const course = courseData as CourseWithOwner | null
   const modules = (modulesData ?? []) as ModuleWithCount[]
 
   if (!course) notFound()
+
+  const canEdit = isAdmin || (ctx.capabilities.includes('courses') && course.owner_area_id === ctx.areaId)
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
@@ -54,19 +58,19 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
         </Link>
       </div>
 
-      <CourseEditor course={course} />
+      <CourseEditor course={course} canEdit={canEdit} />
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-foreground">
             Módulos ({modules.length})
           </h3>
-          <CreateModuleDialog courseId={course.id} />
+          {canEdit && <CreateModuleDialog courseId={course.id} />}
         </div>
 
         {modules.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-10 bg-card border rounded-lg">
-            Nenhum módulo neste curso ainda. Clique em "Novo Módulo" para começar.
+            Nenhum módulo neste curso ainda.{canEdit && ' Clique em "Novo Módulo" para começar.'}
           </p>
         ) : (
           <ModulesList modules={modules} isAdmin={isAdmin} />

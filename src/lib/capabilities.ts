@@ -16,13 +16,6 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   grupos: 'Grupos',
 }
 
-// Sidebar admin: href → capacidades que liberam o item para colaborador.
-// Hrefs ausentes daqui são admin-only.
-export const NAV_CAPABILITIES: Record<string, Capability[]> = {
-  '/admin/cursos': ['courses'],
-  '/admin/marketing': ['trainings', 'marketing', 'comercial', 'aereo', 'famtours', 'grupos'],
-}
-
 export const MARKETING_CAPABILITIES: Capability[] = ['trainings', 'marketing', 'comercial', 'aereo', 'famtours', 'grupos']
 
 // Categoria de marketing_items → capacidade exigida para mexer nela.

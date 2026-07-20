@@ -31,7 +31,7 @@ import { useRouter } from 'next/navigation'
 type ModuleWithLessons = Module & { lessons: Lesson[] }
 type ModuleSummary = Pick<Module, 'id' | 'title'>
 
-export function ModuleEditor({ mod, allModules = [] }: { mod: ModuleWithLessons; allModules?: ModuleSummary[] }) {
+export function ModuleEditor({ mod, allModules = [], canEdit = true }: { mod: ModuleWithLessons; allModules?: ModuleSummary[]; canEdit?: boolean }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isCreatingLesson, setCreatingLesson] = useTransition()
@@ -93,7 +93,7 @@ export function ModuleEditor({ mod, allModules = [] }: { mod: ModuleWithLessons;
   }
 
   return (
-    <div className="space-y-8">
+    <fieldset disabled={!canEdit} className="space-y-8 border-0 p-0 m-0">
       {/* Formulário do módulo */}
       <div className="bg-card border rounded-lg p-6">
         <h3 className="font-semibold mb-4">Informações do Módulo</h3>
@@ -278,6 +278,6 @@ export function ModuleEditor({ mod, allModules = [] }: { mod: ModuleWithLessons;
           </form>
         </div>
       </div>
-    </div>
+    </fieldset>
   )
 }

@@ -112,10 +112,11 @@ function AddMaterialForm({ trainingId, onDone }: { trainingId: string; onDone: (
   )
 }
 
-function MaterialsList({ materials, onDelete, isPending }: {
+function MaterialsList({ materials, onDelete, isPending, canEdit = true }: {
   materials: TrainingMaterial[]
   onDelete: (id: string) => void
   isPending: boolean
+  canEdit?: boolean
 }) {
   const sorted = [...materials].sort((a, b) => a.order_index - b.order_index)
   if (sorted.length === 0) return <p className="text-sm text-muted-foreground py-1">Nenhum material adicionado ainda.</p>
@@ -126,9 +127,11 @@ function MaterialsList({ materials, onDelete, isPending }: {
           <MaterialTypeIcon type={mat.type} />
           <span className="text-xs font-mono text-muted-foreground w-8 uppercase shrink-0">{mat.type}</span>
           <a href={mat.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-foreground hover:text-primary truncate font-medium">{mat.title}</a>
-          <button onClick={() => onDelete(mat.id)} disabled={isPending} className="text-muted-foreground hover:text-red-500 transition-colors p-0.5">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {canEdit && (
+            <button onClick={() => onDelete(mat.id)} disabled={isPending} className="text-muted-foreground hover:text-red-500 transition-colors p-0.5">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -223,7 +226,9 @@ function PreviewModal({ item, onClose }: { item: TrainingItem; onClose: () => vo
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-export function TrainingsManager({ items }: { items: TrainingItem[] }) {
+type TrainingItemWithEdit = TrainingItem & { canEdit?: boolean }
+
+export function TrainingsManager({ items, canCreate = true }: { items: TrainingItemWithEdit[]; canCreate?: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState<TrainingItem | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -477,11 +482,11 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
               <Button type="button" variant="ghost" onClick={resetForm}>Cancelar</Button>
             </div>
           </form>
-        ) : (
+        ) : canCreate ? (
           <Button onClick={() => { setFormType('link'); setShowForm(true) }} className="gap-2">
             <Plus className="w-4 h-4" /> Novo treinamento
           </Button>
-        )}
+        ) : null}
 
         {/* ── List ── */}
         {items.length === 0 && !showForm ? (
@@ -545,7 +550,7 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
                       </button>
 
                       {/* Publish toggle */}
-                      {item.is_active ? (
+                      {(item.canEdit ?? true) && (item.is_active ? (
                         <button
                           onClick={() => handleTogglePublish(item)}
                           disabled={isPending}
@@ -563,7 +568,7 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Publicar
                         </button>
-                      )}
+                      ))}
 
                       {/* Materials */}
                       <button
@@ -579,31 +584,35 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
                         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
 
-                      {/* Edit */}
-                      <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Editar">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      {(item.canEdit ?? true) && (
+                        <>
+                          {/* Edit */}
+                          <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Editar">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
 
-                      {/* Delete */}
-                      <AlertDialog>
-                        <AlertDialogTrigger
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-muted transition-colors"
-                          disabled={isPending}
-                          title="Excluir"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir treinamento?</AlertDialogTitle>
-                            <AlertDialogDescription>&quot;{item.title}&quot; e todos os materiais serão removidos permanentemente.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(item.id)}>Excluir</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                          {/* Delete */}
+                          <AlertDialog>
+                            <AlertDialogTrigger
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-muted transition-colors"
+                              disabled={isPending}
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir treinamento?</AlertDialogTitle>
+                                <AlertDialogDescription>&quot;{item.title}&quot; e todos os materiais serão removidos permanentemente.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(item.id)}>Excluir</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -611,14 +620,14 @@ export function TrainingsManager({ items }: { items: TrainingItem[] }) {
                   {isExpanded && (
                     <div className="border-t border-border px-4 pb-4 pt-3 bg-muted/20 space-y-3">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Materiais de apoio</p>
-                      <MaterialsList materials={materials} onDelete={handleDeleteMaterial} isPending={isPending} />
-                      {addingMaterialFor === item.id ? (
+                      <MaterialsList materials={materials} onDelete={handleDeleteMaterial} isPending={isPending} canEdit={item.canEdit ?? true} />
+                      {(item.canEdit ?? true) && (addingMaterialFor === item.id ? (
                         <AddMaterialForm trainingId={item.id} onDone={() => setAddingMaterialFor(null)} />
                       ) : (
                         <Button type="button" size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => setAddingMaterialFor(item.id)}>
                           <Plus className="w-3.5 h-3.5" /> Adicionar material
                         </Button>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>

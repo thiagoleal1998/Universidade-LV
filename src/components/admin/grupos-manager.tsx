@@ -29,7 +29,9 @@ function formatPeriod(start: string | null, end: string | null): string {
   return fmt(start)
 }
 
-export function GruposManager({ items }: { items: Grupo[] }) {
+type GrupoWithEdit = Grupo & { canEdit?: boolean }
+
+export function GruposManager({ items, canCreate = true }: { items: GrupoWithEdit[]; canCreate?: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState<Grupo | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -212,11 +214,11 @@ export function GruposManager({ items }: { items: Grupo[] }) {
             <Button type="button" variant="ghost" onClick={resetForm}>Cancelar</Button>
           </div>
         </form>
-      ) : (
+      ) : canCreate ? (
         <Button onClick={() => setShowForm(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Novo grupo
         </Button>
-      )}
+      ) : null}
 
       {/* ── List ── */}
       {items.length === 0 && !showForm ? (
@@ -254,31 +256,33 @@ export function GruposManager({ items }: { items: Grupo[] }) {
                     <ExternalLink className="w-3 h-3" /> {item.url}
                   </a>
                 )}
-                <div className="flex items-center gap-1.5 pt-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(item)} className="gap-1.5 h-7 text-xs">
-                    <Pencil className="w-3 h-3" /> Editar
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleToggle(item)} disabled={isPending} className="h-7 text-xs">
-                    {item.is_active ? 'Despublicar' : 'Publicar'}
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger render={<Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-red-500 gap-1" />}>
-                      <Trash2 className="w-3 h-3" /> Excluir
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir grupo?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          O grupo <strong>{item.title}</strong> será removido e sairá da página de Grupos dos membros. Essa ação não pode ser desfeita.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(item.id)}>Excluir</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                {(item.canEdit ?? true) && (
+                  <div className="flex items-center gap-1.5 pt-2">
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(item)} className="gap-1.5 h-7 text-xs">
+                      <Pencil className="w-3 h-3" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleToggle(item)} disabled={isPending} className="h-7 text-xs">
+                      {item.is_active ? 'Despublicar' : 'Publicar'}
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger render={<Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-red-500 gap-1" />}>
+                        <Trash2 className="w-3 h-3" /> Excluir
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir grupo?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            O grupo <strong>{item.title}</strong> será removido e sairá da página de Grupos dos membros. Essa ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(item.id)}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                )}
               </div>
             </div>
           ))}
