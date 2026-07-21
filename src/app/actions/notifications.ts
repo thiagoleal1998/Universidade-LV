@@ -14,6 +14,7 @@ export type Notification = {
   link: string
   read_at: string | null
   created_at: string
+  area_tag?: string | null
 }
 
 export async function getNotifications(): Promise<Notification[]> {
@@ -24,7 +25,7 @@ export async function getNotifications(): Promise<Notification[]> {
   const adminClient = createAdminClient()
   const { data } = await adminClient
     .from('notifications')
-    .select('id, type, title, body, link, read_at, created_at')
+    .select('id, type, title, body, link, read_at, created_at, area_tag')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(20)
@@ -42,7 +43,7 @@ export async function getRecentSoundNotifications(sinceISO: string, types: strin
   const adminClient = createAdminClient()
   const { data } = await adminClient
     .from('notifications')
-    .select('id, type, title, body, link, read_at, created_at')
+    .select('id, type, title, body, link, read_at, created_at, area_tag')
     .eq('user_id', user.id)
     .in('type', types)
     .gt('created_at', sinceISO)
@@ -164,5 +165,54 @@ export async function notifyAllAdmins(
 
   await adminClient.from('notifications').insert(
     admins.map((a) => ({ user_id: a.id, ...opts }))
+  )
+}
+
+// Notify collaborators who own a course (capacidade 'courses' + área dona do
+// curso) — sempre notifica admins também, com area_tag = nome da área quando
+// havia um dono, pra marcar visualmente "isso veio de uma área de colaborador"
+// (cópia pro admin). Curso sem dono (owner_area_id null) cai no mesmo
+// comportamento de notifyAllAdmins de sempre (sem area_tag).
+export async function notifyCourseOwners(
+  courseId: string | null,
+  actorId: string,
+  opts: { type: string; title: string; body: string; link: string }
+) {
+  const adminClient = createAdminClient()
+
+  let ownerAreaName: string | null = null
+  if (courseId) {
+    const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', courseId).single()
+    if (course?.owner_area_id) {
+      const { data: area } = await adminClient
+        .from('collaborator_areas')
+        .select('id, name, capabilities')
+        .eq('id', course.owner_area_id)
+        .single()
+      if (area?.capabilities?.includes('courses')) {
+        ownerAreaName = area.name
+        const { data: owners } = await adminClient
+          .from('profiles')
+          .select('id')
+          .eq('collaborator_area_id', area.id)
+          .eq('active', true)
+          .neq('id', actorId)
+        if (owners?.length) {
+          await adminClient.from('notifications').insert(owners.map((o) => ({ user_id: o.id, ...opts })))
+        }
+      }
+    }
+  }
+
+  const { data: admins } = await adminClient
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .neq('id', actorId)
+
+  if (!admins?.length) return
+
+  await adminClient.from('notifications').insert(
+    admins.map((a) => ({ user_id: a.id, ...opts, area_tag: ownerAreaName }))
   )
 }

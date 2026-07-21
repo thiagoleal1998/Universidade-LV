@@ -5,7 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireLessonAccess } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
-import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
+import { notifyCourseOwners, notifyUser } from '@/app/actions/notifications'
+import { toOne } from '@/lib/supabase/relations'
 
 export type QuestionType = 'short_text' | 'long_text' | 'multiple_choice' | 'checkboxes' | 'file_upload'
 
@@ -202,7 +203,8 @@ export async function submitTaskResponse(
   const { error: ansError } = await supabase.from('lesson_task_answers').insert(rows)
   if (ansError) return { error: ansError.message }
 
-  // Notifica todos os admins sobre nova tarefa aguardando correção
+  // Notifica o colaborador dono do curso (+ admins, com area_tag) sobre nova
+  // tarefa aguardando correção.
   const { data: taskData } = await supabase
     .from('lesson_tasks')
     .select('title, lessons(title)')
@@ -210,7 +212,16 @@ export async function submitTaskResponse(
     .single()
   const taskTitle = (taskData as any)?.title ?? 'Tarefa'
   const lessonTitle = (taskData as any)?.lessons?.title ?? ''
-  await notifyAllAdmins(user.id, {
+
+  const adminClient = createAdminClient()
+  const { data: lessonData } = await adminClient
+    .from('lessons')
+    .select('module_id, modules(course_id)')
+    .eq('id', lessonId)
+    .single()
+  const courseId = toOne(lessonData?.modules)?.course_id ?? null
+
+  await notifyCourseOwners(courseId, user.id, {
     type: 'task_submitted',
     title: `Nova tarefa aguardando correção`,
     body: `${taskTitle}${lessonTitle ? ` · ${lessonTitle}` : ''} — enviada por um aluno.`,

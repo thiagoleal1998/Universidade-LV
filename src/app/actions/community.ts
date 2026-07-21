@@ -2,8 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { notifyUser, notifyAllAdmins } from '@/app/actions/notifications'
-import { requireAdmin } from '@/lib/authz'
+import { notifyUser, notifyCourseOwners } from '@/app/actions/notifications'
+import { requireCourseAccess } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 
 export async function createPost(courseId: string, formData: FormData) {
@@ -27,7 +27,7 @@ export async function createPost(courseId: string, formData: FormData) {
   const { data: profileData } = await supabase.from('profiles').select('role, full_name').eq('id', user.id).single()
   if (profileData?.role !== 'admin' && post) {
     const posterName = profileData?.full_name || 'Um membro'
-    notifyAllAdmins(user.id, {
+    notifyCourseOwners(courseId, user.id, {
       type: 'community_new_post',
       title: `${posterName} criou uma nova discussão`,
       body: `"${title}"`,
@@ -57,7 +57,7 @@ export async function createPost(courseId: string, formData: FormData) {
 }
 
 export async function deletePost(postId: string, courseId: string) {
-  const ctx = await requireAdmin()
+  const ctx = await requireCourseAccess(courseId)
   if ('error' in ctx) return { error: ctx.error }
 
   const supabase = await createClient()
@@ -72,7 +72,7 @@ export async function deletePost(postId: string, courseId: string) {
 }
 
 export async function togglePinPost(postId: string, pinned: boolean, courseId: string) {
-  const ctx = await requireAdmin()
+  const ctx = await requireCourseAccess(courseId)
   if ('error' in ctx) return { error: ctx.error }
 
   const supabase = await createClient()
@@ -88,7 +88,7 @@ export async function togglePinPost(postId: string, pinned: boolean, courseId: s
 }
 
 export async function toggleLockPost(postId: string, locked: boolean, courseId: string) {
-  const ctx = await requireAdmin()
+  const ctx = await requireCourseAccess(courseId)
   if ('error' in ctx) return { error: ctx.error }
 
   const supabase = await createClient()
@@ -104,7 +104,7 @@ export async function toggleLockPost(postId: string, locked: boolean, courseId: 
 }
 
 export async function hidePost(postId: string, hidden: boolean, courseId: string) {
-  const ctx = await requireAdmin()
+  const ctx = await requireCourseAccess(courseId)
   if ('error' in ctx) return { error: ctx.error }
 
   const supabase = await createClient()
@@ -120,7 +120,7 @@ export async function hidePost(postId: string, hidden: boolean, courseId: string
 }
 
 export async function hideReply(replyId: string, hidden: boolean, postId: string, courseId: string) {
-  const ctx = await requireAdmin()
+  const ctx = await requireCourseAccess(courseId)
   if ('error' in ctx) return { error: ctx.error }
 
   const supabase = await createClient()
@@ -176,7 +176,7 @@ export async function createReply(postId: string, courseId: string, formData: Fo
 
   // Notify admins (skip if replier is admin)
   if (post && replierProfile?.role !== 'admin') {
-    notifyAllAdmins(user.id, {
+    notifyCourseOwners(courseId, user.id, {
       type: 'community_new_reply',
       title: `${replierName} respondeu em uma discussão`,
       body: `"${post.title}"`,

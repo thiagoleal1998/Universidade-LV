@@ -37,12 +37,17 @@ export function CommunityPosts({
   courseId,
   currentUserId,
   isAdmin,
+  canModerate = isAdmin,
   basePath = '/dashboard/comunidade',
 }: {
   posts: Post[]
   courseId: string
   currentUserId: string
   isAdmin: boolean
+  // Quem pode fixar/trancar/ocultar/excluir posts deste curso — admin sempre,
+  // ou colaborador dono do curso (ver admin/comunidade/[courseId]/page.tsx).
+  // Some do isAdmin de propósito: enquete continua admin-only (isAdmin puro).
+  canModerate?: boolean
   basePath?: string
 }) {
   const [showForm, setShowForm] = useState(false)
@@ -192,6 +197,7 @@ export function CommunityPosts({
               courseId={courseId}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
+              canModerate={canModerate}
               basePath={basePath}
             />
           ))}
@@ -206,12 +212,14 @@ function PostCard({
   courseId,
   currentUserId,
   isAdmin,
+  canModerate = isAdmin,
   basePath = '/dashboard/comunidade',
 }: {
   post: Post
   courseId: string
   currentUserId: string
   isAdmin: boolean
+  canModerate?: boolean
   basePath?: string
 }) {
   const [isDeleting, startDelete] = useTransition()
@@ -221,9 +229,9 @@ function PostCard({
 
   const replyCount = post.reply_count?.[0]?.count ?? 0
   const isAuthor = post.user_id === currentUserId
-  const canDelete = isAdmin || isAuthor
+  const canDelete = canModerate || isAuthor
   // Autor ainda vê o próprio conteúdo (com aviso); outros membros veem só um aviso genérico.
-  const isMaskedForViewer = post.is_hidden && !isAdmin && !isAuthor
+  const isMaskedForViewer = post.is_hidden && !canModerate && !isAuthor
 
   function handlePin() {
     startPin(async () => {
@@ -290,8 +298,8 @@ function PostCard({
           </div>
         </div>
 
-        {post.is_hidden && isAuthor && !isAdmin && (
-          <p className="text-xs text-amber-500 mb-1.5">Ocultado pela moderação — só você e admins veem.</p>
+        {post.is_hidden && isAuthor && !canModerate && (
+          <p className="text-xs text-amber-500 mb-1.5">Ocultado pela moderação — só você e a moderação veem.</p>
         )}
 
         {!isMaskedForViewer && post.body && (
@@ -332,7 +340,7 @@ function PostCard({
           </div>
 
           <div className="flex items-center gap-1">
-            {isAdmin && (
+            {canModerate && (
               <>
                 <button
                   onClick={handlePin}

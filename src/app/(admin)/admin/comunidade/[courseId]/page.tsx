@@ -29,7 +29,7 @@ export default async function AdminCourseComunidadePage({
 }: {
   params: Promise<{ courseId: string }>
 }) {
-  await requireContentPage()
+  const ctx = await requireContentPage()
 
   const { courseId } = await params
   const supabase = await createClient()
@@ -37,7 +37,7 @@ export default async function AdminCourseComunidadePage({
   if (!user) redirect('/login')
 
   const [{ data: courseData }, { data: profileData }, { data: postsData }] = await Promise.all([
-    supabase.from('courses').select('id, name').eq('id', courseId).single(),
+    supabase.from('courses').select('id, name, owner_area_id').eq('id', courseId).single(),
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase
       .from('community_posts')
@@ -50,6 +50,11 @@ export default async function AdminCourseComunidadePage({
   if (!courseData) notFound()
 
   const isAdmin = profileData?.role === 'admin'
+  // Colaborador modera só os cursos que possui (capacidade courses + dono) —
+  // a mutação em si é protegida por requireCourseAccess nas actions; isso é
+  // só pra esconder/mostrar os botões (mesmo padrão de canEdit já usado em
+  // Cursos/Marketing).
+  const canModerate = isAdmin || (ctx.capabilities.includes('courses') && courseData.owner_area_id === ctx.areaId)
   const backHref = '/admin/comunidade'
   const posts = (postsData ?? []) as unknown as Post[]
 
@@ -70,6 +75,7 @@ export default async function AdminCourseComunidadePage({
         courseId={courseId}
         currentUserId={user.id}
         isAdmin={isAdmin}
+        canModerate={canModerate}
         basePath="/admin/comunidade"
       />
     </div>

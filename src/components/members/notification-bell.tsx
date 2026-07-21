@@ -197,6 +197,11 @@ function NotificationItem({
               <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1 shrink-0" />
             )}
           </div>
+          {n.area_tag && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 dark:text-violet-400 bg-violet-500/10 rounded-full px-1.5 py-0.5 mt-1">
+              🏷 {n.area_tag}
+            </span>
+          )}
           {n.body && (
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
           )}

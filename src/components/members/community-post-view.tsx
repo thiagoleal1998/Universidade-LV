@@ -63,6 +63,7 @@ export function CommunityPostView({
   courseId,
   currentUserId,
   isAdmin,
+  canModerate = isAdmin,
   poll,
   pollVotes,
   basePath = '/dashboard/comunidade',
@@ -72,6 +73,9 @@ export function CommunityPostView({
   courseId: string
   currentUserId: string
   isAdmin: boolean
+  // Quem pode fixar/trancar/ocultar/excluir — admin sempre, ou colaborador
+  // dono do curso (ver admin/comunidade/[courseId]/[postId]/page.tsx).
+  canModerate?: boolean
   poll?: Poll | null
   pollVotes?: PollVote[]
   basePath?: string
@@ -86,7 +90,7 @@ export function CommunityPostView({
 
   const isAuthor = post.user_id === currentUserId
   // Autor ainda vê o próprio conteúdo (com aviso); outros membros veem só um aviso genérico.
-  const isMaskedForViewer = post.is_hidden && !isAdmin && !isAuthor
+  const isMaskedForViewer = post.is_hidden && !canModerate && !isAuthor
 
   function handleReply(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -159,8 +163,8 @@ export function CommunityPostView({
                 </Badge>
               )}
             </div>
-            {post.is_hidden && isAuthor && !isAdmin && (
-              <p className="text-xs text-amber-500 mb-1.5">Ocultado pela moderação — só você e admins veem.</p>
+            {post.is_hidden && isAuthor && !canModerate && (
+              <p className="text-xs text-amber-500 mb-1.5">Ocultado pela moderação — só você e a moderação veem.</p>
             )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {post.profiles?.role === 'admin' ? (
@@ -176,7 +180,7 @@ export function CommunityPostView({
             </div>
           </div>
 
-          {isAdmin && (
+          {canModerate && (
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={handlePin}
@@ -272,6 +276,7 @@ export function CommunityPostView({
               postId={post.id}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
+              canModerate={canModerate}
             />
           ))}
         </div>
@@ -308,19 +313,25 @@ function ReplyItem({
   postId,
   currentUserId,
   isAdmin,
+  canModerate = isAdmin,
 }: {
   reply: Reply
   courseId: string
   postId: string
   currentUserId: string
   isAdmin: boolean
+  canModerate?: boolean
 }) {
   const [isDeleting, startDelete] = useTransition()
   const [isHiding, startHide] = useTransition()
   const [isHidden, setIsHidden] = useState(reply.is_hidden)
   const isAuthor = reply.user_id === currentUserId
+  // deleteReply não ganhou guard de posse (decisão preservada: o próprio
+  // autor também pode excluir a própria resposta) — canDelete continua preso
+  // ao isAdmin real, não ao canModerate (colaborador dono não pode excluir
+  // resposta de terceiro, só ocultar via hideReply, que sim suporta posse).
   const canDelete = isAdmin || isAuthor
-  const isMaskedForViewer = isHidden && !isAdmin && !isAuthor
+  const isMaskedForViewer = isHidden && !canModerate && !isAuthor
 
   function handleDelete() {
     startDelete(async () => {
@@ -362,7 +373,7 @@ function ReplyItem({
             )}
           </div>
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-            {isAdmin && (
+            {canModerate && (
               <button
                 onClick={handleHide}
                 disabled={isHiding}
@@ -401,8 +412,8 @@ function ReplyItem({
         ) : (
           <>
             <p className="text-sm text-foreground mt-1.5 whitespace-pre-wrap leading-relaxed">{reply.body}</p>
-            {isHidden && isAuthor && !isAdmin && (
-              <p className="text-xs text-amber-500 mt-1">Ocultado pela moderação — só você e admins veem.</p>
+            {isHidden && isAuthor && !canModerate && (
+              <p className="text-xs text-amber-500 mt-1">Ocultado pela moderação — só você e a moderação veem.</p>
             )}
           </>
         )}
