@@ -10,6 +10,15 @@ import { toWebP } from '@/lib/image'
 import DOMPurify from 'isomorphic-dompurify'
 import { logActivity } from '@/lib/activity-log'
 import type { AdminContext } from '@/lib/authz'
+import {
+  notionCreateFeedbackTicket,
+  notionUpdateFeedbackStatus,
+  notionUpdateFeedbackAssignee,
+  notionAppendTimelineRow,
+  timelineRowAssigned,
+  timelineRowStatusChanged,
+  timelineRowNote,
+} from '@/lib/notion'
 
 // feedback.ts tem seu próprio requireAdmin() local (retorna só { userId }),
 // não o AdminContext completo de authz.ts — este helper monta um AdminContext
@@ -183,6 +192,21 @@ export async function submitFeedback(formData: FormData) {
     link: '/admin/feedback',
   })
 
+  // Espelha o chamado no Notion (fire-and-forget) e grava o page_id de volta
+  // pra os próximos eventos (atribuição/status/resposta) saberem qual página
+  // atualizar. No-op silencioso se NOTION_API_KEY não estiver configurada.
+  notionCreateFeedbackTicket({
+    title,
+    type: type as 'bug' | 'suggestion',
+    status: 'open',
+    authorName: memberName,
+    messageText: messageText.slice(0, 500),
+    pageUrl,
+    createdAtIso: new Date().toISOString(),
+  }).then(async (pageId) => {
+    if (pageId) await adminClient.from('feedback_reports').update({ notion_page_id: pageId }).eq('id', inserted.id)
+  })
+
   revalidatePath('/dashboard/feedback')
   return { success: true }
 }
@@ -300,7 +324,7 @@ export async function assignFeedback(id: string, assignedTo: string | null) {
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
-  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title').eq('id', id).single()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, notion_page_id').eq('id', id).single()
   if (!report) return { error: 'Chamado não encontrado.' }
 
   const assignedName = assignedTo
@@ -316,6 +340,9 @@ export async function assignFeedback(id: string, assignedTo: string | null) {
     actor_name: '',
     assigned_name: assignedName,
   })
+
+  notionAppendTimelineRow(report.notion_page_id, new Date().toISOString(), timelineRowAssigned(assignedTo ? assignedName : null))
+  notionUpdateFeedbackAssignee(report.notion_page_id, assignedName)
 
   logActivity(toAdminContext(auth.userId), {
     action: 'update', entityType: 'feedback', entityId: id, entityLabel: report.title || 'Sem título',
@@ -342,7 +369,7 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
-  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, status').eq('id', id).single()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, status, notion_page_id').eq('id', id).single()
   if (!report) return { error: 'Chamado não encontrado.' }
   if (report.status === status) return { success: true }
 
@@ -359,6 +386,9 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
     from_status: report.status,
     to_status: status,
   })
+
+  notionAppendTimelineRow(report.notion_page_id, new Date().toISOString(), timelineRowStatusChanged(report.status as FeedbackStatus, status))
+  notionUpdateFeedbackStatus(report.notion_page_id, status)
 
   logActivity(toAdminContext(auth.userId), {
     action: 'toggle', entityType: 'feedback', entityId: id, entityLabel: report.title || 'Sem título',
@@ -394,7 +424,7 @@ export async function addFeedbackNote(id: string, note: string) {
 
   const adminClient = createAdminClient()
 
-  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, assigned_to').eq('id', id).single()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, assigned_to, notion_page_id').eq('id', id).single()
   if (!report) return { error: 'Chamado não encontrado.' }
 
   const { data: actorProfile } = await adminClient.from('profiles').select('full_name, role').eq('id', actor.id).single()
@@ -410,6 +440,8 @@ export async function addFeedbackNote(id: string, note: string) {
     actor_name: actorProfile?.full_name ?? '',
     note_text: sanitized,
   })
+
+  notionAppendTimelineRow(report.notion_page_id, new Date().toISOString(), timelineRowNote(actorProfile?.full_name ?? '', preview))
 
   // Só loga em admin_activity_log quando quem respondeu é admin — resposta do
   // próprio membro no seu chamado não é "atividade administrativa" (já fica
