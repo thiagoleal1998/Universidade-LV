@@ -436,14 +436,13 @@ function ItemForm({
                   key={tag.id}
                   type="button"
                   onClick={() => toggleTag(tag.id)}
+                  style={selected ? c.chipStyle : undefined}
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors',
-                    selected
-                      ? `${c.bg} ${c.text} border-transparent`
-                      : 'bg-transparent text-muted-foreground border-border hover:border-primary/50',
+                    selected ? 'border-transparent' : 'bg-transparent text-muted-foreground border-border hover:border-primary/50',
                   )}
                 >
-                  <span className={cn('w-2 h-2 rounded-full', c.dot)} />
+                  <span className="w-2 h-2 rounded-full" style={c.dotStyle} />
                   {tag.name}
                 </button>
               )
@@ -706,8 +705,8 @@ function VisualCard({ item, cat, products, periods = [], tags = [], canEdit = tr
                 {requiredTags.map((t) => {
                   const c = getTagColor(t.color)
                   return (
-                    <span key={t.id} className={cn('flex items-center gap-1', c.text)}>
-                      <span className={cn('w-2 h-2 rounded-full', c.dot)} />
+                    <span key={t.id} className="flex items-center gap-1" style={c.textStyle}>
+                      <span className="w-2 h-2 rounded-full" style={c.dotStyle} />
                       {t.name}
                     </span>
                   )

@@ -221,13 +221,13 @@ export function EditMemberDialog({
                       key={tag.id}
                       type="button"
                       onClick={() => toggleTag(tag.id)}
+                      style={c.chipStyle}
                       className={cn(
                         'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border-2',
-                        c.bg, c.text,
                         selected ? 'border-current opacity-100 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'
                       )}
                     >
-                      <span className={cn('w-1.5 h-1.5 rounded-full', c.dot)} />
+                      <span className="w-1.5 h-1.5 rounded-full" style={c.dotStyle} />
                       {tag.name}
                     </button>
                   )

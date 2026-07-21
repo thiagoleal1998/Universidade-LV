@@ -1,20 +1,59 @@
-export const TAG_COLORS = [
-  { key: 'blue',    bg: 'bg-blue-100',    text: 'text-blue-800',    dot: 'bg-blue-500' },
-  { key: 'green',   bg: 'bg-green-100',   text: 'text-green-800',   dot: 'bg-green-500' },
-  { key: 'red',     bg: 'bg-red-100',     text: 'text-red-800',     dot: 'bg-red-500' },
-  { key: 'amber',   bg: 'bg-amber-100',   text: 'text-amber-800',   dot: 'bg-amber-500' },
-  { key: 'violet',  bg: 'bg-violet-100',  text: 'text-violet-800',  dot: 'bg-violet-500' },
-  { key: 'pink',    bg: 'bg-pink-100',    text: 'text-pink-800',    dot: 'bg-pink-500' },
-  { key: 'sky',     bg: 'bg-sky-100',     text: 'text-sky-800',     dot: 'bg-sky-500' },
-  { key: 'emerald', bg: 'bg-emerald-100', text: 'text-emerald-800', dot: 'bg-emerald-500' },
-  { key: 'orange',  bg: 'bg-orange-100',  text: 'text-orange-800',  dot: 'bg-orange-500' },
-  { key: 'slate',   bg: 'bg-slate-100',   text: 'text-slate-700',   dot: 'bg-slate-500' },
+import type { CSSProperties } from 'react'
+
+// Atalhos de paleta na UI de criação/edição de tag — só isso, o valor salvo em
+// tags.color agora é sempre um hex (ex: "#3b82f6"), não mais uma dessas chaves.
+export const TAG_COLOR_PRESETS = [
+  { key: 'blue',    hex: '#3b82f6' },
+  { key: 'green',   hex: '#22c55e' },
+  { key: 'red',     hex: '#ef4444' },
+  { key: 'amber',   hex: '#f59e0b' },
+  { key: 'violet',  hex: '#8b5cf6' },
+  { key: 'pink',    hex: '#ec4899' },
+  { key: 'sky',     hex: '#0ea5e9' },
+  { key: 'emerald', hex: '#10b981' },
+  { key: 'orange',  hex: '#f97316' },
+  { key: 'slate',   hex: '#64748b' },
 ] as const
 
-export type TagColorKey = typeof TAG_COLORS[number]['key']
+// Compat: tags criadas antes da v1.77 salvaram uma dessas chaves em vez de
+// hex — resolver pro hex equivalente em vez de rodar uma migração de dados.
+const LEGACY_KEY_TO_HEX: Record<string, string> = Object.fromEntries(
+  TAG_COLOR_PRESETS.map((c) => [c.key, c.hex])
+)
 
-export function getTagColor(key: string) {
-  return TAG_COLORS.find((c) => c.key === key) ?? TAG_COLORS[0]
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+
+export function isValidHex(value: string): boolean {
+  return HEX_RE.test(value)
+}
+
+export function resolveTagHex(color: string): string {
+  if (HEX_RE.test(color)) return color
+  return LEGACY_KEY_TO_HEX[color] ?? TAG_COLOR_PRESETS[0].hex
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+export type TagColorStyle = {
+  hex: string
+  chipStyle: CSSProperties
+  dotStyle: CSSProperties
+  textStyle: CSSProperties
+}
+
+export function getTagColor(color: string): TagColorStyle {
+  const hex = resolveTagHex(color)
+  return {
+    hex,
+    chipStyle: { backgroundColor: hexToRgba(hex, 0.15), color: hex },
+    dotStyle: { backgroundColor: hex },
+    textStyle: { color: hex },
+  }
 }
 
 export function formatMemberCode(num: number | null | undefined): string {
