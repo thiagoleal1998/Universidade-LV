@@ -23,6 +23,11 @@ const TEMPLATE_META: Record<string, { label: string; description: string; vars: 
     description: 'Enviado ao membro quando um admin aprova o cadastro dele.',
     vars: ['nome', 'site_name'],
   },
+  member_rejected: {
+    label: 'Cadastro recusado',
+    description: 'Enviado ao candidato quando um admin recusa o cadastro dele.',
+    vars: ['nome', 'site_name'],
+  },
   new_announcement: {
     label: 'Comunicado importante',
     description: 'Enviado a todos os membros quando um comunicado é publicado.',
@@ -54,6 +59,7 @@ const TEMPLATE_META: Record<string, { label: string; description: string; vars: 
 const DISPLAY_ORDER = [
   'welcome_on_register',
   'member_approved',
+  'member_rejected',
   'new_announcement',
   'course_content_published',
   'new_training',

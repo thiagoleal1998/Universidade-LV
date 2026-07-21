@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { emailMemberApproved } from '@/lib/email'
+import { emailMemberApproved, emailMemberRejected } from '@/lib/email'
 import { getSettings } from '@/lib/settings'
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
@@ -188,14 +188,14 @@ export async function approveMember(userId: string, courseIds: string[]) {
   const authz = await requireAdmin()
   if ('error' in authz) return { error: authz.error }
 
-  if (courseIds.length === 0) return { error: 'Selecione pelo menos um curso' }
-
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
+  // rejected_at volta a null: aprovar alguém que tinha sido recusado antes
+  // (via "Reconsiderar" ou direto) desfaz o estado de recusa.
   const { error } = await supabase
     .from('profiles')
-    .update({ active: true })
+    .update({ active: true, rejected_at: null })
     .eq('id', userId)
   if (error) return { error: error.message }
 
@@ -219,6 +219,53 @@ export async function approveMember(userId: string, courseIds: string[]) {
   return { success: true }
 }
 
+export async function rejectMember(userId: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
+  const supabase = await createClient()
+  const adminClient = createAdminClient()
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ rejected_at: new Date().toISOString() })
+    .eq('id', userId)
+  if (error) return { error: error.message }
+
+  const [{ data: profile }, { data: userData }, settings] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', userId).single(),
+    adminClient.auth.admin.getUserById(userId),
+    getSettings(),
+  ])
+  const email = userData.user?.email ?? ''
+  if (email) emailMemberRejected(email, profile?.full_name ?? '', settings.site_name)
+
+  logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'recusou' })
+
+  revalidatePath('/admin/membros')
+  return { success: true }
+}
+
+// Rede de segurança pra recusa por engano — volta pra "pendente".
+export async function reconsiderMember(userId: string) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
+  const supabase = await createClient()
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single()
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ rejected_at: null })
+    .eq('id', userId)
+  if (error) return { error: error.message }
+
+  logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'reconsiderou (voltou pra pendente)' })
+
+  revalidatePath('/admin/membros')
+  return { success: true }
+}
+
 export async function updateMemberRole(userId: string, role: 'admin' | 'member' | 'collaborator', collaboratorAreaId?: string | null) {
   const authz = await requireAdmin()
   if ('error' in authz) return { error: authz.error }
@@ -227,10 +274,10 @@ export async function updateMemberRole(userId: string, role: 'admin' | 'member' 
     return { error: 'Escolha a área do colaborador.' }
   }
 
-  const supabase = await createClient()
-  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single()
+  const adminClient = createAdminClient()
+  const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', userId).single()
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('profiles')
     .update({ role, collaborator_area_id: role === 'collaborator' ? collaboratorAreaId : null })
     .eq('id', userId)

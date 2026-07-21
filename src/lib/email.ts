@@ -57,6 +57,13 @@ export async function emailMemberApproved(memberEmail: string, memberName: strin
   })
 }
 
+export async function emailMemberRejected(memberEmail: string, memberName: string, siteName: string) {
+  await sendTemplate('member_rejected', memberEmail, {
+    nome: memberName || 'tudo bem',
+    site_name: siteName,
+  })
+}
+
 export async function emailMembersNewAnnouncement(
   emails: string[],
   title: string,

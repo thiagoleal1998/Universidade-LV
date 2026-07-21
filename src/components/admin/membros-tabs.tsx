@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Users, Building2, Tag as TagIcon } from 'lucide-react'
 import { PendingMembers } from '@/components/admin/pending-members'
+import { RejectedMembers } from '@/components/admin/rejected-members'
 import { MembersTable, type MemberWithEmail } from '@/components/admin/members-table'
 import { TagsManager } from '@/components/admin/tags-manager'
 import { CollaboratorAreasManager } from '@/components/admin/collaborator-areas-manager'
@@ -23,12 +24,14 @@ type PendingMember = { id: string; full_name: string; email: string; created_at:
 
 export function MembrosTabs({
   pending,
+  rejected,
   active,
   allTags,
   allCourses,
   areas,
 }: {
   pending: PendingMember[]
+  rejected: PendingMember[]
   active: MemberWithEmail[]
   allTags: Tag[]
   allCourses: Course[]
@@ -58,7 +61,8 @@ export function MembrosTabs({
 
       {tab === 'membros' && (
         <>
-          <PendingMembers members={pending} courses={allCourses} />
+          <PendingMembers members={pending} courses={allCourses} allTags={allTags} allAreas={areas} />
+          <RejectedMembers members={rejected} />
           <div className="bg-card border rounded-lg overflow-hidden">
             <MembersTable members={active} allTags={allTags} allCourses={allCourses} allAreas={areas} />
           </div>
