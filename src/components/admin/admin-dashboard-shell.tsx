@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Presentation, FileText, ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DashboardCharts } from '@/components/admin/dashboard-charts'
 
 export type ModuleStat = { id: string; title: string; pct: number; lessonCount: number; completions: number }
 export type LessonWithCount = { id: string; title: string; moduleTitle: string; completions: number }
@@ -49,6 +50,12 @@ export type DashboardProps = {
   engagementBuckets: EngagementBucket[]
   pendingLessons: PendingLesson[]
   onlineByRole: OnlineByRole
+  courses: { id: string; name: string }[]
+  modulesRaw: { id: string; title: string; course_id: string | null }[]
+  lessonsRaw: { id: string; title: string; module_id: string }[]
+  progressRaw: { lesson_id: string; user_id: string; completed_at: string }[]
+  membersRaw: { id: string; full_name: string; created_at: string }[]
+  enrollments: { member_id: string; course_id: string }[]
 }
 
 type TrendDir = 'up' | 'down' | 'flat'
@@ -337,73 +344,14 @@ export function AdminDashboardShell(props: DashboardProps) {
 
           {/* ── GRÁFICOS ── */}
           {tab === 'charts' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-              {/* Progresso por módulo */}
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-1">Progresso por Módulo</h3>
-                <p className="text-xs text-muted-foreground mb-4">% médio de conclusão dos membros</p>
-                {props.moduleStats.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Nenhum módulo publicado ainda.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {props.moduleStats.map((mod) => (
-                      <div key={mod.id} className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-foreground font-medium truncate max-w-[200px]">{mod.title}</span>
-                          <span className="text-muted-foreground tabular-nums ml-2">{mod.pct}%</span>
-                        </div>
-                        <HBar pct={mod.pct} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Aulas mais concluídas */}
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-1">Aulas Mais Concluídas</h3>
-                <p className="text-xs text-muted-foreground mb-4">Nº de membros que concluíram cada aula</p>
-                {topLessons.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Nenhuma conclusão ainda.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {topLessons.map((l, i) => (
-                      <div key={l.id} className="space-y-1">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-muted-foreground w-4 tabular-nums">{i + 1}.</span>
-                          <span className="text-foreground font-medium flex-1 truncate">{l.title}</span>
-                          <span className="text-muted-foreground tabular-nums">{l.completions}/{props.totalMembersActive}</span>
-                        </div>
-                        <div className="pl-6">
-                          <HBar pct={props.totalMembersActive > 0 ? (l.completions / props.totalMembersActive) * 100 : 0} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Engajamento */}
-              <div className="rounded-2xl border border-border bg-card p-5 lg:col-span-2">
-                <h3 className="text-sm font-semibold text-foreground mb-1">Distribuição de Engajamento</h3>
-                <p className="text-xs text-muted-foreground mb-4">Membros segmentados por nível de progresso</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {props.engagementBuckets.map((b) => (
-                    <div key={b.label} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted/30 border border-border">
-                      <div className={cn('text-3xl font-bold tabular-nums', b.valueColor)}>{b.value}</div>
-                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div className={cn('h-full rounded-full transition-all duration-500', b.color)} style={{ width: `${(b.value / total) * 100}%` }} />
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center leading-tight">{b.label}</p>
-                      <p className="text-xs font-medium text-muted-foreground tabular-nums">
-                        {total > 0 ? Math.round((b.value / total) * 100) : 0}% dos membros
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <DashboardCharts
+              courses={props.courses}
+              modules={props.modulesRaw}
+              lessons={props.lessonsRaw}
+              progress={props.progressRaw}
+              members={props.membersRaw}
+              enrollments={props.enrollments}
+            />
           )}
 
           {/* ── INSIGHTS ── */}

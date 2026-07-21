@@ -48,13 +48,15 @@ export default async function AdminDashboard() {
     { count: newMembersPrevWeek },
     { data: pendingResponsesRaw },
     { data: onlineRolesRaw },
+    { data: coursesData },
+    { data: enrollmentsData },
   ] = await Promise.all([
     supabase.from('modules').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member'),
     supabase.from('lessons').select('id, title, module_id, modules(id, title)').eq('is_published', true),
-    supabase.from('member_progress').select('lesson_id, user_id'),
-    supabase.from('profiles').select('id, full_name').eq('role', 'member').eq('active', true),
-    supabase.from('modules').select('id, title, order_index').eq('is_published', true).order('order_index'),
+    supabase.from('member_progress').select('lesson_id, user_id, completed_at'),
+    supabase.from('profiles').select('id, full_name, created_at').eq('role', 'member').eq('active', true),
+    supabase.from('modules').select('id, title, order_index, course_id').eq('is_published', true).order('order_index'),
     supabase
       .from('member_progress')
       .select('completed_at, lesson_id, user_id, lessons(title, modules(title)), profiles(full_name)')
@@ -78,14 +80,18 @@ export default async function AdminDashboard() {
       .from('profiles')
       .select('role')
       .gte('last_seen_at', presenceSinceIso()),
+    supabase.from('courses').select('id, name').order('name'),
+    supabase.from('member_courses').select('member_id, course_id'),
   ])
 
   const lessons = (lessonsData as LessonRow[] | null) ?? []
-  const progress = (progressData as { lesson_id: string; user_id: string }[] | null) ?? []
-  const members = (membersData as { id: string; full_name: string }[] | null) ?? []
-  const modules = (modulesData as { id: string; title: string }[] | null) ?? []
+  const progress = (progressData as { lesson_id: string; user_id: string; completed_at: string }[] | null) ?? []
+  const members = (membersData as { id: string; full_name: string; created_at: string }[] | null) ?? []
+  const modules = (modulesData as { id: string; title: string; course_id: string | null }[] | null) ?? []
   const recentActivity = (recentData as RecentActivity[] | null) ?? []
   const newSignups = (recentSignups as { id: string; full_name: string; created_at: string }[] | null) ?? []
+  const courses = (coursesData as { id: string; name: string }[] | null) ?? []
+  const enrollments = (enrollmentsData as { member_id: string; course_id: string }[] | null) ?? []
 
   const totalLessons = lessons.length
   const totalMembersActive = members.length
@@ -221,6 +227,12 @@ export default async function AdminDashboard() {
         engagementBuckets={engagementBuckets}
         pendingLessons={pendingLessons}
         onlineByRole={onlineByRole}
+        courses={courses}
+        modulesRaw={modules}
+        lessonsRaw={lessons.map((l) => ({ id: l.id, title: l.title, module_id: l.module_id }))}
+        progressRaw={progress}
+        membersRaw={members}
+        enrollments={enrollments}
       />
       <DashboardAutoRefresh />
     </>
