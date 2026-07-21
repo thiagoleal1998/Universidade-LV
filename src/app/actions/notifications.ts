@@ -216,3 +216,46 @@ export async function notifyCourseOwners(
     admins.map((a) => ({ user_id: a.id, ...opts, area_tag: ownerAreaName }))
   )
 }
+
+// IDs de chamados de feedback com notificação `feedback_update` não lida —
+// usado pra desenhar o indicador "nova atualização" no card do chamado
+// (my-feedback-list.tsx). O link já vem como `.../feedback?report=<id>`.
+export async function getUnreadFeedbackUpdateReportIds(): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const adminClient = createAdminClient()
+  const { data } = await adminClient
+    .from('notifications')
+    .select('link')
+    .eq('user_id', user.id)
+    .eq('type', 'feedback_update')
+    .is('read_at', null)
+
+  const ids = new Set<string>()
+  for (const n of data ?? []) {
+    const match = n.link?.match(/report=([^&]+)/)
+    if (match) ids.add(match[1])
+  }
+  return [...ids]
+}
+
+// Marca como lida a notificação `feedback_update` de UM chamado específico
+// (não todas — abrir um chamado não deve limpar o indicador dos outros).
+export async function markFeedbackReportNotificationRead(reportId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const adminClient = createAdminClient()
+  await adminClient
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .eq('type', 'feedback_update')
+    .ilike('link', `%report=${reportId}%`)
+    .is('read_at', null)
+
+  return { success: true }
+}

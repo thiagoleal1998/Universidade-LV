@@ -4,12 +4,13 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { FeedbackReport, FeedbackStatus } from '@/app/actions/feedback'
 import { addFeedbackNote } from '@/app/actions/feedback'
+import { getUnreadFeedbackUpdateReportIds, markFeedbackReportNotificationRead } from '@/app/actions/notifications'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
-import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink } from 'lucide-react'
+import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +37,7 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
   const [replies, setReplies] = useState<Record<string, string>>({})
   const [replyResetKey, setReplyResetKey] = useState<Record<string, number>>({})
   const [isSending, startSend] = useTransition()
+  const [unreadReportIds, setUnreadReportIds] = useState<Set<string>>(new Set())
 
   // Vindo de uma notificação (link com ?report=<id>) — rola até o chamado
   // certo, já aberto, em vez de deixar o usuário procurar na lista.
@@ -45,6 +47,19 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    getUnreadFeedbackUpdateReportIds().then((ids) => setUnreadReportIds(new Set(ids)))
+  }, [])
+
+  function toggleOpen(id: string) {
+    const willOpen = openId !== id
+    setOpenId(willOpen ? id : null)
+    if (willOpen && unreadReportIds.has(id)) {
+      setUnreadReportIds((prev) => { const next = new Set(prev); next.delete(id); return next })
+      markFeedbackReportNotificationRead(id)
+    }
+  }
 
   function handleSendReply(id: string) {
     const note = replies[id] ?? ''
@@ -72,11 +87,15 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
     <div className="space-y-3">
       {reports.map((report) => {
         const isOpen = openId === report.id
+        const hasUpdate = unreadReportIds.has(report.id)
         return (
-          <div key={report.id} id={`feedback-report-${report.id}`} className="bg-card border rounded-xl overflow-hidden">
+          <div key={report.id} id={`feedback-report-${report.id}`} className={cn(
+            'bg-card border rounded-xl overflow-hidden',
+            hasUpdate && 'border-primary/40'
+          )}>
             <button
               type="button"
-              onClick={() => setOpenId(isOpen ? null : report.id)}
+              onClick={() => toggleOpen(report.id)}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left"
             >
               <div className="flex items-center gap-3 min-w-0">
@@ -87,7 +106,14 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
                   {report.type === 'bug' ? <Bug className="w-3.5 h-3.5" /> : <Lightbulb className="w-3.5 h-3.5" />}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
+                  <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+                    {report.title || 'Sem título'}
+                    {hasUpdate && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-1.5 py-0.5 shrink-0">
+                        <Sparkles className="w-2.5 h-2.5" /> Nova atualização
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(report.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                     {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
