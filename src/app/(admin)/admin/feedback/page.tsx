@@ -6,8 +6,9 @@ import { getFeedbackReports, getAdmins, getMyFeedbackReports } from '@/app/actio
 import { FeedbackPanel } from '@/components/admin/feedback-panel'
 import { FeedbackPageContent } from '@/components/members/feedback-page-content'
 import { buttonVariants } from '@/components/ui/button'
-import { PlusCircle } from 'lucide-react'
+import { ArrowLeft, PlusCircle } from 'lucide-react'
 import { requireContentPage } from '@/lib/authz'
+import { cn } from '@/lib/utils'
 
 export const metadata = { title: 'Feedback' }
 
@@ -19,6 +20,7 @@ export default async function AdminFeedbackPage({
   searchParams: Promise<{ tab?: string }>
 }) {
   const ctx = await requireContentPage()
+  const { tab } = await searchParams
 
   if (ctx.role !== 'admin') {
     // Colaborador vê a mesma experiência do membro (abrir chamado / minhas
@@ -33,10 +35,25 @@ export default async function AdminFeedbackPage({
     )
     if (!userTagNames.has(TESTER_TAG_NAME)) redirect('/admin')
 
-    const { tab } = await searchParams
     const activeTab = tab === 'minhas' ? 'minhas' : 'abrir'
     const reports = await getMyFeedbackReports()
     return <FeedbackPageContent activeTab={activeTab} reports={reports} />
+  }
+
+  // Admin abrindo o próprio chamado (via "Abrir meu chamado" abaixo) — continua
+  // em /admin/feedback (mesma rota, só troca o que renderiza), em vez de sair
+  // pra /dashboard/feedback como fazia antes.
+  if (tab === 'abrir' || tab === 'minhas') {
+    const reports = await getMyFeedbackReports()
+    return (
+      <div className="p-4 md:p-8">
+        <Link href="/admin/feedback" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 mb-2 -ml-2')}>
+          <ArrowLeft className="w-4 h-4" />
+          Voltar para a fila de chamados
+        </Link>
+        <FeedbackPageContent activeTab={tab} reports={reports} />
+      </div>
+    )
   }
 
   const [reports, admins] = await Promise.all([getFeedbackReports(), getAdmins()])
@@ -48,7 +65,7 @@ export default async function AdminFeedbackPage({
           <h1 className="text-2xl font-bold text-foreground">Feedback dos testadores</h1>
           <p className="text-sm text-muted-foreground mt-1">Bugs e sugestões enviados durante o rollout.</p>
         </div>
-        <Link href="/dashboard/feedback?tab=abrir" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+        <Link href="/admin/feedback?tab=abrir" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
           <PlusCircle className="w-4 h-4 mr-1.5" />
           Abrir meu chamado
         </Link>
