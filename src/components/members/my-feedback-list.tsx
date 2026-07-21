@@ -19,10 +19,10 @@ const STATUS_LABEL: Record<FeedbackStatus, string> = {
   resolved: 'Finalizado',
 }
 
-const STATUS_BADGE_VARIANT: Record<FeedbackStatus, 'default' | 'outline' | 'secondary'> = {
-  open: 'default',
-  in_progress: 'secondary',
-  resolved: 'outline',
+const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
+  open: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  in_progress: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+  resolved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
 }
 
 function isNoteEmpty(html: string): boolean {
@@ -95,7 +95,7 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Badge variant={STATUS_BADGE_VARIANT[report.status]}>{STATUS_LABEL[report.status]}</Badge>
+                <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
                 {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
               </div>
             </button>
