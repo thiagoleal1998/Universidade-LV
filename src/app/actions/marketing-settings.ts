@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { requireAdmin } from '@/lib/authz'
+import { requireCapability } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 
 async function upsertSetting(key: string, value: string) {
@@ -15,8 +15,13 @@ async function upsertSetting(key: string, value: string) {
   return { success: true }
 }
 
+// As 3 settings globais abaixo (Premiação/PodViajar/Corrida de Vendas) eram
+// admin-only de propósito (settings-JSON não suporta posse por área — ver
+// CLAUDE.md). A partir daqui, colaboradores com a capacidade `marketing`
+// também podem editar as 3, já que são materiais de divulgação/marketing —
+// mesmo padrão de guard usado no resto do conteúdo (requireCapability).
 export async function saveTamojuntoWinners(formData: FormData) {
-  const authz = await requireAdmin()
+  const authz = await requireCapability('marketing')
   if ('error' in authz) return { error: authz.error }
 
   const value = (formData.get('tamojunto_winners') as string) || '{}'
@@ -26,7 +31,7 @@ export async function saveTamojuntoWinners(formData: FormData) {
 }
 
 export async function savePodviajar(formData: FormData) {
-  const authz = await requireAdmin()
+  const authz = await requireCapability('marketing')
   if ('error' in authz) return { error: authz.error }
 
   const value = (formData.get('podviajar') as string) || '{}'
@@ -36,7 +41,7 @@ export async function savePodviajar(formData: FormData) {
 }
 
 export async function saveCorridaVendas(formData: FormData) {
-  const authz = await requireAdmin()
+  const authz = await requireCapability('marketing')
   if ('error' in authz) return { error: authz.error }
 
   const value = (formData.get('corrida_vendas') as string) || '{}'

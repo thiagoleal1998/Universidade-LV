@@ -103,7 +103,7 @@ export function MarketingTabs({
   userRole = 'admin',
   userAreaId = null,
   userCapabilities = [],
-  isAdmin = true,
+  canEditMarketingSettings = true,
 }: {
   marketingItems: object[]
   sections: MarketingSection[]
@@ -124,7 +124,7 @@ export function MarketingTabs({
   userRole?: 'admin' | 'collaborator'
   userAreaId?: string | null
   userCapabilities?: Capability[]
-  isAdmin?: boolean
+  canEditMarketingSettings?: boolean
 }) {
   // Todas as abas sempre visíveis — colaborador vê tudo, só edita o que tem
   // capacidade + posse (controlado item a item dentro de cada manager).
@@ -199,7 +199,7 @@ export function MarketingTabs({
             <CommercialConditionsManager items={commercialConditions} canCreate={canCreateComercial} />
           )}
           {comercialSubTab === 'corrida' && (
-            <CorridaVendasManager raw={corridaVendasRaw} isAdmin={isAdmin} />
+            <CorridaVendasManager raw={corridaVendasRaw} canEdit={canEditMarketingSettings} />
           )}
         </>
       )}
@@ -214,10 +214,10 @@ export function MarketingTabs({
         <GruposManager items={grupos} canCreate={canCreateGrupo} />
       )}
       {tab === 'premiacao' && (
-        <TamoJuntoWinnersManager raw={tamojuntoWinnersRaw} isAdmin={isAdmin} />
+        <TamoJuntoWinnersManager raw={tamojuntoWinnersRaw} canEdit={canEditMarketingSettings} />
       )}
       {tab === 'podviajar' && (
-        <PodviajarManager raw={podviajarRaw} isAdmin={isAdmin} />
+        <PodviajarManager raw={podviajarRaw} canEdit={canEditMarketingSettings} />
       )}
     </>
   )

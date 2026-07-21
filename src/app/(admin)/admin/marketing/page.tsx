@@ -48,6 +48,9 @@ export default async function MarketingPage() {
   const canEditFamtour = isAdmin || ctx.capabilities.includes('famtours')
   const canEditGrupo = isAdmin || ctx.capabilities.includes('grupos')
   const canEditComercial = isAdmin || ctx.capabilities.includes('comercial')
+  // Premiação/PodViajar/Corrida de Vendas são settings globais (sem owner_area_id,
+  // não fazem sentido "por posse") — liberados pra quem tem a capacidade marketing.
+  const canEditMarketingSettings = isAdmin || ctx.capabilities.includes('marketing')
 
   const trainingItemsWithEdit = visibleTrainingItems.map((t) => ({
     ...t,
@@ -88,7 +91,7 @@ export default async function MarketingPage() {
         userRole={ctx.role}
         userAreaId={ctx.areaId}
         userCapabilities={ctx.capabilities}
-        isAdmin={isAdmin}
+        canEditMarketingSettings={canEditMarketingSettings}
       />
     </div>
   )
