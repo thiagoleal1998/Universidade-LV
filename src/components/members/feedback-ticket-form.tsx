@@ -68,7 +68,7 @@ export function FeedbackTicketForm() {
         setMessage('')
         setLinkUrl('')
         setAttachments([])
-        router.push('/dashboard/feedback?tab=minhas')
+        router.push(`${pathname}?tab=minhas`)
         router.refresh()
       }
     })
