@@ -32,11 +32,19 @@ export function NotificationBell({
   unreadCount: initialCount,
   placement = 'header',
   isAdmin = false,
+  redirectFeedbackToAdmin,
 }: {
   unreadCount: number
   placement?: 'header' | 'sidebar'
   isAdmin?: boolean
+  // Admin/colaborador que estiver navegando em /dashboard (área do aluno) também
+  // deve permanecer no ambiente de colaborador ao clicar numa notificação de
+  // chamado — independente de onde o sino está montado (diferente de `isAdmin`,
+  // que reflete só o shell atual). Default: mesmo valor de `isAdmin` (cobre o
+  // sino do próprio painel admin sem precisar passar de novo).
+  redirectFeedbackToAdmin?: boolean
 }) {
+  const feedbackToAdmin = redirectFeedbackToAdmin ?? isAdmin
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(initialCount)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -130,7 +138,7 @@ export function NotificationBell({
         <ul className="max-h-80 overflow-y-auto divide-y divide-border">
           {notifications.map((n) => (
             <li key={n.id}>
-              <NotificationItem notification={n} onClose={() => setOpen(false)} isAdmin={isAdmin} />
+              <NotificationItem notification={n} onClose={() => setOpen(false)} isAdmin={isAdmin} redirectFeedbackToAdmin={feedbackToAdmin} />
             </li>
           ))}
         </ul>
@@ -166,10 +174,12 @@ function NotificationItem({
   notification: n,
   onClose,
   isAdmin = false,
+  redirectFeedbackToAdmin = isAdmin,
 }: {
   notification: Notification
   onClose: () => void
   isAdmin?: boolean
+  redirectFeedbackToAdmin?: boolean
 }) {
   const inner = (
     <div
@@ -199,9 +209,9 @@ function NotificationItem({
   )
 
   if (n.link) {
-    const href = isAdmin
-      ? n.link.replace('/dashboard/comunidade/', '/admin/comunidade/').replace('/dashboard/feedback', '/admin/feedback')
-      : n.link
+    let href = n.link
+    if (isAdmin) href = href.replace('/dashboard/comunidade/', '/admin/comunidade/')
+    if (redirectFeedbackToAdmin) href = href.replace('/dashboard/feedback', '/admin/feedback')
     return (
       <Link href={href} onClick={onClose} className="block">
         {inner}

@@ -27,7 +27,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const now = new Date().toISOString()
   const today = now.slice(0, 10)
   const [{ data: profileData }, settings, { count: unreadCount }, faqItems, { data: announcementsData }, { data: aereoData }, { data: comercialData }, { data: userTagsData }, { data: gruposData }] = await Promise.all([
-    adminClient.from('profiles').select('full_name, avatar_url').eq('id', user.id).single(),
+    adminClient.from('profiles').select('full_name, avatar_url, role').eq('id', user.id).single(),
     getSettings(),
     adminClient
       .from('notifications')
@@ -62,7 +62,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       .eq('is_active', true),
   ])
 
-  const profile = profileData as { full_name: string; avatar_url: string } | null
+  const profile = profileData as { full_name: string; avatar_url: string; role: string } | null
+  const isCollaboratorOrAdmin = profile?.role === 'admin' || profile?.role === 'collaborator'
   const announcements = (announcementsData ?? []) as Announcement[]
   const aereoUrl = (aereoData?.[0] as { url?: string } | undefined)?.url ?? null
   const comercialUrl = (comercialData?.[0] as { id?: string } | undefined)?.id ?? null
@@ -92,6 +93,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         comercialActive={!!comercialUrl}
         gruposActive={gruposActive}
         showFeedbackButton={isTester}
+        isCollaboratorOrAdmin={isCollaboratorOrAdmin}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         <AnnouncementTicker announcements={announcements} />

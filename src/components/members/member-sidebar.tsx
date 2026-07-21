@@ -60,6 +60,10 @@ type Props = {
   gruposActive?: boolean
   memberNavOrder?: string
   showFeedbackButton?: boolean
+  // Admin/colaborador estudando em /dashboard — ao clicar numa notificação de
+  // chamado, deve permanecer no ambiente de colaborador (/admin/feedback), não
+  // ser jogado pro fluxo de aluno só por estar navegando aqui no momento.
+  isCollaboratorOrAdmin?: boolean
 }
 
 // Smooth slide-out for text elements — max-width + opacity
@@ -93,6 +97,7 @@ function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, unreadCount = 0,
   areaSubtitle = 'Área do Aluno', memberNavLabels = '', memberNavOrder = '', podviajarActive = false, aereoActive = false, comercialActive = false, gruposActive = false,
   showFeedbackButton = false,
+  isCollaboratorOrAdmin = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
@@ -246,7 +251,7 @@ function SidebarContent({
                 <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
               </Avatar>
             </Link>
-            <NotificationBell unreadCount={unreadCount} placement="sidebar" />
+            <NotificationBell unreadCount={unreadCount} placement="sidebar" redirectFeedbackToAdmin={isCollaboratorOrAdmin} />
             <ThemeToggle />
             <form action={logout}>
               <button
@@ -279,7 +284,7 @@ function SidebarContent({
                   <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
                 </div>
               </Link>
-              <NotificationBell unreadCount={unreadCount} placement="sidebar" />
+              <NotificationBell unreadCount={unreadCount} placement="sidebar" redirectFeedbackToAdmin={isCollaboratorOrAdmin} />
               <ThemeToggle />
             </div>
             <form action={logout}>
@@ -342,7 +347,7 @@ export function MemberSidebar(props: Props) {
         )}
         <span className="text-sm font-semibold text-foreground truncate">{props.siteName}</span>
         <div className="ml-auto flex items-center gap-1">
-          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="sidebar" />
+          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="sidebar" redirectFeedbackToAdmin={props.isCollaboratorOrAdmin} />
           <ThemeToggle />
         </div>
       </header>
