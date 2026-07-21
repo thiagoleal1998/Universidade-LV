@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Users, BookOpen, GraduationCap, TrendingUp, TrendingDown, Minus,
   Activity, BarChart3, Lightbulb, Settings, Megaphone, MessageSquare,
-  ArrowUpRight, Trophy, AlertTriangle, CheckCircle2, UserPlus,
+  ArrowUpRight, Trophy, AlertTriangle, CheckCircle2, UserPlus, Eye,
   LayoutDashboard, Presentation, FileText, ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
+import { setCollaboratorPreview } from '@/app/actions/preview'
 
 export type ModuleStat = { id: string; title: string; pct: number; lessonCount: number; completions: number }
 export type LessonWithCount = { id: string; title: string; moduleTitle: string; completions: number }
@@ -56,6 +58,11 @@ export type DashboardProps = {
   progressRaw: { lesson_id: string; user_id: string; completed_at: string }[]
   membersRaw: { id: string; full_name: string; created_at: string }[]
   enrollments: { member_id: string; course_id: string }[]
+  // Papel efetivo (considera o modo prévia) — só rótulo. isRealAdmin controla
+  // se o botão de entrar/sair da prévia aparece (colaborador de verdade nunca vê).
+  role?: 'admin' | 'collaborator'
+  isRealAdmin?: boolean
+  previewActive?: boolean
 }
 
 type TrendDir = 'up' | 'down' | 'flat'
@@ -107,6 +114,17 @@ const TABS = [
 
 export function AdminDashboardShell(props: DashboardProps) {
   const [tab, setTab] = useState<'overview' | 'charts' | 'insights'>('overview')
+  const router = useRouter()
+  const [isPreviewPending, startPreviewTransition] = useTransition()
+  const role = props.role ?? 'admin'
+  const previewActive = props.previewActive ?? false
+
+  function togglePreview(on: boolean) {
+    startPreviewTransition(async () => {
+      await setCollaboratorPreview(on)
+      router.refresh()
+    })
+  }
 
   const ct = trend(props.completionsThisWeek, props.completionsPrevWeek)
   const mt = trend(props.newMembersThisWeek, props.newMembersPrevWeek)
@@ -127,7 +145,7 @@ export function AdminDashboardShell(props: DashboardProps) {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-full px-3 py-1 mb-2">
-                <LayoutDashboard className="w-3 h-3" /> Painel Admin
+                <LayoutDashboard className="w-3 h-3" /> {role === 'admin' ? 'Painel Admin' : 'Painel do Colaborador'}
               </span>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight leading-tight">
                 Gerenciando seus{' '}
@@ -138,12 +156,35 @@ export function AdminDashboardShell(props: DashboardProps) {
                 Acompanhe o progresso e o engajamento da plataforma.
               </p>
             </div>
-            <Link
-              href="/dashboard"
-              className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold bg-foreground text-background px-4 py-2.5 rounded-xl hover:opacity-85 transition-opacity"
-            >
-              Área do Aluno <ArrowUpRight className="w-4 h-4" />
-            </Link>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+              {props.isRealAdmin && (
+                previewActive ? (
+                  <button
+                    type="button"
+                    onClick={() => togglePreview(false)}
+                    disabled={isPreviewPending}
+                    className="inline-flex items-center justify-center gap-2 text-sm font-semibold border border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400 px-4 py-2.5 rounded-xl hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+                  >
+                    <Eye className="w-4 h-4" /> {isPreviewPending ? 'Saindo...' : 'Sair da prévia'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => togglePreview(true)}
+                    disabled={isPreviewPending}
+                    className="inline-flex items-center justify-center gap-2 text-sm font-semibold border border-border px-4 py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    <Eye className="w-4 h-4" /> {isPreviewPending ? 'Entrando...' : 'Prévia como Colaborador'}
+                  </button>
+                )
+              )}
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center gap-2 text-sm font-semibold bg-foreground text-background px-4 py-2.5 rounded-xl hover:opacity-85 transition-opacity"
+              >
+                Área do Aluno <ArrowUpRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
 
           {/* Banner tarefas pendentes */}

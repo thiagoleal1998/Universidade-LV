@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getAdminContext } from '@/lib/authz'
+import { PREVIEW_COOKIE } from '@/lib/preview'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminNotificationSound } from '@/components/admin/admin-notification-sound'
 import { PresenceHeartbeat } from '@/components/ui/presence-heartbeat'
@@ -29,14 +31,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const profile = profileData as { full_name: string; avatar_url: string; role: string } | null
 
-  // Admin vê tudo (null = sem filtro). Colaborador vê o mesmo menu do admin,
-  // exceto Membros/SEO/FAQ (decisão do usuário) — cada tela aberta tem sua
-  // própria regra de permissão (ver CLAUDE.md): Cursos/Marketing = capacidade
-  // + posse por item; Comunicados = cria mas não edita/exclui; Documentos =
-  // só certificados dos próprios cursos; Comunidade = só visualiza; Relatórios
-  // = Atividades filtrada por posse. Dashboard/Feedback/Configurações mostram
-  // versão de membro ou dados reais sem restrição adicional.
-  const allowedHrefs = ctx.role === 'admin'
+  // Modo prévia: admin vê o próprio /admin como se fosse colaborador (menu
+  // restrito + rótulo "Painel do Colaborador"), só navegação/visual — nenhum
+  // guard de mutação lê esse cookie, ctx.role (real) continua admin em toda
+  // action. Colaborador de verdade nunca tem o cookie considerado (checado
+  // na action setCollaboratorPreview e aqui de novo, defensivamente).
+  const jar = await cookies()
+  const previewActive = ctx.role === 'admin' && jar.get(PREVIEW_COOKIE)?.value === '1'
+  const effectiveRole = previewActive ? 'collaborator' : ctx.role
+
+  // Admin vê tudo (null = sem filtro). Colaborador (real ou em prévia) vê o
+  // mesmo menu do admin, exceto Membros/SEO/FAQ (decisão do usuário) — cada
+  // tela aberta tem sua própria regra de permissão (ver CLAUDE.md): Cursos/
+  // Marketing = capacidade + posse por item; Comunicados = cria mas não
+  // edita/exclui; Documentos = só certificados dos próprios cursos;
+  // Comunidade = só visualiza; Relatórios = Atividades filtrada por posse.
+  // Dashboard/Feedback/Configurações mostram versão de membro ou dados reais
+  // sem restrição adicional.
+  const allowedHrefs = effectiveRole === 'admin'
     ? null
     : [
         '/admin', '/admin/cursos', '/admin/comunicados', '/admin/documentos',
@@ -55,6 +67,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         navOrder={(() => { try { return JSON.parse(settings.nav_order) } catch { return [] } })()}
         unreadCount={unreadCount ?? 0}
         allowedHrefs={allowedHrefs}
+        role={effectiveRole}
+        previewActive={previewActive}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         {children}

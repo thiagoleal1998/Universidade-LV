@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
-import { useState, useEffect, CSSProperties } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect, useTransition, CSSProperties } from 'react'
 import { logout } from '@/app/actions/auth'
+import { setCollaboratorPreview } from '@/app/actions/preview'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   BookOpen, Users, LayoutDashboard, LogOut, Settings, GraduationCap,
   Megaphone, BarChart2, FileText, Presentation, MessageSquare,
-  SearchCheck, HelpCircle, Menu, X, PanelLeftClose, PanelLeftOpen, Bug,
+  SearchCheck, HelpCircle, Menu, X, PanelLeftClose, PanelLeftOpen, Bug, Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -41,6 +42,10 @@ type Props = {
   unreadCount?: number
   // null = admin (todos os itens); array = colaborador (só os hrefs listados)
   allowedHrefs?: string[] | null
+  // Papel efetivo (considera o modo prévia) — controla só o rótulo "Painel
+  // Admin"/"Painel do Colaborador", nada de autorização real.
+  role?: 'admin' | 'collaborator'
+  previewActive?: boolean
 }
 
 function slideText(collapsed: boolean, maxW = 180): CSSProperties {
@@ -57,10 +62,19 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
 
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, navOrder, unreadCount = 0,
-  allowedHrefs = null,
+  allowedHrefs = null, role = 'admin', previewActive = false,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  function exitPreview() {
+    startTransition(async () => {
+      await setCollaboratorPreview(false)
+      router.refresh()
+    })
+  }
 
   const visibleNavItems = allowedHrefs === null
     ? NAV_ITEMS
@@ -107,7 +121,9 @@ function SidebarContent({
 
         <div className="flex-1 min-w-0" style={slideText(collapsed, 155)}>
           <p className="text-sm font-semibold text-foreground truncate leading-tight">{siteName}</p>
-          <p className="text-xs text-primary/70 font-medium">Painel Admin</p>
+          <p className="text-xs text-primary/70 font-medium">
+            {role === 'admin' ? 'Painel Admin' : 'Painel do Colaborador'}
+          </p>
         </div>
 
         {onClose && (
@@ -154,6 +170,23 @@ function SidebarContent({
           )
         })}
       </nav>
+
+      {/* ── Banner de modo prévia ── */}
+      {previewActive && !collapsed && (
+        <div className="mx-2 mb-2 shrink-0 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-2">
+          <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1.5">
+            <Eye className="w-3.5 h-3.5 shrink-0" /> Modo prévia: Colaborador
+          </p>
+          <button
+            type="button"
+            onClick={exitPreview}
+            disabled={isPending}
+            className="mt-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline disabled:opacity-50"
+          >
+            {isPending ? 'Saindo...' : 'Sair da prévia'}
+          </button>
+        </div>
+      )}
 
       {/* ── Collapse toggle — fixed, never scrolls ── */}
       {onToggleCollapse && (

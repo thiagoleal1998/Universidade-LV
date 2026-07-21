@@ -1,7 +1,9 @@
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireContentPage } from '@/lib/authz'
 import { presenceSinceIso } from '@/lib/presence'
+import { PREVIEW_COOKIE } from '@/lib/preview'
 import { AdminDashboardShell } from '@/components/admin/admin-dashboard-shell'
 import type { ModuleStat, LessonWithCount, MemberStat, PendingLesson, OnlineByRole } from '@/components/admin/admin-dashboard-shell'
 import { DashboardAutoRefresh } from '@/components/admin/dashboard-auto-refresh'
@@ -24,7 +26,10 @@ type RecentActivity = {
 export default async function AdminDashboard() {
   // Dashboard mostra as mesmas métricas pra admin e colaborador — sem filtro
   // por área (decisão do usuário: é visão geral da plataforma, não conteúdo).
-  await requireContentPage()
+  const ctx = await requireContentPage()
+  const jar = await cookies()
+  const previewActive = ctx.role === 'admin' && jar.get(PREVIEW_COOKIE)?.value === '1'
+  const effectiveRole = previewActive ? 'collaborator' : ctx.role
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -233,6 +238,9 @@ export default async function AdminDashboard() {
         progressRaw={progress}
         membersRaw={members}
         enrollments={enrollments}
+        role={effectiveRole}
+        isRealAdmin={ctx.role === 'admin'}
+        previewActive={previewActive}
       />
       <DashboardAutoRefresh />
     </>
