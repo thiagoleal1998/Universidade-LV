@@ -200,7 +200,7 @@ function NotificationItem({
 
   if (n.link) {
     const href = isAdmin
-      ? n.link.replace('/dashboard/comunidade/', '/admin/comunidade/')
+      ? n.link.replace('/dashboard/comunidade/', '/admin/comunidade/').replace('/dashboard/feedback', '/admin/feedback')
       : n.link
     return (
       <Link href={href} onClick={onClose} className="block">

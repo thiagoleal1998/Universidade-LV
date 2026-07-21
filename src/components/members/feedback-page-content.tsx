@@ -14,7 +14,7 @@ type TabKey = typeof TABS[number]['key']
 // Conteúdo de "abrir chamado / minhas solicitações" — compartilhado entre a
 // área do aluno (/dashboard/feedback) e a área do colaborador dentro do
 // painel admin (/admin/feedback, quando o usuário não é admin de verdade).
-export function FeedbackPageContent({ activeTab, reports }: { activeTab: TabKey; reports: FeedbackReport[] }) {
+export function FeedbackPageContent({ activeTab, reports, initialOpenId = null }: { activeTab: TabKey; reports: FeedbackReport[]; initialOpenId?: string | null }) {
   return (
     <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
       <div>
@@ -46,7 +46,7 @@ export function FeedbackPageContent({ activeTab, reports }: { activeTab: TabKey;
       {activeTab === 'abrir' ? (
         <FeedbackTicketForm />
       ) : (
-        <MyFeedbackList reports={reports} />
+        <MyFeedbackList reports={reports} initialOpenId={initialOpenId} />
       )}
     </div>
   )

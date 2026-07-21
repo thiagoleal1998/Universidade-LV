@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { FeedbackReport, FeedbackStatus } from '@/app/actions/feedback'
 import { addFeedbackNote } from '@/app/actions/feedback'
@@ -29,13 +29,22 @@ function isNoteEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
 }
 
-export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
+export function MyFeedbackList({ reports, initialOpenId = null }: { reports: FeedbackReport[]; initialOpenId?: string | null }) {
   const router = useRouter()
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
   const [replies, setReplies] = useState<Record<string, string>>({})
   const [replyResetKey, setReplyResetKey] = useState<Record<string, number>>({})
   const [isSending, startSend] = useTransition()
+
+  // Vindo de uma notificação (link com ?report=<id>) — rola até o chamado
+  // certo, já aberto, em vez de deixar o usuário procurar na lista.
+  useEffect(() => {
+    if (!initialOpenId) return
+    const el = document.getElementById(`feedback-report-${initialOpenId}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleSendReply(id: string) {
     const note = replies[id] ?? ''
@@ -64,7 +73,7 @@ export function MyFeedbackList({ reports }: { reports: FeedbackReport[] }) {
       {reports.map((report) => {
         const isOpen = openId === report.id
         return (
-          <div key={report.id} className="bg-card border rounded-xl overflow-hidden">
+          <div key={report.id} id={`feedback-report-${report.id}`} className="bg-card border rounded-xl overflow-hidden">
             <button
               type="button"
               onClick={() => setOpenId(isOpen ? null : report.id)}

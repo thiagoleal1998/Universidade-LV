@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { assignFeedback, updateFeedbackStatus, addFeedbackNote } from '@/app/actions/feedback'
 import type { FeedbackReport, FeedbackStatus, AdminOption } from '@/app/actions/feedback'
@@ -34,14 +34,24 @@ function isNoteEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
 }
 
-export function FeedbackPanel({ reports, admins }: { reports: FeedbackReport[]; admins: AdminOption[] }) {
+export function FeedbackPanel({ reports, admins, initialOpenId = null }: { reports: FeedbackReport[]; admins: AdminOption[]; initialOpenId?: string | null }) {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [noteResetKey, setNoteResetKey] = useState<Record<string, number>>({})
   const [isPending, startSave] = useTransition()
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
+
+  // Vindo de uma notificação (link com ?report=<id>) — rola até o chamado
+  // certo, já aberto (fica visível mesmo fora do filtro de status atual,
+  // graças ao `|| r.id === openId` do filtro abaixo).
+  useEffect(() => {
+    if (!initialOpenId) return
+    const el = document.getElementById(`feedback-report-${initialOpenId}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Mantém o card aberto visível mesmo se o status mudar para fora do filtro
   // atual — senão o chamado some da tela no meio da edição do admin.
@@ -110,7 +120,7 @@ export function FeedbackPanel({ reports, admins }: { reports: FeedbackReport[]; 
           {filtered.map((report) => {
             const isOpen = openId === report.id
             return (
-              <div key={report.id} className="border rounded-xl overflow-hidden bg-card">
+              <div key={report.id} id={`feedback-report-${report.id}`} className="border rounded-xl overflow-hidden bg-card">
                 <button
                   type="button"
                   onClick={() => setOpenId(isOpen ? null : report.id)}

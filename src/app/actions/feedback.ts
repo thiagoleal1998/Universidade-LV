@@ -189,7 +189,7 @@ export async function submitFeedback(formData: FormData) {
     type: 'new_feedback',
     title: `[${typeLabel}] ${title}`,
     body: `${memberName || user.email} — ${messageText.slice(0, 140)}`,
-    link: '/admin/feedback',
+    link: `/admin/feedback?report=${inserted.id}`,
   })
 
   // Espelha o chamado no Notion (fire-and-forget) e grava o page_id de volta
@@ -354,7 +354,7 @@ export async function assignFeedback(id: string, assignedTo: string | null) {
     type: 'feedback_update',
     title: assignedTo ? `Seu chamado foi atribuído a ${assignedName}` : `Atribuição removida do seu chamado`,
     body: title,
-    link: '/dashboard/feedback',
+    link: `/dashboard/feedback?tab=minhas&report=${id}`,
   })
 
   revalidatePath('/admin/feedback')
@@ -400,7 +400,7 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
     type: 'feedback_update',
     title: `Chamado ${STATUS_LABEL[status].toLowerCase()}: ${title}`,
     body: `Status alterado de "${STATUS_LABEL[report.status as FeedbackStatus]}" para "${STATUS_LABEL[status]}".`,
-    link: '/dashboard/feedback',
+    link: `/dashboard/feedback?tab=minhas&report=${id}`,
   })
 
   revalidatePath('/admin/feedback')
@@ -460,21 +460,21 @@ export async function addFeedbackNote(id: string, note: string) {
       type: 'feedback_update',
       title: `Nova resposta no seu chamado: ${title}`,
       body,
-      link: '/dashboard/feedback',
+      link: `/dashboard/feedback?tab=minhas&report=${id}`,
     })
   } else if (report.assigned_to) {
     await notifyUser(report.assigned_to, {
       type: 'feedback_update',
       title: `Nova resposta no chamado: ${title}`,
       body,
-      link: '/admin/feedback',
+      link: `/admin/feedback?report=${id}`,
     })
   } else {
     await notifyAllAdmins(actor.id, {
       type: 'feedback_update',
       title: `Nova resposta no chamado: ${title}`,
       body,
-      link: '/admin/feedback',
+      link: `/admin/feedback?report=${id}`,
     })
   }
 

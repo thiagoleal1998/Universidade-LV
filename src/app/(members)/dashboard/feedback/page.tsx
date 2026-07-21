@@ -12,7 +12,7 @@ const TESTER_TAG_NAME = 'Beta'
 export default async function MemberFeedbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; report?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,10 +28,10 @@ export default async function MemberFeedbackPage({
   )
   if (!userTagNames.has(TESTER_TAG_NAME)) redirect('/dashboard')
 
-  const { tab } = await searchParams
+  const { tab, report } = await searchParams
   const activeTab = tab === 'minhas' ? 'minhas' : 'abrir'
 
   const reports = await getMyFeedbackReports()
 
-  return <FeedbackPageContent activeTab={activeTab} reports={reports} />
+  return <FeedbackPageContent activeTab={activeTab} reports={reports} initialOpenId={report ?? null} />
 }

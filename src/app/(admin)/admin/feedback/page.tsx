@@ -17,10 +17,10 @@ const TESTER_TAG_NAME = 'Beta'
 export default async function AdminFeedbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; report?: string }>
 }) {
   const ctx = await requireContentPage()
-  const { tab } = await searchParams
+  const { tab, report } = await searchParams
 
   if (ctx.role !== 'admin') {
     // Colaborador vê a mesma experiência do membro (abrir chamado / minhas
@@ -37,12 +37,13 @@ export default async function AdminFeedbackPage({
 
     const activeTab = tab === 'minhas' ? 'minhas' : 'abrir'
     const reports = await getMyFeedbackReports()
-    return <FeedbackPageContent activeTab={activeTab} reports={reports} />
+    return <FeedbackPageContent activeTab={activeTab} reports={reports} initialOpenId={report ?? null} />
   }
 
-  // Admin abrindo o próprio chamado (via "Abrir meu chamado" abaixo) — continua
-  // em /admin/feedback (mesma rota, só troca o que renderiza), em vez de sair
-  // pra /dashboard/feedback como fazia antes.
+  // Admin abrindo o próprio chamado (via "Abrir meu chamado" abaixo, ou vindo
+  // de uma notificação sobre o próprio chamado) — continua em /admin/feedback
+  // (mesma rota, só troca o que renderiza), em vez de sair pra
+  // /dashboard/feedback como fazia antes.
   if (tab === 'abrir' || tab === 'minhas') {
     const reports = await getMyFeedbackReports()
     return (
@@ -51,7 +52,7 @@ export default async function AdminFeedbackPage({
           <ArrowLeft className="w-4 h-4" />
           Voltar para a fila de chamados
         </Link>
-        <FeedbackPageContent activeTab={tab} reports={reports} />
+        <FeedbackPageContent activeTab={tab} reports={reports} initialOpenId={report ?? null} />
       </div>
     )
   }
@@ -70,7 +71,7 @@ export default async function AdminFeedbackPage({
           Abrir meu chamado
         </Link>
       </div>
-      <FeedbackPanel reports={reports} admins={admins} />
+      <FeedbackPanel reports={reports} admins={admins} initialOpenId={report ?? null} />
     </div>
   )
 }
