@@ -5,7 +5,7 @@ import { CommunityPosts } from '@/components/members/community-posts'
 import { buttonVariants } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { requireContentPage } from '@/lib/authz'
+import { requireContentPage, getPreviewAreaContext } from '@/lib/authz'
 
 type Post = {
   id: string
@@ -30,15 +30,15 @@ export default async function AdminCourseComunidadePage({
   params: Promise<{ courseId: string }>
 }) {
   const ctx = await requireContentPage()
+  const viewCtx = await getPreviewAreaContext(ctx)
 
   const { courseId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: courseData }, { data: profileData }, { data: postsData }] = await Promise.all([
+  const [{ data: courseData }, { data: postsData }] = await Promise.all([
     supabase.from('courses').select('id, name, owner_area_id').eq('id', courseId).single(),
-    supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase
       .from('community_posts')
       .select('id, title, body, is_pinned, is_locked, is_hidden, created_at, user_id, profiles(full_name, role), reply_count:community_replies(count), polls:community_polls(id, question, options, ends_at, votes:community_poll_votes(option_index, user_id))')
@@ -49,12 +49,15 @@ export default async function AdminCourseComunidadePage({
 
   if (!courseData) notFound()
 
-  const isAdmin = profileData?.role === 'admin'
+  // isAdmin usa viewCtx (não profileData.role puro) pra simular corretamente
+  // o modo prévia — inclusive escondendo a criação de enquete (admin-only de
+  // verdade) quando o admin está pré-visualizando como colaborador.
+  const isAdmin = viewCtx.role === 'admin'
   // Colaborador modera só os cursos que possui (capacidade courses + dono) —
   // a mutação em si é protegida por requireCourseAccess nas actions; isso é
   // só pra esconder/mostrar os botões (mesmo padrão de canEdit já usado em
   // Cursos/Marketing).
-  const canModerate = isAdmin || (ctx.capabilities.includes('courses') && courseData.owner_area_id === ctx.areaId)
+  const canModerate = isAdmin || (viewCtx.capabilities.includes('courses') && courseData.owner_area_id === viewCtx.areaId)
   const backHref = '/admin/comunidade'
   const posts = (postsData ?? []) as unknown as Post[]
 

@@ -5,7 +5,7 @@ import { CommunityPostView } from '@/components/members/community-post-view'
 import { buttonVariants } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { requireContentPage } from '@/lib/authz'
+import { requireContentPage, getPreviewAreaContext } from '@/lib/authz'
 
 export default async function AdminPostPage({
   params,
@@ -13,6 +13,7 @@ export default async function AdminPostPage({
   params: Promise<{ courseId: string; postId: string }>
 }) {
   const ctx = await requireContentPage()
+  const viewCtx = await getPreviewAreaContext(ctx)
 
   const { courseId, postId } = await params
   const supabase = await createClient()
@@ -22,7 +23,6 @@ export default async function AdminPostPage({
   const [
     { data: postData },
     { data: repliesData },
-    { data: profileData },
     { data: courseData },
     { data: pollData },
   ] = await Promise.all([
@@ -36,7 +36,6 @@ export default async function AdminPostPage({
       .select('id, body, is_hidden, created_at, user_id, profiles(full_name, role)')
       .eq('post_id', postId)
       .order('created_at'),
-    supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase.from('courses').select('name, owner_area_id').eq('id', courseId).single(),
     supabase
       .from('community_polls')
@@ -47,8 +46,8 @@ export default async function AdminPostPage({
 
   if (!postData || postData.course_id !== courseId) notFound()
 
-  const isAdmin = profileData?.role === 'admin'
-  const canModerate = isAdmin || (ctx.capabilities.includes('courses') && courseData?.owner_area_id === ctx.areaId)
+  const isAdmin = viewCtx.role === 'admin'
+  const canModerate = isAdmin || (viewCtx.capabilities.includes('courses') && courseData?.owner_area_id === viewCtx.areaId)
 
   let pollVotes: { option_index: number; user_id: string }[] = []
   if (pollData) {

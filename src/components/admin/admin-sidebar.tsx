@@ -46,6 +46,7 @@ type Props = {
   // Admin"/"Painel do Colaborador", nada de autorização real.
   role?: 'admin' | 'collaborator'
   previewActive?: boolean
+  previewAreaName?: string | null
 }
 
 function slideText(collapsed: boolean, maxW = 180): CSSProperties {
@@ -62,7 +63,7 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
 
 function SidebarContent({
   siteName, logoUrl, userName, userEmail, avatarUrl, navOrder, unreadCount = 0,
-  allowedHrefs = null, role = 'admin', previewActive = false,
+  allowedHrefs = null, role = 'admin', previewActive = false, previewAreaName = null,
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
@@ -71,7 +72,7 @@ function SidebarContent({
 
   function exitPreview() {
     startTransition(async () => {
-      await setCollaboratorPreview(false)
+      await setCollaboratorPreview(null)
       router.refresh()
     })
   }
@@ -175,7 +176,7 @@ function SidebarContent({
       {previewActive && !collapsed && (
         <div className="mx-2 mb-2 shrink-0 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-2">
           <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 shrink-0" /> Modo prévia: Colaborador
+            <Eye className="w-3.5 h-3.5 shrink-0" /> Modo prévia: Colaborador{previewAreaName ? ` (${previewAreaName})` : ''}
           </p>
           <button
             type="button"

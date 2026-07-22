@@ -7,11 +7,12 @@ import { buttonVariants } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Module, Lesson } from '@/lib/supabase/types'
-import { requireModulePage } from '@/lib/authz'
+import { requireModulePage, getPreviewAreaContext } from '@/lib/authz'
 
 export default async function EditModulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await requireModulePage(id)
+  const viewCtx = await getPreviewAreaContext(ctx)
 
   // adminClient: precisa enxergar módulo de qualquer área (modo leitura)
   const db = createAdminClient()
@@ -32,10 +33,10 @@ export default async function EditModulePage({ params }: { params: Promise<{ id:
   if (!mod) notFound()
 
   // Módulo sem curso é global (só admin edita); com curso, posse vem do curso pai.
-  let canEdit = ctx.role === 'admin'
+  let canEdit = viewCtx.role === 'admin'
   if (!canEdit && mod.course_id) {
     const { data: course } = await db.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
-    canEdit = ctx.capabilities.includes('courses') && course?.owner_area_id === ctx.areaId
+    canEdit = viewCtx.capabilities.includes('courses') && course?.owner_area_id === viewCtx.areaId
   }
 
   return (

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
-import { requireContentPage } from '@/lib/authz'
+import { requireContentPage, getPreviewAreaContext } from '@/lib/authz'
 import { MarketingTabs } from '@/components/admin/marketing-tabs'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import { getTrainingItems } from '@/app/actions/training'
@@ -20,7 +20,8 @@ function parseSections(json: string): MarketingSection[] {
 
 export default async function MarketingPage() {
   const ctx = await requireContentPage()
-  const isAdmin = ctx.role === 'admin'
+  const viewCtx = await getPreviewAreaContext(ctx)
+  const isAdmin = viewCtx.role === 'admin'
 
   const supabase = await createClient()
   // Todo mundo vê tudo, de qualquer área — editar exige capacidade + posse,
@@ -44,29 +45,29 @@ export default async function MarketingPage() {
 
   const visibleTrainingItems = (trainingData ?? []) as Awaited<ReturnType<typeof getTrainingItems>>
 
-  const canEditTraining = isAdmin || ctx.capabilities.includes('trainings')
-  const canEditFamtour = isAdmin || ctx.capabilities.includes('famtours')
-  const canEditGrupo = isAdmin || ctx.capabilities.includes('grupos')
-  const canEditComercial = isAdmin || ctx.capabilities.includes('comercial')
+  const canEditTraining = isAdmin || viewCtx.capabilities.includes('trainings')
+  const canEditFamtour = isAdmin || viewCtx.capabilities.includes('famtours')
+  const canEditGrupo = isAdmin || viewCtx.capabilities.includes('grupos')
+  const canEditComercial = isAdmin || viewCtx.capabilities.includes('comercial')
   // Premiação/PodViajar/Corrida de Vendas são settings globais (sem owner_area_id,
   // não fazem sentido "por posse") — liberados pra quem tem a capacidade marketing.
-  const canEditMarketingSettings = isAdmin || ctx.capabilities.includes('marketing')
+  const canEditMarketingSettings = isAdmin || viewCtx.capabilities.includes('marketing')
 
   const trainingItemsWithEdit = visibleTrainingItems.map((t) => ({
     ...t,
-    canEdit: isAdmin || (canEditTraining && t.owner_area_id === ctx.areaId),
+    canEdit: isAdmin || (canEditTraining && t.owner_area_id === viewCtx.areaId),
   }))
   const famtoursWithEdit = (famtoursData ?? []).map((f) => ({
     ...f,
-    canEdit: isAdmin || (canEditFamtour && f.owner_area_id === ctx.areaId),
+    canEdit: isAdmin || (canEditFamtour && f.owner_area_id === viewCtx.areaId),
   }))
   const gruposWithEdit = (gruposData ?? []).map((g) => ({
     ...g,
-    canEdit: isAdmin || (canEditGrupo && g.owner_area_id === ctx.areaId),
+    canEdit: isAdmin || (canEditGrupo && g.owner_area_id === viewCtx.areaId),
   }))
   const commercialConditionsWithEdit = (commercialConditionsData ?? []).map((c) => ({
     ...c,
-    canEdit: isAdmin || (canEditComercial && c.owner_area_id === ctx.areaId),
+    canEdit: isAdmin || (canEditComercial && c.owner_area_id === viewCtx.areaId),
   }))
 
   return (
@@ -88,9 +89,9 @@ export default async function MarketingPage() {
         canCreateFamtour={canEditFamtour}
         canCreateGrupo={canEditGrupo}
         canCreateComercial={canEditComercial}
-        userRole={ctx.role}
-        userAreaId={ctx.areaId}
-        userCapabilities={ctx.capabilities}
+        userRole={viewCtx.role}
+        userAreaId={viewCtx.areaId}
+        userCapabilities={viewCtx.capabilities}
         canEditMarketingSettings={canEditMarketingSettings}
       />
     </div>

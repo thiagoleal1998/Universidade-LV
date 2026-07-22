@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getAdminContext } from '@/lib/authz'
 import { PREVIEW_COOKIE } from '@/lib/preview'
+import { getCollaboratorAreas } from '@/app/actions/collaborator-areas'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminNotificationSound } from '@/components/admin/admin-notification-sound'
 import { PresenceHeartbeat } from '@/components/ui/presence-heartbeat'
@@ -19,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!ctx) redirect('/dashboard')
 
   const adminClient = createAdminClient()
-  const [{ data: profileData }, settings, { count: unreadCount }] = await Promise.all([
+  const [{ data: profileData }, settings, { count: unreadCount }, collaboratorAreas] = await Promise.all([
     adminClient.from('profiles').select('full_name, avatar_url, role').eq('id', user.id).single(),
     getSettings(),
     adminClient
@@ -27,17 +28,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .is('read_at', null),
+    getCollaboratorAreas(),
   ])
 
   const profile = profileData as { full_name: string; avatar_url: string; role: string } | null
 
-  // Modo prévia: admin vê o próprio /admin como se fosse colaborador (menu
-  // restrito + rótulo "Painel do Colaborador"), só navegação/visual — nenhum
+  // Modo prévia: admin vê o próprio /admin simulando uma área de colaborador
+  // específica (menu restrito + rótulo "Painel do Colaborador" + canEdit das
+  // telas de conteúdo calculado como se fosse aquela área — via
+  // getPreviewAreaContext() em cada página) — só navegação/visual, nenhum
   // guard de mutação lê esse cookie, ctx.role (real) continua admin em toda
   // action. Colaborador de verdade nunca tem o cookie considerado (checado
   // na action setCollaboratorPreview e aqui de novo, defensivamente).
   const jar = await cookies()
-  const previewActive = ctx.role === 'admin' && jar.get(PREVIEW_COOKIE)?.value === '1'
+  const previewAreaId = ctx.role === 'admin' ? (jar.get(PREVIEW_COOKIE)?.value ?? null) : null
+  const previewActive = !!previewAreaId
+  const previewAreaName = collaboratorAreas.find((a) => a.id === previewAreaId)?.name ?? null
   const effectiveRole = previewActive ? 'collaborator' : ctx.role
 
   // Admin vê tudo (null = sem filtro). Colaborador (real ou em prévia) vê o
@@ -69,6 +75,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         allowedHrefs={allowedHrefs}
         role={effectiveRole}
         previewActive={previewActive}
+        previewAreaName={previewAreaName}
       />
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
         {children}

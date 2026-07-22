@@ -59,10 +59,12 @@ export type DashboardProps = {
   membersRaw: { id: string; full_name: string; created_at: string }[]
   enrollments: { member_id: string; course_id: string }[]
   // Papel efetivo (considera o modo prévia) — só rótulo. isRealAdmin controla
-  // se o botão de entrar/sair da prévia aparece (colaborador de verdade nunca vê).
+  // se o controle de entrar/sair da prévia aparece (colaborador de verdade nunca vê).
   role?: 'admin' | 'collaborator'
   isRealAdmin?: boolean
   previewActive?: boolean
+  previewAreaId?: string | null
+  collaboratorAreas?: { id: string; name: string }[]
 }
 
 type TrendDir = 'up' | 'down' | 'flat'
@@ -118,10 +120,12 @@ export function AdminDashboardShell(props: DashboardProps) {
   const [isPreviewPending, startPreviewTransition] = useTransition()
   const role = props.role ?? 'admin'
   const previewActive = props.previewActive ?? false
+  const collaboratorAreas = props.collaboratorAreas ?? []
+  const previewAreaName = collaboratorAreas.find((a) => a.id === props.previewAreaId)?.name ?? null
 
-  function togglePreview(on: boolean) {
+  function togglePreview(areaId: string | null) {
     startPreviewTransition(async () => {
-      await setCollaboratorPreview(on)
+      await setCollaboratorPreview(areaId)
       router.refresh()
     })
   }
@@ -161,21 +165,29 @@ export function AdminDashboardShell(props: DashboardProps) {
                 previewActive ? (
                   <button
                     type="button"
-                    onClick={() => togglePreview(false)}
+                    onClick={() => togglePreview(null)}
                     disabled={isPreviewPending}
                     className="inline-flex items-center justify-center gap-2 text-sm font-semibold border border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400 px-4 py-2.5 rounded-xl hover:bg-violet-500/20 transition-colors disabled:opacity-50"
                   >
-                    <Eye className="w-4 h-4" /> {isPreviewPending ? 'Saindo...' : 'Sair da prévia'}
+                    <Eye className="w-4 h-4" /> {isPreviewPending ? 'Saindo...' : `Sair da prévia${previewAreaName ? ` (${previewAreaName})` : ''}`}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => togglePreview(true)}
-                    disabled={isPreviewPending}
-                    className="inline-flex items-center justify-center gap-2 text-sm font-semibold border border-border px-4 py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    <Eye className="w-4 h-4" /> {isPreviewPending ? 'Entrando...' : 'Prévia como Colaborador'}
-                  </button>
+                  <div className="relative">
+                    <select
+                      value=""
+                      disabled={isPreviewPending || collaboratorAreas.length === 0}
+                      onChange={(e) => { if (e.target.value) togglePreview(e.target.value) }}
+                      className="appearance-none inline-flex items-center gap-2 text-sm font-semibold border border-border pl-10 pr-4 py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50 bg-background cursor-pointer"
+                    >
+                      <option value="" disabled>
+                        {isPreviewPending ? 'Entrando...' : collaboratorAreas.length === 0 ? 'Nenhuma área criada' : 'Prévia como Colaborador...'}
+                      </option>
+                      {collaboratorAreas.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
+                    <Eye className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 )
               )}
               <Link

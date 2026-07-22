@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Course, Module } from '@/lib/supabase/types'
-import { requireCoursePage } from '@/lib/authz'
+import { requireCoursePage, getPreviewAreaContext } from '@/lib/authz'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 type ModuleWithCount = Module & { lessons: { count: number }[] }
@@ -17,7 +17,9 @@ type CourseWithOwner = Course & { owner_area_id: string | null }
 export default async function EditCursoPpage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await requireCoursePage(id)
-  const isAdmin = ctx.role === 'admin'
+  // viewCtx simula o modo prévia de colaborador — só afeta o que a tela mostra.
+  const viewCtx = await getPreviewAreaContext(ctx)
+  const isAdmin = viewCtx.role === 'admin'
 
   // adminClient: precisa enxergar o curso mesmo que seja de outra área
   // (colaborador agora vê tudo em modo leitura) — RLS via client de sessão
@@ -38,7 +40,7 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
 
   if (!course) notFound()
 
-  const canEdit = isAdmin || (ctx.capabilities.includes('courses') && course.owner_area_id === ctx.areaId)
+  const canEdit = isAdmin || (viewCtx.capabilities.includes('courses') && course.owner_area_id === viewCtx.areaId)
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireContentPage } from '@/lib/authz'
 import { presenceSinceIso } from '@/lib/presence'
 import { PREVIEW_COOKIE } from '@/lib/preview'
+import { getCollaboratorAreas } from '@/app/actions/collaborator-areas'
 import { AdminDashboardShell } from '@/components/admin/admin-dashboard-shell'
 import type { ModuleStat, LessonWithCount, MemberStat, PendingLesson, OnlineByRole } from '@/components/admin/admin-dashboard-shell'
 import { DashboardAutoRefresh } from '@/components/admin/dashboard-auto-refresh'
@@ -28,7 +29,9 @@ export default async function AdminDashboard() {
   // por área (decisão do usuário: é visão geral da plataforma, não conteúdo).
   const ctx = await requireContentPage()
   const jar = await cookies()
-  const previewActive = ctx.role === 'admin' && jar.get(PREVIEW_COOKIE)?.value === '1'
+  const collaboratorAreas = await getCollaboratorAreas()
+  const previewAreaId = ctx.role === 'admin' ? (jar.get(PREVIEW_COOKIE)?.value ?? null) : null
+  const previewActive = !!previewAreaId
   const effectiveRole = previewActive ? 'collaborator' : ctx.role
 
   const supabase = await createClient()
@@ -241,6 +244,8 @@ export default async function AdminDashboard() {
         role={effectiveRole}
         isRealAdmin={ctx.role === 'admin'}
         previewActive={previewActive}
+        previewAreaId={previewAreaId}
+        collaboratorAreas={collaboratorAreas}
       />
       <DashboardAutoRefresh />
     </>

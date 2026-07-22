@@ -1,9 +1,11 @@
 // Utilitários de autorização server-side (NÃO é arquivo de server actions —
 // sem 'use server' de propósito, para não expor os helpers como endpoints).
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CAPABILITIES, type Capability } from '@/lib/capabilities'
+import { PREVIEW_COOKIE } from '@/lib/preview'
 
 // Contexto de autorização do painel /admin. Admin tem todas as capacidades;
 // colaborador tem as da sua área (collaborator_areas.capabilities). Member ou
@@ -177,4 +179,33 @@ export async function requireLessonPage(lessonId: string): Promise<AdminContext>
   const { data: lesson } = await adminClient.from('lessons').select('id').eq('id', lessonId).single()
   if (!lesson) redirect('/admin/modulos')
   return ctx
+}
+
+// Contexto "efetivo" pra cálculo de canEdit/canCreate/canModerate nas telas
+// de conteúdo (Cursos/Módulos/Aulas/Marketing/Comunidade) — reflete o modo
+// prévia de colaborador (cookie com o id da área) quando ativo, simulando
+// exatamente o que um colaborador daquela área veria/poderia editar.
+// **Nunca** usar isto nos guards de ACTION (requireCourseAccess etc.) — só
+// pra decidir o que mostrar na tela. Passe o ctx real (de requireContentPage/
+// requireCoursePage/etc.) como entrada; a saída é ou o mesmo ctx (sem prévia
+// ativa, ou usuário já é colaborador de verdade) ou um ctx sintético de
+// colaborador com a área escolhida.
+export async function getPreviewAreaContext(ctx: AdminContext): Promise<AdminContext> {
+  if (ctx.role !== 'admin') return ctx
+  const jar = await cookies()
+  const previewAreaId = jar.get(PREVIEW_COOKIE)?.value
+  if (!previewAreaId) return ctx
+
+  const adminClient = createAdminClient()
+  const { data: area } = await adminClient
+    .from('collaborator_areas')
+    .select('capabilities')
+    .eq('id', previewAreaId)
+    .single()
+  if (!area) return ctx
+
+  const caps = (area.capabilities ?? []).filter((c: string): c is Capability =>
+    (CAPABILITIES as readonly string[]).includes(c)
+  )
+  return { userId: ctx.userId, role: 'collaborator', areaId: previewAreaId, capabilities: caps }
 }

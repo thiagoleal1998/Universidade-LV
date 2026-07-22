@@ -10,11 +10,12 @@ import { ArrowLeft, ClipboardCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Lesson, LessonPhoto, LessonAttachment } from '@/lib/supabase/types'
 import type { LessonTask } from '@/app/actions/lesson-tasks'
-import { requireLessonPage } from '@/lib/authz'
+import { requireLessonPage, getPreviewAreaContext } from '@/lib/authz'
 
 export default async function EditLessonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await requireLessonPage(id)
+  const viewCtx = await getPreviewAreaContext(ctx)
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -43,12 +44,12 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
 
   if (!lesson) notFound()
 
-  let canEdit = ctx.role === 'admin'
+  let canEdit = viewCtx.role === 'admin'
   if (!canEdit) {
     const { data: mod } = await adminClient.from('modules').select('course_id').eq('id', lesson.module_id).single()
     if (mod?.course_id) {
       const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
-      canEdit = ctx.capabilities.includes('courses') && course?.owner_area_id === ctx.areaId
+      canEdit = viewCtx.capabilities.includes('courses') && course?.owner_area_id === viewCtx.areaId
     }
   }
 
