@@ -63,6 +63,8 @@ export type DashboardProps = {
   previewActive?: boolean
   previewAreaId?: string | null
   collaboratorAreas?: { id: string; name: string }[]
+  // null = admin (todos os atalhos); array = colaborador (só os hrefs listados) — filtra QUICK_LINKS.
+  allowedHrefs?: string[] | null
 }
 
 type TrendDir = 'up' | 'down' | 'flat'
@@ -118,6 +120,9 @@ export function AdminDashboardShell(props: DashboardProps) {
   const previewActive = props.previewActive ?? false
   const collaboratorAreas = props.collaboratorAreas ?? []
   const previewAreaName = collaboratorAreas.find((a) => a.id === props.previewAreaId)?.name ?? null
+  const visibleQuickLinks = props.allowedHrefs === null || props.allowedHrefs === undefined
+    ? QUICK_LINKS
+    : QUICK_LINKS.filter((l) => props.allowedHrefs!.includes(l.href))
 
   // Ativar/sair da prévia é navegação de verdade (GET em /api/admin/preview,
   // não Server Action) — de propósito, pra abrir em aba nova sem mexer na
@@ -567,7 +572,7 @@ export function AdminDashboardShell(props: DashboardProps) {
           <div className="rounded-2xl border border-border bg-card p-5">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Acesso Rápido</p>
             <div className="grid grid-cols-2 gap-2">
-              {QUICK_LINKS.map(({ href, icon: Icon, label }) => (
+              {visibleQuickLinks.map(({ href, icon: Icon, label }) => (
                 <Link
                   key={href}
                   href={href}

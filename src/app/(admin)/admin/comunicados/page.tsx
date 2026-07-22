@@ -1,12 +1,13 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AnnouncementsManager } from '@/components/admin/announcements-manager'
-import { requireContentPage } from '@/lib/authz'
+import { requireAdminPage } from '@/lib/authz'
 
 export default async function ComunicadosPage() {
-  const ctx = await requireContentPage()
+  // Admin-only (voltou a ser assim na v1.84.0) — comunicado vai pra TODOS os
+  // membros, não faz sentido colaborador criar; quem precisa avisar algo do
+  // próprio curso usa a Comunidade dele.
+  await requireAdminPage()
 
-  // adminClient sempre: RLS de announcements é admin-only estrita, e
-  // colaborador precisa ver rascunhos/agendados igual ao admin.
   const adminClient = createAdminClient()
 
   const { data } = await adminClient
@@ -22,7 +23,7 @@ export default async function ComunicadosPage() {
           Publique avisos e novidades para os membros.
         </p>
       </div>
-      <AnnouncementsManager announcements={data ?? []} isAdmin={ctx.role === 'admin'} />
+      <AnnouncementsManager announcements={data ?? []} />
     </div>
   )
 }

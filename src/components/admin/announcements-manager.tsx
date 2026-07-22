@@ -370,14 +370,14 @@ export function AnnouncementsManager({ announcements, isAdmin = true }: { announ
 
   return (
     <div className="space-y-4">
-      {!showForm && (
+      {isAdmin && !showForm && (
         <Button onClick={() => setShowForm(true)} className="gap-2">
           <Plus className="w-4 h-4" />
           Novo Comunicado
         </Button>
       )}
 
-      {showForm && (
+      {isAdmin && showForm && (
         <div className="bg-muted/40 border border-dashed rounded-lg p-4">
           <p className="text-sm font-medium text-foreground mb-3">Novo Comunicado</p>
           <AnnouncementForm

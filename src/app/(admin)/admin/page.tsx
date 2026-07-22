@@ -33,6 +33,15 @@ export default async function AdminDashboard() {
   const previewAreaId = ctx.role === 'admin' ? (jar.get(PREVIEW_COOKIE)?.value ?? null) : null
   const previewActive = !!previewAreaId
   const effectiveRole = previewActive ? 'collaborator' : ctx.role
+  // Mesma lista de admin/layout.tsx (cada arquivo computa por conta própria,
+  // padrão já estabelecido) — usada pra filtrar os atalhos de "Acesso Rápido".
+  const allowedHrefs = effectiveRole === 'admin'
+    ? null
+    : [
+        '/admin', '/admin/cursos', '/admin/documentos',
+        '/admin/comunidade', '/admin/feedback', '/admin/marketing',
+        '/admin/relatorios', '/admin/configuracoes',
+      ]
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -246,6 +255,7 @@ export default async function AdminDashboard() {
         previewActive={previewActive}
         previewAreaId={previewAreaId}
         collaboratorAreas={collaboratorAreas}
+        allowedHrefs={allowedHrefs}
       />
       <DashboardAutoRefresh />
     </>

@@ -47,17 +47,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const effectiveRole = previewActive ? 'collaborator' : ctx.role
 
   // Admin vê tudo (null = sem filtro). Colaborador (real ou em prévia) vê o
-  // mesmo menu do admin, exceto Membros/SEO/FAQ (decisão do usuário) — cada
-  // tela aberta tem sua própria regra de permissão (ver CLAUDE.md): Cursos/
-  // Marketing = capacidade + posse por item; Comunicados = cria mas não
-  // edita/exclui; Documentos = só certificados dos próprios cursos;
-  // Comunidade = só visualiza; Relatórios = Atividades filtrada por posse.
-  // Dashboard/Feedback/Configurações mostram versão de membro ou dados reais
-  // sem restrição adicional.
+  // mesmo menu do admin, exceto Membros/SEO/FAQ/Comunicados (decisão do
+  // usuário) — cada tela aberta tem sua própria regra de permissão (ver
+  // CLAUDE.md): Cursos/Marketing = capacidade + posse por item; Comunicados
+  // = admin-only de verdade (v1.84.0 — vai pra TODOS os membros, colaborador
+  // usa a Comunidade do próprio curso pra isso); Documentos = só certificados
+  // dos próprios cursos; Comunidade = moderação por posse; Relatórios =
+  // Atividades filtrada por posse. Dashboard/Feedback/Configurações mostram
+  // versão de membro ou dados reais sem restrição adicional.
   const allowedHrefs = effectiveRole === 'admin'
     ? null
     : [
-        '/admin', '/admin/cursos', '/admin/comunicados', '/admin/documentos',
+        '/admin', '/admin/cursos', '/admin/documentos',
         '/admin/comunidade', '/admin/feedback', '/admin/marketing',
         '/admin/relatorios', '/admin/configuracoes',
       ]

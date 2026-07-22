@@ -58,15 +58,6 @@ export async function requireAdmin(): Promise<AdminContext | { error: string }> 
   return ctx
 }
 
-// Qualquer admin ou colaborador ativo — sem checar capacidade nem posse.
-// Usado em ações que todo colaborador pode disparar independente da área
-// (ex.: criar comunicado — só admin edita/exclui/despublica depois).
-export async function requireAnyRole(): Promise<AdminContext | { error: string }> {
-  const ctx = await getAdminContext()
-  if (!ctx) return { error: 'Sem permissão.' }
-  return ctx
-}
-
 export async function requireCapability(cap: Capability): Promise<AdminContext | { error: string }> {
   const ctx = await getAdminContext()
   if (!ctx) return { error: 'Sem permissão.' }

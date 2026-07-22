@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { emailMembersNewAnnouncement } from '@/lib/email'
 import { getSettings } from '@/lib/settings'
 import { notifyAllMembers } from '@/app/actions/notifications'
-import { requireAdmin, requireAnyRole } from '@/lib/authz'
+import { requireAdmin } from '@/lib/authz'
 import { logActivity, diffFields } from '@/lib/activity-log'
 
 // O corpo do comunicado é HTML (editor rico) — a notificação mostra o body
@@ -40,17 +40,15 @@ async function notifyNewAnnouncement(ann: { title: string; body: string }) {
   })
 }
 
-// Qualquer colaborador ativo pode criar/publicar um comunicado (privilégio de
-// papel, não de área/capacidade) — só admin edita, exclui ou despublica
-// depois (ver updateAnnouncement/deleteAnnouncement/toggleAnnouncementPublished).
-// Usa adminClient (não createClient): a RLS de announcements é admin-only
-// estrita, e a mutação do colaborador precisa do bypass, igual ao padrão já
-// usado em courses.ts/modules.ts/etc.
+// Admin-only de propósito (voltou a ser assim na v1.84.0 — o período em que
+// qualquer colaborador podia criar comunicados foi revertido: comunicado vai
+// pra TODOS os membros da plataforma, não faz sentido pra algo específico de
+// um curso/área; o canal certo pra isso é a Comunidade do próprio curso).
 export async function createAnnouncement(formData: FormData) {
-  const authz = await requireAnyRole()
+  const authz = await requireAdmin()
   if ('error' in authz) return { error: authz.error }
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
   const title = formData.get('title') as string
   const body = formData.get('body') as string
   const publish_at_raw = (formData.get('publish_at') as string) || null
@@ -58,21 +56,16 @@ export async function createAnnouncement(formData: FormData) {
   const expires_at_raw = (formData.get('expires_at') as string) || null
   const expires_at = expires_at_raw ? new Date(expires_at_raw).toISOString() : null
 
-  // Admin cria como rascunho (fluxo de revisão manual, igual sempre foi).
-  // Colaborador "publica" de verdade — sem agendamento, vai ao ar na hora;
-  // com agendamento, respeita a data (mesmo comportamento de scheduleAnnouncement).
-  const is_published = authz.role !== 'admin' && !publish_at
-
+  // Sempre cria como rascunho (fluxo de revisão manual, igual sempre foi
+  // antes da v1.72.0) — publicar é um passo separado (toggleAnnouncementPublished).
   const { data, error } = await supabase
     .from('announcements')
-    .insert({ title, body, publish_at, expires_at, is_published })
+    .insert({ title, body, publish_at, expires_at })
     .select()
     .single()
 
   if (error) return { error: error.message }
   logActivity(authz, { action: 'create', entityType: 'comunicado', entityId: data?.id, entityLabel: title })
-
-  if (is_published && data) notifyNewAnnouncement({ title, body })
 
   revalidatePath('/admin/comunicados')
   revalidatePath('/dashboard', 'layout')
