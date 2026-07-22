@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSettings } from '@/lib/settings'
+import { getSettings, getMemberColorStyleTag } from '@/lib/settings'
 import { getFaqItems } from '@/app/actions/faq'
 import { toOne } from '@/lib/supabase/relations'
 import { MemberSidebar } from '@/components/members/member-sidebar'
@@ -75,9 +75,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     })
   )
   const isTester = userTagNames.has(TESTER_TAG_NAME)
+  const memberColorStyle = getMemberColorStyleTag(settings.member_accent_color)
 
   return (
-    <div className="flex h-screen bg-muted/30">
+    <div className="member-theme flex h-screen bg-muted/30">
+      {memberColorStyle && <style dangerouslySetInnerHTML={{ __html: memberColorStyle }} />}
       <MemberSidebar
         siteName={settings.site_name}
         logoUrl={settings.logo_url}

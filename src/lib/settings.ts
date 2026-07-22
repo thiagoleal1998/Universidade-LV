@@ -5,6 +5,7 @@ export type Settings = {
   site_name: string
   site_tagline: string
   primary_color: string
+  member_accent_color: string
   logo_url: string
   favicon_url: string
   login_logo_url: string
@@ -139,6 +140,7 @@ const DEFAULTS = {
   site_name: 'Universidade LV',
   site_tagline: '',
   primary_color: 'default',
+  member_accent_color: 'green',
   logo_url: '',
   favicon_url: '',
   login_logo_url: '',
@@ -326,6 +328,7 @@ export async function getSettings(): Promise<Settings> {
       site_name: map.site_name ?? DEFAULTS.site_name,
       site_tagline: map.site_tagline ?? DEFAULTS.site_tagline,
       primary_color: map.primary_color ?? DEFAULTS.primary_color,
+      member_accent_color: map.member_accent_color ?? DEFAULTS.member_accent_color,
       logo_url: map.logo_url ?? DEFAULTS.logo_url,
       favicon_url: map.favicon_url ?? DEFAULTS.favicon_url,
       login_logo_url: map.login_logo_url ?? DEFAULTS.login_logo_url,
@@ -451,6 +454,31 @@ export function getColorStyleTag(colorKey: string): string | null {
       --sidebar-primary-foreground: oklch(${preset.light.fg});
     }
     .dark {
+      --primary: oklch(${preset.dark.primary});
+      --primary-foreground: oklch(${preset.dark.fg});
+      --ring: oklch(${preset.dark.primary});
+      --sidebar-primary: oklch(${preset.dark.primary});
+      --sidebar-primary-foreground: oklch(${preset.dark.fg});
+    }
+  `
+}
+
+// Mesma lógica de getColorStyleTag, mas escopada em `.member-theme` (em vez
+// de `:root`/`.dark` puro) — permite a área do aluno ter um destaque de cor
+// diferente do admin sem afetar `/admin`. Fundos de página (--background/
+// --card) não são tocados, só os tokens de destaque (primary/ring/sidebar).
+export function getMemberColorStyleTag(colorKey: string): string | null {
+  if (colorKey === 'default' || !(colorKey in COLOR_PRESETS)) return null
+  const preset = COLOR_PRESETS[colorKey as ColorKey]
+  return `
+    .member-theme {
+      --primary: oklch(${preset.light.primary});
+      --primary-foreground: oklch(${preset.light.fg});
+      --ring: oklch(${preset.light.primary});
+      --sidebar-primary: oklch(${preset.light.primary});
+      --sidebar-primary-foreground: oklch(${preset.light.fg});
+    }
+    .dark .member-theme {
       --primary: oklch(${preset.dark.primary});
       --primary-foreground: oklch(${preset.dark.fg});
       --ring: oklch(${preset.dark.primary});

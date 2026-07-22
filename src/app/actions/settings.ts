@@ -17,6 +17,7 @@ export async function updateSettings(formData: FormData) {
     { key: 'site_name', value: (formData.get('site_name') as string) || 'Universidade LV' },
     { key: 'site_tagline', value: (formData.get('site_tagline') as string) || '' },
     { key: 'primary_color', value: (formData.get('primary_color') as string) || 'default' },
+    { key: 'member_accent_color', value: (formData.get('member_accent_color') as string) || 'green' },
     { key: 'logo_url', value: (formData.get('logo_url') as string) || '' },
     { key: 'favicon_url', value: (formData.get('favicon_url') as string) || '' },
     { key: 'login_logo_url', value: (formData.get('login_logo_url') as string) || '' },

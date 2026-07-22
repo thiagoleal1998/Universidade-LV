@@ -729,6 +729,25 @@ export function SettingsForm({ settings, emailTemplates }: { settings: Settings;
 
         <Separator />
 
+        {/* Cor da área do membro */}
+        <section>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Cor da Área do Membro</h3>
+          <p className="text-xs text-muted-foreground mb-4">Destaque (botões, links, menu ativo) só da área do aluno — independente da cor principal do admin. Fundo das páginas continua branco/preto conforme o tema.</p>
+          <div className="grid grid-cols-7 gap-2">
+            {(Object.entries(COLOR_PRESETS) as [string, typeof COLOR_PRESETS[keyof typeof COLOR_PRESETS]][]).map(([key, preset]) => (
+              <label key={key} className="cursor-pointer group">
+                <input type="radio" name="member_accent_color" value={key} defaultChecked={settings.member_accent_color === key} className="sr-only" />
+                <div className={cn('flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all', 'group-has-[input:checked]:border-foreground border-transparent hover:border-border')}>
+                  <div className="w-7 h-7 rounded-full shadow-sm border border-black/10" style={{ backgroundColor: preset.hex }} />
+                  <span className="text-[10px] text-muted-foreground leading-tight text-center">{preset.label}</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <Separator />
+
         {/* Imagem de carregamento */}
         <section>
           <h3 className="text-sm font-semibold text-foreground mb-1">Imagem de carregamento</h3>
