@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { toast } from 'sonner'
 import { Camera, Loader2, KeyRound } from 'lucide-react'
 
@@ -18,14 +19,17 @@ type Props = {
   company: string
   jobTitle: string
   linkedinUrl: string
+  bio?: string
+  showBio?: boolean
 }
 
-export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTitle, linkedinUrl }: Props) {
+export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTitle, linkedinUrl, bio = '', showBio = false }: Props) {
   const [currentAvatar, setCurrentAvatar] = useState(avatarUrl)
   const [nameValue, setNameValue] = useState(fullName)
   const [companyValue, setCompanyValue] = useState(company)
   const [jobTitleValue, setJobTitleValue] = useState(jobTitle)
   const [linkedinValue, setLinkedinValue] = useState(linkedinUrl)
+  const [bioValue, setBioValue] = useState(bio)
   const [isUploading, startUpload] = useTransition()
   const [isSaving, startSave] = useTransition()
   const [isChangingPw, startChangePw] = useTransition()
@@ -56,6 +60,7 @@ export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTit
     fd.append('company', companyValue)
     fd.append('job_title', jobTitleValue)
     fd.append('linkedin_url', linkedinValue)
+    fd.append('bio', bioValue)
     startSave(async () => {
       const r = await updateProfile(fd)
       if (r?.error) toast.error(r.error)
@@ -156,6 +161,13 @@ export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTit
                   className="mt-1"
                 />
               </div>
+              {showBio && (
+                <div className="sm:col-span-2">
+                  <Label className="text-xs text-muted-foreground">Bio / Qualificações</Label>
+                  <p className="text-xs text-muted-foreground/70 mb-1.5">Aparece pros alunos quando você é vinculado como instrutor(a) de um curso.</p>
+                  <RichTextEditor content={bioValue} onChange={setBioValue} />
+                </div>
+              )}
               <div className="sm:col-span-2 flex justify-end pt-1">
                 <Button type="submit" size="sm" disabled={isSaving} className="w-full sm:w-auto">
                   {isSaving ? 'Salvando...' : 'Salvar alterações'}

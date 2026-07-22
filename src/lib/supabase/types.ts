@@ -172,6 +172,7 @@ export type Course = {
   instructor_name: string | null
   instructor_role: string | null
   instructor_photo_url: string | null
+  instructor_profile_id: string | null
 }
 export type Tag = { id: string; name: string; color: string; created_at: string }
 export type LessonAttachment = {

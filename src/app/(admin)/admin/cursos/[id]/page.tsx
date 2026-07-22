@@ -24,15 +24,17 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
   // esconderia rascunhos de qualquer forma.
   const db = createAdminClient()
 
-  const [{ data: courseData, error: courseError }, { data: modulesData }] = await Promise.all([
+  const [{ data: courseData, error: courseError }, { data: modulesData }, { data: candidatesData }] = await Promise.all([
     db.from('courses').select('*').eq('id', id).single(),
     db.from('modules').select('*, lessons(count)').eq('course_id', id).order('order_index'),
+    db.from('profiles').select('id, full_name, job_title').in('role', ['admin', 'collaborator']).eq('active', true).order('full_name'),
   ])
 
   if (courseError) console.error('[Admin] Erro ao buscar curso id=%s:', id, courseError)
 
   const course = courseData as CourseWithOwner | null
   const modules = (modulesData ?? []) as ModuleWithCount[]
+  const instructorCandidates = candidatesData ?? []
 
   if (!course) notFound()
 
@@ -58,7 +60,7 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
         </Link>
       </div>
 
-      <CourseEditor course={course} canEdit={canEdit} />
+      <CourseEditor course={course} canEdit={canEdit} instructorCandidates={instructorCandidates} />
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">

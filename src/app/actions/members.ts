@@ -49,6 +49,7 @@ export async function updateMember(
     active: boolean
     new_password?: string
     collaborator_area_id?: string | null
+    bio?: string
   }
 ) {
   const authz = await requireAdmin()
@@ -85,6 +86,7 @@ export async function updateMember(
       role: data.role,
       active: data.active,
       collaborator_area_id: data.role === 'collaborator' ? data.collaborator_area_id : null,
+      ...(data.bio !== undefined ? { bio: data.bio } : {}),
     })
     .eq('id', userId)
 
@@ -96,6 +98,7 @@ export async function updateMember(
   if (prevProfile?.active !== data.active) changed.push('status')
   if (data.new_password) changed.push('senha')
   if (data.email) changed.push('e-mail')
+  if (data.bio !== undefined) changed.push('bio')
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
 
   revalidatePath('/admin/membros')

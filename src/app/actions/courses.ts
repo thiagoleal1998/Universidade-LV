@@ -48,14 +48,15 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const is_published = formData.get('is_published') === 'true'
   const instructor_name = (formData.get('instructor_name') as string) || null
   const instructor_role = (formData.get('instructor_role') as string) || null
+  const instructor_profile_id = (formData.get('instructor_profile_id') as string) || null
 
   const { data: before } = await adminClient
     .from('courses')
-    .select('name, description, is_published, instructor_name, instructor_role')
+    .select('name, description, is_published, instructor_name, instructor_role, instructor_profile_id')
     .eq('id', courseId)
     .single()
 
-  const after = { name, description, is_published, instructor_name, instructor_role }
+  const after = { name, description, is_published, instructor_name, instructor_role, instructor_profile_id }
   const { error } = await adminClient
     .from('courses')
     .update(after)
@@ -66,6 +67,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const changed = diffFields(before ?? {}, after, {
     name: 'título', description: 'descrição', is_published: 'publicação',
     instructor_name: 'nome do instrutor', instructor_role: 'cargo do instrutor',
+    instructor_profile_id: 'instrutor vinculado',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'curso', entityId: courseId, entityLabel: name, detail: `alterou: ${changed.join(', ')}` })

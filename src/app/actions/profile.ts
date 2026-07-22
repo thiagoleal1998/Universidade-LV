@@ -46,6 +46,7 @@ export async function updateProfile(formData: FormData) {
   const company = ((formData.get('company') as string) ?? '').trim()
   const job_title = ((formData.get('job_title') as string) ?? '').trim()
   const linkedin_url = ((formData.get('linkedin_url') as string) ?? '').trim()
+  const bio = (formData.get('bio') as string) ?? ''
 
   if (linkedin_url) {
     try { new URL(linkedin_url) } catch { return { error: 'Link do LinkedIn inválido. Cole uma URL completa (https://...).' } }
@@ -54,7 +55,7 @@ export async function updateProfile(formData: FormData) {
   const adminClient = createAdminClient()
   const { error } = await adminClient
     .from('profiles')
-    .update({ full_name, company, job_title, linkedin_url })
+    .update({ full_name, company, job_title, linkedin_url, bio })
     .eq('id', user.id)
 
   if (error) return { error: error.message }

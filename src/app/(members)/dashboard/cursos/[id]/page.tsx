@@ -46,6 +46,19 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const course = courseData as CourseWithModules | null
   if (!course) notFound()
 
+  // RLS de profiles só libera cada um ler o próprio perfil (profiles_select_own)
+  // — usar adminClient aqui de propósito, senão a leitura do instrutor (que
+  // não é o próprio usuário) volta vazia em silêncio pra membros comuns.
+  let linkedInstructor: { full_name: string; job_title: string | null; avatar_url: string | null; bio: string } | null = null
+  if (course.instructor_profile_id) {
+    const { data } = await createAdminClient()
+      .from('profiles')
+      .select('full_name, job_title, avatar_url, bio')
+      .eq('id', course.instructor_profile_id)
+      .single()
+    linkedInstructor = data
+  }
+
   const completedIds = (progressData ?? []).map((p) => p.lesson_id)
   const completedSet = new Set(completedIds)
   const modules = (course.modules ?? []).sort((a, b) => a.order_index - b.order_index)
@@ -154,27 +167,39 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Instructor */}
-      {(course.instructor_name || course.instructor_photo_url) && (
-        <div className="flex items-center gap-4 px-5 py-4 bg-card border rounded-xl">
-          {course.instructor_photo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={course.instructor_photo_url}
-              alt={course.instructor_name ?? 'Instrutor'}
-              className="w-14 h-14 rounded-full object-cover shrink-0 border-2 border-border"
-            />
-          ) : (
-            <UserCircle2 className="w-14 h-14 text-muted-foreground shrink-0" />
-          )}
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground mb-0.5">Instrutor(a)</p>
-            <p className="font-semibold text-foreground leading-tight">{course.instructor_name}</p>
-            {course.instructor_role && (
-              <p className="text-sm text-muted-foreground">{course.instructor_role}</p>
+      {(() => {
+        const displayName = linkedInstructor?.full_name || course.instructor_name
+        const displayRole = linkedInstructor?.job_title || course.instructor_role
+        const displayPhoto = linkedInstructor?.avatar_url || course.instructor_photo_url
+        const displayBio = linkedInstructor?.bio || ''
+        if (!displayName && !displayPhoto) return null
+        return (
+          <div className="px-5 py-4 bg-card border rounded-xl space-y-3">
+            <div className="flex items-center gap-4">
+              {displayPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={displayPhoto}
+                  alt={displayName ?? 'Instrutor'}
+                  className="w-14 h-14 rounded-full object-cover shrink-0 border-2 border-border"
+                />
+              ) : (
+                <UserCircle2 className="w-14 h-14 text-muted-foreground shrink-0" />
+              )}
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground mb-0.5">Instrutor(a)</p>
+                <p className="font-semibold text-foreground leading-tight">{displayName}</p>
+                {displayRole && (
+                  <p className="text-sm text-muted-foreground">{displayRole}</p>
+                )}
+              </div>
+            </div>
+            {displayBio && (
+              <div className="rich-text text-sm text-muted-foreground pt-1 border-t border-border" dangerouslySetInnerHTML={{ __html: displayBio }} />
             )}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Modules accordion */}
       <div>

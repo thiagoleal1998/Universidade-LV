@@ -29,6 +29,7 @@ export type MemberWithEmail = {
   avatar_url?: string
   member_number?: number | null
   collaborator_area_id?: string | null
+  bio?: string
   tagIds?: string[]
   courseIds?: string[]
   isOnline?: boolean

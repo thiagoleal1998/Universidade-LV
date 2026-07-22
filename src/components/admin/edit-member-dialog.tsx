@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
@@ -35,6 +36,7 @@ type Member = {
   collaborator_area_id?: string | null
   avatar_url?: string
   member_number?: number | null
+  bio?: string
   tagIds?: string[]
   courseIds?: string[]
 }
@@ -57,6 +59,7 @@ export function EditMemberDialog({
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(member.courseIds ?? [])
   const [selectedRole, setSelectedRole] = useState<Member['role']>(member.role)
   const [selectedAreaId, setSelectedAreaId] = useState<string>(member.collaborator_area_id ?? '')
+  const [bioValue, setBioValue] = useState(member.bio ?? '')
 
   function toggleCourse(id: string) {
     setSelectedCourseIds((prev) =>
@@ -91,6 +94,7 @@ export function EditMemberDialog({
           active: data.get('active') === 'true',
           new_password: newPassword || undefined,
           collaborator_area_id: role === 'collaborator' ? selectedAreaId : null,
+          bio: role !== 'member' ? bioValue : undefined,
         }),
         assignMemberTags(member.id, selectedTagIds),
         assignMemberCourses(member.id, selectedCourseIds),
@@ -191,6 +195,14 @@ export function EditMemberDialog({
               </div>
             )}
           </div>
+
+          {selectedRole !== 'member' && (
+            <div className="space-y-2">
+              <Label>Bio / Qualificações</Label>
+              <p className="text-xs text-muted-foreground">Aparece pros alunos quando esta pessoa é vinculada como instrutor(a) de um curso.</p>
+              <RichTextEditor content={bioValue} onChange={setBioValue} />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Status da conta</Label>
