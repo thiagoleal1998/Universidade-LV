@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import {
   Users, BookOpen, GraduationCap, TrendingUp, TrendingDown, Minus,
   Activity, BarChart3, Lightbulb, Settings, Megaphone, MessageSquare,
@@ -11,7 +10,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
-import { setCollaboratorPreview } from '@/app/actions/preview'
 
 export type ModuleStat = { id: string; title: string; pct: number; lessonCount: number; completions: number }
 export type LessonWithCount = { id: string; title: string; moduleTitle: string; completions: number }
@@ -116,18 +114,20 @@ const TABS = [
 
 export function AdminDashboardShell(props: DashboardProps) {
   const [tab, setTab] = useState<'overview' | 'charts' | 'insights'>('overview')
-  const router = useRouter()
-  const [isPreviewPending, startPreviewTransition] = useTransition()
   const role = props.role ?? 'admin'
   const previewActive = props.previewActive ?? false
   const collaboratorAreas = props.collaboratorAreas ?? []
   const previewAreaName = collaboratorAreas.find((a) => a.id === props.previewAreaId)?.name ?? null
 
-  function togglePreview(areaId: string | null) {
-    startPreviewTransition(async () => {
-      await setCollaboratorPreview(areaId)
-      router.refresh()
-    })
+  // Ativar/sair da prévia é navegação de verdade (GET em /api/admin/preview,
+  // não Server Action) — de propósito, pra abrir em aba nova sem mexer na
+  // aba atual (ver comentário em src/app/api/admin/preview/route.ts).
+  function activatePreview(areaId: string) {
+    window.open(`/api/admin/preview?area=${areaId}`, '_blank', 'noopener,noreferrer')
+  }
+
+  function exitPreview() {
+    window.location.href = '/api/admin/preview'
   }
 
   const ct = trend(props.completionsThisWeek, props.completionsPrevWeek)
@@ -165,22 +165,21 @@ export function AdminDashboardShell(props: DashboardProps) {
                 previewActive ? (
                   <button
                     type="button"
-                    onClick={() => togglePreview(null)}
-                    disabled={isPreviewPending}
-                    className="inline-flex items-center justify-center gap-2 text-sm font-semibold border border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400 px-4 py-2.5 rounded-xl hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+                    onClick={exitPreview}
+                    className="inline-flex items-center justify-center gap-2 text-sm font-semibold border border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400 px-4 py-2.5 rounded-xl hover:bg-violet-500/20 transition-colors"
                   >
-                    <Eye className="w-4 h-4" /> {isPreviewPending ? 'Saindo...' : `Sair da prévia${previewAreaName ? ` (${previewAreaName})` : ''}`}
+                    <Eye className="w-4 h-4" /> {`Sair da prévia${previewAreaName ? ` (${previewAreaName})` : ''}`}
                   </button>
                 ) : (
                   <div className="relative">
                     <select
                       value=""
-                      disabled={isPreviewPending || collaboratorAreas.length === 0}
-                      onChange={(e) => { if (e.target.value) togglePreview(e.target.value) }}
+                      disabled={collaboratorAreas.length === 0}
+                      onChange={(e) => { if (e.target.value) activatePreview(e.target.value) }}
                       className="appearance-none inline-flex items-center gap-2 text-sm font-semibold border border-border pl-10 pr-4 py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50 bg-background cursor-pointer"
                     >
                       <option value="" disabled>
-                        {isPreviewPending ? 'Entrando...' : collaboratorAreas.length === 0 ? 'Nenhuma área criada' : 'Prévia como Colaborador...'}
+                        {collaboratorAreas.length === 0 ? 'Nenhuma área criada' : 'Prévia como Colaborador...'}
                       </option>
                       {collaboratorAreas.map((a) => (
                         <option key={a.id} value={a.id}>{a.name}</option>
@@ -192,6 +191,8 @@ export function AdminDashboardShell(props: DashboardProps) {
               )}
               <Link
                 href="/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 text-sm font-semibold bg-foreground text-background px-4 py-2.5 rounded-xl hover:opacity-85 transition-opacity"
               >
                 Área do Aluno <ArrowUpRight className="w-4 h-4" />

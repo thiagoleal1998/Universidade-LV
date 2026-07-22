@@ -2,10 +2,9 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect, useTransition, CSSProperties } from 'react'
+import { usePathname } from 'next/navigation'
+import { useState, useEffect, CSSProperties } from 'react'
 import { logout } from '@/app/actions/auth'
-import { setCollaboratorPreview } from '@/app/actions/preview'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -67,14 +66,11 @@ function SidebarContent({
   onClose, collapsed = false, onToggleCollapse,
 }: Props & { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
 
+  // Navegação de verdade (GET), não Server Action — ver comentário em
+  // src/app/api/admin/preview/route.ts.
   function exitPreview() {
-    startTransition(async () => {
-      await setCollaboratorPreview(null)
-      router.refresh()
-    })
+    window.location.href = '/api/admin/preview'
   }
 
   const visibleNavItems = allowedHrefs === null
@@ -181,10 +177,9 @@ function SidebarContent({
           <button
             type="button"
             onClick={exitPreview}
-            disabled={isPending}
-            className="mt-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline disabled:opacity-50"
+            className="mt-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline"
           >
-            {isPending ? 'Saindo...' : 'Sair da prévia'}
+            Sair da prévia
           </button>
         </div>
       )}
