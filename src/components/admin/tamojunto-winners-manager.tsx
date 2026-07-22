@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Trophy, Medal, Plus, Trash2, ChevronDown } from 'lucide-react'
+import { Trophy, Medal, Plus, Trash2, ChevronDown, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Region = {
@@ -129,6 +129,12 @@ export function TamoJuntoWinnersManager({ raw, canEdit = true }: { raw: string; 
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl">
+    {!canEdit && (
+      <div className="flex items-center gap-2.5 mb-4 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-sm text-amber-800 dark:text-amber-300">
+        <Lock className="w-4 h-4 shrink-0" />
+        Sua área não tem permissão para alterar a Premiação TamoJunto — fale com um admin.
+      </div>
+    )}
     <fieldset disabled={!canEdit} className="space-y-6 border-0 p-0 m-0">
       {/* Ativar */}
       <div className="bg-card border rounded-xl p-6 flex items-center justify-between">
