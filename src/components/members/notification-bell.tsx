@@ -33,6 +33,7 @@ export function NotificationBell({
   placement = 'header',
   isAdmin = false,
   redirectFeedbackToAdmin,
+  triggerClassName,
 }: {
   unreadCount: number
   placement?: 'header' | 'sidebar'
@@ -43,6 +44,11 @@ export function NotificationBell({
   // que reflete só o shell atual). Default: mesmo valor de `isAdmin` (cobre o
   // sino do próprio painel admin sem precisar passar de novo).
   redirectFeedbackToAdmin?: boolean
+  // Sobrescreve as cores do botão-gatilho (não o painel) — usado quando o
+  // sino é montado sobre um fundo colorido sólido (ex.: sidebar verde do
+  // membro), onde as cores neutras padrão (text-muted-foreground etc.)
+  // ficam com contraste ruim.
+  triggerClassName?: string
 }) {
   const feedbackToAdmin = redirectFeedbackToAdmin ?? isAdmin
   const [open, setOpen] = useState(false)
@@ -153,7 +159,8 @@ export function NotificationBell({
         onClick={handleToggle}
         className={cn(
           'relative flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors',
-          open && 'bg-muted text-foreground'
+          open && 'bg-muted text-foreground',
+          triggerClassName,
         )}
         title="Notificações"
       >

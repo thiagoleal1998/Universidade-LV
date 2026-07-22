@@ -129,7 +129,7 @@ function SidebarContent({
     <div className="flex flex-col h-full">
 
       {/* ── Brand — logo always visible ── */}
-      <div className="border-b border-border bg-primary/5 shrink-0 flex items-center px-3 py-4 gap-2.5 min-h-[64px]">
+      <div className="border-b border-black/10 shrink-0 flex items-center px-3 py-4 gap-2.5 min-h-[64px]">
         <Link
           href="/dashboard"
           onClick={onClose}
@@ -137,27 +137,27 @@ function SidebarContent({
           className="shrink-0"
         >
           {logoUrl ? (
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-border shadow-sm">
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/20 shadow-sm bg-white/10">
               <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full" />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-              <GraduationCap className="w-4 h-4 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shadow-sm">
+              <GraduationCap className="w-4 h-4 text-white" />
             </div>
           )}
         </Link>
 
         {/* Text slides out when collapsed */}
         <div className="flex-1 min-w-0" style={slideText(collapsed, 155)}>
-          <p className="text-sm font-semibold text-foreground truncate leading-tight">{siteName}</p>
-          <p className="text-xs text-primary/70 font-medium">{areaSubtitle}</p>
+          <p className="text-sm font-semibold text-white truncate leading-tight">{siteName}</p>
+          <p className="text-xs text-white/70 font-medium">{areaSubtitle}</p>
         </div>
 
         {/* Mobile: close button */}
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -172,8 +172,8 @@ function SidebarContent({
           type="button"
           title={collapsed ? 'Busca rápida (Ctrl K)' : undefined}
           className={cn(
-            'w-full flex items-center rounded-lg text-xs text-muted-foreground border border-dashed border-border',
-            'hover:border-primary/30 hover:bg-muted/50 transition-colors mb-1',
+            'w-full flex items-center rounded-lg text-xs text-white/70 border border-dashed border-white/25',
+            'hover:border-white/40 hover:bg-white/10 transition-colors mb-1',
             collapsed ? 'justify-center p-2.5' : 'gap-2 px-3 py-2',
           )}
           onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))}
@@ -181,7 +181,7 @@ function SidebarContent({
           <Search className="w-3.5 h-3.5 shrink-0" />
           <span style={slideText(collapsed, 130)} className="flex-1 text-left">Busca rápida</span>
           {/* kbd uses slideText so it takes 0px layout space when collapsed */}
-          <kbd style={slideText(collapsed, 58)} className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono hidden md:block">
+          <kbd style={slideText(collapsed, 58)} className="text-xs bg-white/15 text-white px-1.5 py-0.5 rounded font-mono hidden md:block">
             Ctrl K
           </kbd>
         </button>
@@ -201,11 +201,11 @@ function SidebarContent({
                 'flex items-center rounded-lg font-medium transition-colors',
                 collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
                 isActive
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent',
+                  ? 'bg-white/15 text-white border border-white/25'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white border border-transparent',
               )}
             >
-              <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
+              <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-white')} />
               <span style={slideText(collapsed, 172)}>{label}</span>
             </Link>
           )
@@ -224,7 +224,7 @@ function SidebarContent({
             title={collapsed ? 'Expandir menu' : 'Minimizar menu'}
             className={cn(
               'w-full flex items-center rounded-lg font-medium transition-colors',
-              'text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent',
+              'text-white/70 hover:bg-white/10 hover:text-white border border-transparent',
               collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
             )}
           >
@@ -237,27 +237,27 @@ function SidebarContent({
       )}
 
       {/* ── User footer ── */}
-      <div className="px-2 py-3 border-t border-border shrink-0">
+      <div className="px-2 py-3 border-t border-black/10 shrink-0">
         {collapsed ? (
           /* Collapsed: icons stacked, centered */
           <div className="flex flex-col items-center gap-1.5">
             <Link
               href="/dashboard/perfil"
               title={userName || 'Perfil'}
-              className={cn('p-1 rounded-lg transition-colors', isProfileActive ? 'bg-primary/10' : 'hover:bg-muted')}
+              className={cn('p-1 rounded-lg transition-colors', isProfileActive ? 'bg-white/15' : 'hover:bg-white/10')}
             >
               <Avatar className="w-7 h-7">
                 {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
-                <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+                <AvatarFallback className="text-xs bg-white/20 text-white font-semibold">{initials}</AvatarFallback>
               </Avatar>
             </Link>
-            <NotificationBell unreadCount={unreadCount} placement="sidebar" redirectFeedbackToAdmin={isCollaboratorOrAdmin} />
-            <ThemeToggle />
+            <NotificationBell unreadCount={unreadCount} placement="sidebar" redirectFeedbackToAdmin={isCollaboratorOrAdmin} triggerClassName="text-white/70 hover:text-white hover:bg-white/10" />
+            <ThemeToggle className="text-white/70 hover:text-white hover:bg-white/10" />
             <form action={logout}>
               <button
                 type="submit"
                 title="Sair"
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -272,31 +272,31 @@ function SidebarContent({
                 onClick={onClose}
                 className={cn(
                   'flex items-center gap-2 px-2 py-1.5 rounded-lg flex-1 min-w-0 transition-colors',
-                  isProfileActive ? 'bg-primary/10' : 'hover:bg-muted',
+                  isProfileActive ? 'bg-white/15' : 'hover:bg-white/10',
                 )}
               >
                 <Avatar className="w-7 h-7 shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+                  <AvatarFallback className="text-xs bg-white/20 text-white font-semibold">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  {userName && <p className="text-xs font-medium truncate text-foreground">{userName}</p>}
-                  <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                  {userName && <p className="text-xs font-medium truncate text-white">{userName}</p>}
+                  <p className="text-xs text-white/60 truncate">{userEmail}</p>
                 </div>
               </Link>
-              <NotificationBell unreadCount={unreadCount} placement="sidebar" redirectFeedbackToAdmin={isCollaboratorOrAdmin} />
-              <ThemeToggle />
+              <NotificationBell unreadCount={unreadCount} placement="sidebar" redirectFeedbackToAdmin={isCollaboratorOrAdmin} triggerClassName="text-white/70 hover:text-white hover:bg-white/10" />
+              <ThemeToggle className="text-white/70 hover:text-white hover:bg-white/10" />
             </div>
             <form action={logout}>
               <button
                 type="submit"
-                className="w-full flex items-center gap-2 px-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm font-medium h-8"
+                className="w-full flex items-center gap-2 px-3 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium h-8"
               >
                 <LogOut className="w-4 h-4 shrink-0" />
                 Sair
               </button>
             </form>
-            <p className="text-xs text-muted-foreground/40 font-mono text-center pt-1">v{APP_VERSION}</p>
+            <p className="text-xs text-white/30 font-mono text-center pt-1">v{APP_VERSION}</p>
           </div>
         )}
       </div>
@@ -332,10 +332,10 @@ export function MemberSidebar(props: Props) {
   return (
     <>
       {/* ── Mobile top bar ── */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-30 flex items-center gap-3 px-4 md:hidden">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-primary border-b border-black/10 z-30 flex items-center gap-3 px-4 md:hidden">
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
           aria-label="Abrir menu"
         >
           <Menu className="w-5 h-5" />
@@ -343,12 +343,12 @@ export function MemberSidebar(props: Props) {
         {props.logoUrl ? (
           <Image src={props.logoUrl} alt={props.siteName} width={24} height={24} className="object-contain" />
         ) : (
-          <GraduationCap className="w-5 h-5 text-primary" />
+          <GraduationCap className="w-5 h-5 text-white" />
         )}
-        <span className="text-sm font-semibold text-foreground truncate">{props.siteName}</span>
+        <span className="text-sm font-semibold text-white truncate">{props.siteName}</span>
         <div className="ml-auto flex items-center gap-1">
-          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="sidebar" redirectFeedbackToAdmin={props.isCollaboratorOrAdmin} />
-          <ThemeToggle />
+          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="sidebar" redirectFeedbackToAdmin={props.isCollaboratorOrAdmin} triggerClassName="text-white/70 hover:text-white hover:bg-white/10" />
+          <ThemeToggle className="text-white/70 hover:text-white hover:bg-white/10" />
         </div>
       </header>
 
@@ -363,7 +363,7 @@ export function MemberSidebar(props: Props) {
       {/* ── Mobile sidebar ── */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border md:hidden',
+          'fixed inset-y-0 left-0 z-50 w-72 bg-primary md:hidden',
           'transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
@@ -373,7 +373,7 @@ export function MemberSidebar(props: Props) {
 
       {/* ── Desktop sidebar ── */}
       <aside
-        className="hidden md:flex md:flex-col md:shrink-0 border-r border-border bg-card overflow-hidden"
+        className="hidden md:flex md:flex-col md:shrink-0 bg-primary overflow-hidden"
         style={{
           width: collapsed ? 60 : 240,
           transition: 'width 300ms cubic-bezier(0.4,0,0.2,1)',
