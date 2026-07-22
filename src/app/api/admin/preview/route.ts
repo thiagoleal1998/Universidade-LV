@@ -4,6 +4,14 @@ import { getAdminContext } from '@/lib/authz'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PREVIEW_COOKIE } from '@/lib/preview'
 
+// Mesmo padrão de src/lib/email.ts (siteUrl) — NÃO usar request.url pra montar
+// o destino do redirect: atrás do proxy reverso da VPS, request.url reflete o
+// endereço interno (http://localhost:3000/...) que o Next.js recebe do nginx,
+// não o domínio público. Usar isso no redirect manda o navegador pra
+// localhost:3000 (erro real visto em produção: ERR_SSL_PROTOCOL_ERROR ao
+// tentar https numa porta que só fala http local).
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://universidadelv.com.br'
+
 // GET (não Server Action) de propósito: o "Prévia como Colaborador" abre
 // isso numa aba NOVA via window.open — se fosse uma Server Action chamada
 // pela aba original, o Next.js atualizaria automaticamente os dados da aba
@@ -29,5 +37,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(new URL('/admin', request.url))
+  return NextResponse.redirect(`${siteUrl}/admin`)
 }
