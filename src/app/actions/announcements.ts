@@ -3,8 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { emailMembersNewAnnouncement } from '@/lib/email'
-import { getSettings } from '@/lib/settings'
+import { rdMembersNewAnnouncement } from '@/lib/rdstation'
 import { notifyAllMembers } from '@/app/actions/notifications'
 import { requireAdmin } from '@/lib/authz'
 import { logActivity, diffFields } from '@/lib/activity-log'
@@ -21,16 +20,15 @@ function stripHtml(html: string): string {
 // publicado (createAnnouncement). Fire-and-forget, igual já era.
 async function notifyNewAnnouncement(ann: { title: string; body: string }) {
   const adminClient = createAdminClient()
-  const [{ data: profiles }, { data: usersData }, settings] = await Promise.all([
+  const [{ data: profiles }, { data: usersData }] = await Promise.all([
     adminClient.from('profiles').select('id').eq('role', 'member').eq('active', true),
     adminClient.auth.admin.listUsers(),
-    getSettings(),
   ])
   const activeIds = new Set((profiles ?? []).map((p) => p.id))
   const emails = (usersData?.users ?? [])
     .filter((u) => activeIds.has(u.id) && u.email)
     .map((u) => u.email!)
-  emailMembersNewAnnouncement(emails, ann.title, ann.body, settings.site_name)
+  rdMembersNewAnnouncement(emails, ann.title, stripHtml(ann.body ?? ''))
 
   notifyAllMembers({
     type: 'announcement',

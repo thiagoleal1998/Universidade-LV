@@ -3,8 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { emailCourseContentPublished } from '@/lib/email'
-import { getSettings } from '@/lib/settings'
+import { rdCourseContentPublished } from '@/lib/rdstation'
 
 export type Notification = {
   id: string
@@ -129,14 +128,11 @@ export async function notifyCourseMembers(
   )
 
   const memberIds = new Set(memberships.map((m) => m.member_id))
-  const [{ data: usersData }, settings] = await Promise.all([
-    adminClient.auth.admin.listUsers(),
-    getSettings(),
-  ])
+  const { data: usersData } = await adminClient.auth.admin.listUsers()
   const emails = (usersData?.users ?? [])
     .filter((u) => memberIds.has(u.id) && u.email)
     .map((u) => u.email!)
-  emailCourseContentPublished(emails, opts.title, opts.body, opts.link, settings.site_name)
+  rdCourseContentPublished(emails, opts.title, opts.body, opts.link)
 }
 
 // Notify a single user — used by community replies

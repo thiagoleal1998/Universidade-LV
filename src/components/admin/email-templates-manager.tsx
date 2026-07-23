@@ -12,37 +12,12 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { toast } from 'sonner'
 import { Mail, Pencil, X, Save } from 'lucide-react'
 
+// Os e-mails de aluno (boas-vindas, aprovação, recusa, comunicado, conteúdo
+// publicado, treinamento novo) migraram pra RD Station (v1.86.0, ver
+// src/lib/rdstation.ts) — o texto deles agora é editado nas Automações da
+// própria RD Station, não mais aqui. Só os 2 e-mails internos pro admin
+// continuam no Resend/email_templates.
 const TEMPLATE_META: Record<string, { label: string; description: string; vars: string[] }> = {
-  welcome_on_register: {
-    label: 'Boas-vindas ao cadastro',
-    description: 'Enviado para quem se cadastra, avisando que o acesso está em análise.',
-    vars: ['nome', 'site_name'],
-  },
-  member_approved: {
-    label: 'Acesso aprovado',
-    description: 'Enviado ao membro quando um admin aprova o cadastro dele.',
-    vars: ['nome', 'site_name'],
-  },
-  member_rejected: {
-    label: 'Cadastro recusado',
-    description: 'Enviado ao candidato quando um admin recusa o cadastro dele.',
-    vars: ['nome', 'site_name'],
-  },
-  new_announcement: {
-    label: 'Comunicado importante',
-    description: 'Enviado a todos os membros quando um comunicado é publicado.',
-    vars: ['titulo', 'corpo', 'site_name'],
-  },
-  course_content_published: {
-    label: 'Aula ou módulo publicado',
-    description: 'Enviado aos membros matriculados no curso quando uma aula/módulo novo é publicado.',
-    vars: ['titulo', 'corpo', 'link', 'site_name'],
-  },
-  new_training: {
-    label: 'Treinamento novo',
-    description: 'Enviado aos membros ativos quando um treinamento novo (ou replay) é publicado.',
-    vars: ['titulo', 'corpo', 'link', 'site_name'],
-  },
   admin_new_member_pending: {
     label: 'Novo cadastro pendente (admin)',
     description: 'Enviado para o e-mail do admin quando alguém se cadastra.',
@@ -55,14 +30,7 @@ const TEMPLATE_META: Record<string, { label: string; description: string; vars: 
   },
 }
 
-// Ordem de exibição — os que os membros recebem primeiro, os de admin por último.
 const DISPLAY_ORDER = [
-  'welcome_on_register',
-  'member_approved',
-  'member_rejected',
-  'new_announcement',
-  'course_content_published',
-  'new_training',
   'admin_new_member_pending',
   'admin_new_feedback',
 ]

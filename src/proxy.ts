@@ -33,7 +33,11 @@ export async function proxy(request: NextRequest) {
     pathname === '/register' ||
     pathname === '/forgot-password' ||
     pathname === '/reset-password' ||
-    pathname.startsWith('/auth/')
+    pathname.startsWith('/auth/') ||
+    // Callback OAuth2 da RD Station: recebido pelo navegador do admin logo após
+    // autorizar o app na própria RD Station — não pode depender de sessão do
+    // nosso app (a checagem de quem pode iniciar o fluxo já é manual/pontual).
+    pathname.startsWith('/api/rdstation/')
 
   if (isPublic) {
     // Se já autenticado e tentar acessar login, redireciona para o painel.

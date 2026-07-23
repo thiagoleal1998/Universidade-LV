@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
+import { syncLeadProfile } from '@/lib/rdstation'
 
 export async function createTag(formData: FormData) {
   const authz = await requireAdmin()
@@ -62,6 +63,7 @@ export async function assignMemberTags(memberId: string, tagIds: string[]) {
       .insert(tagIds.map((tag_id) => ({ profile_id: memberId, tag_id })))
   }
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: memberId, entityLabel: profile?.full_name || memberId, detail: `alterou: tags (${tagIds.length})` })
+  syncLeadProfile(memberId)
   revalidatePath('/admin/membros')
   return { success: true }
 }

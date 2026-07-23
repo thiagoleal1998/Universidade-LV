@@ -3,8 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { emailMemberApproved, emailMemberRejected } from '@/lib/email'
-import { getSettings } from '@/lib/settings'
+import { rdMemberApproved, rdMemberRejected, syncLeadProfile } from '@/lib/rdstation'
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 
@@ -100,6 +99,7 @@ export async function updateMember(
   if (data.email) changed.push('e-mail')
   if (data.bio !== undefined) changed.push('bio')
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
+  syncLeadProfile(userId)
 
   revalidatePath('/admin/membros')
   return { success: true }
@@ -141,9 +141,8 @@ export async function toggleMemberActive(userId: string, active: boolean) {
   // Envia email de boas-vindas quando aprovado
   if (active) {
     const { data: userData } = await adminClient.auth.admin.getUserById(userId)
-    const settings = await getSettings()
     const email = userData.user?.email ?? ''
-    if (email) emailMemberApproved(email, profile?.full_name ?? '', settings.site_name)
+    if (email) rdMemberApproved(email, profile?.full_name ?? '')
   }
 
   revalidatePath('/admin/membros')
@@ -183,6 +182,7 @@ export async function assignMemberCourses(memberId: string, courseIds: string[])
     if (error) return { error: error.message }
   }
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: memberId, entityLabel: profile?.full_name || memberId, detail: `matriculou em ${courseIds.length} curso(s)` })
+  syncLeadProfile(memberId)
   revalidatePath('/admin/membros')
   return { success: true }
 }
@@ -208,13 +208,13 @@ export async function approveMember(userId: string, courseIds: string[]) {
     .insert(courseIds.map((course_id) => ({ member_id: userId, course_id })))
   if (courseError) return { error: courseError.message }
 
-  const [{ data: profile }, { data: userData }, settings] = await Promise.all([
+  const [{ data: profile }, { data: userData }] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', userId).single(),
     adminClient.auth.admin.getUserById(userId),
-    getSettings(),
   ])
   const email = userData.user?.email ?? ''
-  if (email) emailMemberApproved(email, profile?.full_name ?? '', settings.site_name)
+  if (email) rdMemberApproved(email, profile?.full_name ?? '')
+  syncLeadProfile(userId)
 
   logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'aprovou' })
 
@@ -235,13 +235,12 @@ export async function rejectMember(userId: string) {
     .eq('id', userId)
   if (error) return { error: error.message }
 
-  const [{ data: profile }, { data: userData }, settings] = await Promise.all([
+  const [{ data: profile }, { data: userData }] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', userId).single(),
     adminClient.auth.admin.getUserById(userId),
-    getSettings(),
   ])
   const email = userData.user?.email ?? ''
-  if (email) emailMemberRejected(email, profile?.full_name ?? '', settings.site_name)
+  if (email) rdMemberRejected(email, profile?.full_name ?? '')
 
   logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'recusou' })
 

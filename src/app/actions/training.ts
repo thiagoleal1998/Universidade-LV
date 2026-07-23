@@ -6,8 +6,7 @@ import { requireAdmin, requireCapability, requireContentAccess, type AdminContex
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
-import { emailNewTraining } from '@/lib/email'
-import { getSettings } from '@/lib/settings'
+import { rdNewTraining } from '@/lib/rdstation'
 
 // Guard de posse: colaborador só mexe em treinamento da própria área
 async function requireTrainingAccess(id: string): Promise<AdminContext | { error: string }> {
@@ -60,14 +59,11 @@ async function notifyMembers(payload: {
   if (insertErr) return { error: insertErr.message, memberCount: members.length }
 
   const memberIds = new Set(members.map((m) => m.id))
-  const [{ data: usersData }, settings] = await Promise.all([
-    adminClient.auth.admin.listUsers(),
-    getSettings(),
-  ])
+  const { data: usersData } = await adminClient.auth.admin.listUsers()
   const emails = (usersData?.users ?? [])
     .filter((u) => memberIds.has(u.id) && u.email)
     .map((u) => u.email!)
-  emailNewTraining(emails, payload.notifTitle, payload.body, link, settings.site_name)
+  rdNewTraining(emails, payload.notifTitle, payload.body, link)
 
   return { notified: members.length }
 }

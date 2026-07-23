@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+import { syncLeadProfile } from '@/lib/rdstation'
 
 export async function uploadAvatar(formData: FormData) {
   const file = formData.get('avatar') as File
@@ -60,6 +61,7 @@ export async function updateProfile(formData: FormData) {
 
   if (error) return { error: error.message }
 
+  syncLeadProfile(user.id)
   revalidatePath('/', 'layout')
   return { success: true }
 }
