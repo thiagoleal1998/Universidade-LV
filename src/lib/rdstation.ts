@@ -130,9 +130,9 @@ export async function syncLeadProfile(userId: string) {
 
     await sendConversion(RD_EVENTS.perfil_atualizado, email, {
       name: profile?.full_name ?? '',
-      cf_empresa: profile?.company ?? '',
-      cf_cargo: profile?.job_title ?? '',
-      cf_tags: tags,
+      cf_empresa_lv: profile?.company ?? '',
+      cf_cargo_lv: profile?.job_title ?? '',
+      cf_tags_lv: tags,
       cf_cursos: cursos,
     })
   } catch {
