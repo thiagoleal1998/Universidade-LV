@@ -101,7 +101,10 @@ export async function updateMember(
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
   syncLeadProfile(userId)
 
-  revalidatePath('/admin/membros')
+  // Sem revalidatePath aqui de propósito — updateMember só é chamado em
+  // sequência com outras Server Actions (EditMemberDialog); o client chama
+  // router.refresh() uma vez só, no fim de toda a sequência, em vez de cada
+  // action revalidar por conta própria.
   return { success: true }
 }
 
@@ -183,7 +186,7 @@ export async function assignMemberCourses(memberId: string, courseIds: string[])
   }
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: memberId, entityLabel: profile?.full_name || memberId, detail: `matriculou em ${courseIds.length} curso(s)` })
   syncLeadProfile(memberId)
-  revalidatePath('/admin/membros')
+  // Sem revalidatePath aqui de propósito — mesmo motivo de updateMember acima.
   return { success: true }
 }
 
@@ -218,7 +221,9 @@ export async function approveMember(userId: string, courseIds: string[]) {
 
   logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'aprovou' })
 
-  revalidatePath('/admin/membros')
+  // Sem revalidatePath aqui de propósito — mesmo motivo de updateMember acima
+  // (approveMember é sempre seguido de updateMemberRole + assignMemberTags
+  // no ApproveDialog).
   return { success: true }
 }
 
@@ -288,6 +293,7 @@ export async function updateMemberRole(userId: string, role: 'admin' | 'member' 
 
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: `alterou papel para: ${role}` })
 
-  revalidatePath('/admin/membros')
+  // Sem revalidatePath aqui de propósito — mesmo motivo de updateMember acima
+  // (updateMemberRole é sempre seguido de assignMemberTags no ApproveDialog).
   return { success: true }
 }

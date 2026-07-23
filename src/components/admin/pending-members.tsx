@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { approveMember, rejectMember, updateMemberRole } from '@/app/actions/members'
 import { assignMemberTags } from '@/app/actions/tags'
 import { getTagColor } from '@/lib/tag-colors'
@@ -40,6 +41,7 @@ function ApproveDialog({
 }: {
   memberId: string; memberName: string; courses: Course[]; allTags: Tag[]; allAreas: Area[]
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
@@ -62,14 +64,18 @@ function ApproveDialog({
   function handleApprove() {
     if (!canSubmit || !canSubmitArea) return
     startTransition(async () => {
-      const [approveResult, roleResult, tagsResult] = await Promise.all([
-        approveMember(memberId, selectedCourseIds),
-        updateMemberRole(memberId, role, role === 'collaborator' ? areaId : null),
-        assignMemberTags(memberId, selectedTagIds),
-      ])
+      // Sequencial, não Promise.all: disparar várias Server Actions juntas
+      // num só Promise.all faz o servidor executar e persistir todas
+      // corretamente, mas a resolução da Promise.all nunca chega de volta
+      // ao cliente — o admin via "Aprovando..." girar pra sempre, sem saber
+      // que os dados já tinham sido salvos (bug real encontrado — ver
+      // CLAUDE.md).
+      const approveResult = await approveMember(memberId, selectedCourseIds)
+      const roleResult = await updateMemberRole(memberId, role, role === 'collaborator' ? areaId : null)
+      const tagsResult = await assignMemberTags(memberId, selectedTagIds)
       const error = approveResult?.error || roleResult?.error || tagsResult?.error
       if (error) toast.error(error)
-      else { toast.success('Membro aprovado!'); setOpen(false) }
+      else { toast.success('Membro aprovado!'); setOpen(false); router.refresh() }
     })
   }
 

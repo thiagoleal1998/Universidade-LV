@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateMember, deleteMember, assignMemberCourses } from '@/app/actions/members'
 import { assignMemberTags } from '@/app/actions/tags'
 import { getTagColor, formatMemberCode } from '@/lib/tag-colors'
@@ -52,6 +53,7 @@ export function EditMemberDialog({
   allCourses?: Course[]
   allAreas?: Area[]
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [isDeleting, startDelete] = useTransition()
@@ -86,25 +88,31 @@ export function EditMemberDialog({
     }
 
     startTransition(async () => {
-      const [memberResult] = await Promise.all([
-        updateMember(member.id, {
-          full_name: data.get('full_name') as string,
-          email: data.get('email') as string,
-          role,
-          active: data.get('active') === 'true',
-          new_password: newPassword || undefined,
-          collaborator_area_id: role === 'collaborator' ? selectedAreaId : null,
-          bio: role !== 'member' ? bioValue : undefined,
-        }),
-        assignMemberTags(member.id, selectedTagIds),
-        assignMemberCourses(member.id, selectedCourseIds),
-      ])
+      // Sequencial, não Promise.all: disparar várias Server Actions juntas
+      // num só Promise.all faz o servidor executar e persistir todas
+      // corretamente (confirmado via log), mas a resolução da Promise.all
+      // nunca chega de volta ao cliente — o admin via o botão "Salvando..."
+      // girar pra sempre, sem nunca saber que os dados já tinham sido
+      // salvos (bug real encontrado e corrigido — ver CLAUDE.md).
+      const memberResult = await updateMember(member.id, {
+        full_name: data.get('full_name') as string,
+        email: data.get('email') as string,
+        role,
+        active: data.get('active') === 'true',
+        new_password: newPassword || undefined,
+        collaborator_area_id: role === 'collaborator' ? selectedAreaId : null,
+        bio: role !== 'member' ? bioValue : undefined,
+      })
+      const tagsResult = await assignMemberTags(member.id, selectedTagIds)
+      const coursesResult = await assignMemberCourses(member.id, selectedCourseIds)
 
-      if (memberResult?.error) {
-        toast.error(memberResult.error)
+      const error = memberResult?.error || tagsResult?.error || coursesResult?.error
+      if (error) {
+        toast.error(error)
       } else {
         toast.success('Membro atualizado!')
         setOpen(false)
+        router.refresh()
       }
     })
   }

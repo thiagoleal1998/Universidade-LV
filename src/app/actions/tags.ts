@@ -64,6 +64,9 @@ export async function assignMemberTags(memberId: string, tagIds: string[]) {
   }
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: memberId, entityLabel: profile?.full_name || memberId, detail: `alterou: tags (${tagIds.length})` })
   syncLeadProfile(memberId)
-  revalidatePath('/admin/membros')
+  // Sem revalidatePath aqui de propósito — assignMemberTags é sempre chamado
+  // em sequência com outras Server Actions (ApproveDialog/EditMemberDialog);
+  // o client chama router.refresh() uma vez só, no fim de toda a sequência,
+  // em vez de cada action revalidar por conta própria.
   return { success: true }
 }
