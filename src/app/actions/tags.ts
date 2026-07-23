@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
-import { syncLeadProfile } from '@/lib/rdstation'
 
 export async function createTag(formData: FormData) {
   const authz = await requireAdmin()
@@ -63,10 +62,11 @@ export async function assignMemberTags(memberId: string, tagIds: string[]) {
       .insert(tagIds.map((tag_id) => ({ profile_id: memberId, tag_id })))
   }
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: memberId, entityLabel: profile?.full_name || memberId, detail: `alterou: tags (${tagIds.length})` })
-  syncLeadProfile(memberId)
-  // Sem revalidatePath aqui de propósito — assignMemberTags é sempre chamado
-  // em sequência com outras Server Actions (ApproveDialog/EditMemberDialog);
-  // o client chama router.refresh() uma vez só, no fim de toda a sequência,
-  // em vez de cada action revalidar por conta própria.
+  // Sem syncLeadProfile/revalidatePath aqui de propósito — assignMemberTags é
+  // sempre chamado em sequência com outras Server Actions (ApproveDialog/
+  // EditMemberDialog); o client dispara syncMemberRdStation() e
+  // router.refresh() uma vez só, no fim de toda a sequência, em vez de cada
+  // action disparar por conta própria (evita eventos redundantes na RD
+  // Station e revalidação no meio da sequência).
   return { success: true }
 }

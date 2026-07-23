@@ -7,6 +7,15 @@ import { rdMemberApproved, rdMemberRejected, syncLeadProfile } from '@/lib/rdsta
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 
+// Dispara a sincronização de lead da RD Station (cursos/tags/empresa/cargo)
+// uma única vez, depois que o cliente já rodou toda a sequência de actions
+// de um diálogo (ApproveDialog/EditMemberDialog) — em vez de cada uma das
+// actions envolvidas disparar seu próprio evento (gerava 2-3 eventos
+// redundantes na RD Station pra uma única ação do admin).
+export async function syncMemberRdStation(memberId: string) {
+  syncLeadProfile(memberId)
+}
+
 export async function createMember(formData: FormData) {
   const authz = await requireAdmin()
   if ('error' in authz) return { error: authz.error }
@@ -99,7 +108,9 @@ export async function updateMember(
   if (data.email) changed.push('e-mail')
   if (data.bio !== undefined) changed.push('bio')
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
-  syncLeadProfile(userId)
+  // Sem syncLeadProfile aqui de propósito — updateMember é sempre chamado
+  // em sequência com assignMemberTags/assignMemberCourses (EditMemberDialog);
+  // o client dispara syncMemberRdStation() uma vez só, no fim da sequência.
 
   // Sem revalidatePath aqui de propósito — updateMember só é chamado em
   // sequência com outras Server Actions (EditMemberDialog); o client chama
@@ -185,8 +196,7 @@ export async function assignMemberCourses(memberId: string, courseIds: string[])
     if (error) return { error: error.message }
   }
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: memberId, entityLabel: profile?.full_name || memberId, detail: `matriculou em ${courseIds.length} curso(s)` })
-  syncLeadProfile(memberId)
-  // Sem revalidatePath aqui de propósito — mesmo motivo de updateMember acima.
+  // Sem syncLeadProfile/revalidatePath aqui de propósito — mesmo motivo de updateMember acima.
   return { success: true }
 }
 
@@ -217,7 +227,8 @@ export async function approveMember(userId: string, courseIds: string[]) {
   ])
   const email = userData.user?.email ?? ''
   if (email) rdMemberApproved(email, profile?.full_name ?? '')
-  syncLeadProfile(userId)
+  // Sem syncLeadProfile aqui de propósito — mesmo motivo de updateMember acima
+  // (approveMember é sempre seguido de updateMemberRole + assignMemberTags).
 
   logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'aprovou' })
 

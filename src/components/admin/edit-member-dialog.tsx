@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateMember, deleteMember, assignMemberCourses } from '@/app/actions/members'
+import { updateMember, deleteMember, assignMemberCourses, syncMemberRdStation } from '@/app/actions/members'
 import { assignMemberTags } from '@/app/actions/tags'
 import { getTagColor, formatMemberCode } from '@/lib/tag-colors'
 import { Button } from '@/components/ui/button'
@@ -110,6 +110,12 @@ export function EditMemberDialog({
       if (error) {
         toast.error(error)
       } else {
+        // Um único evento de sincronização com a RD Station, no fim de toda
+        // a sequência — em vez de cada action (updateMember/assignMemberTags/
+        // assignMemberCourses) disparar o seu próprio, redundante. Precisa de
+        // await: sem esperar, o router.refresh() logo abaixo cancela a
+        // chamada em andamento antes do servidor terminar de processá-la.
+        await syncMemberRdStation(member.id)
         toast.success('Membro atualizado!')
         setOpen(false)
         router.refresh()

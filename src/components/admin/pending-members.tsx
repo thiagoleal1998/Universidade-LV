@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { approveMember, rejectMember, updateMemberRole } from '@/app/actions/members'
+import { approveMember, rejectMember, updateMemberRole, syncMemberRdStation } from '@/app/actions/members'
 import { assignMemberTags } from '@/app/actions/tags'
 import { getTagColor } from '@/lib/tag-colors'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -74,8 +74,19 @@ function ApproveDialog({
       const roleResult = await updateMemberRole(memberId, role, role === 'collaborator' ? areaId : null)
       const tagsResult = await assignMemberTags(memberId, selectedTagIds)
       const error = approveResult?.error || roleResult?.error || tagsResult?.error
-      if (error) toast.error(error)
-      else { toast.success('Membro aprovado!'); setOpen(false); router.refresh() }
+      if (error) {
+        toast.error(error)
+      } else {
+        // Um único evento de sincronização com a RD Station, no fim de toda
+        // a sequência — em vez de cada action (approveMember/assignMemberTags)
+        // disparar o seu próprio, redundante. Precisa de await: sem esperar,
+        // o router.refresh() logo abaixo cancela a chamada em andamento
+        // antes do servidor terminar de processá-la.
+        await syncMemberRdStation(memberId)
+        toast.success('Membro aprovado!')
+        setOpen(false)
+        router.refresh()
+      }
     })
   }
 
