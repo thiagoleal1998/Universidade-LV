@@ -14,7 +14,13 @@ const RD_EVENTS = {
   conteudo_publicado: 'universidade-lv-conteudo-publicado',
   treinamento_novo: 'universidade-lv-treinamento-novo',
   perfil_atualizado: 'universidade-lv-perfil-atualizado',
+  admin_cadastro_pendente: 'universidade-lv-admin-cadastro-pendente',
+  admin_feedback_novo: 'universidade-lv-admin-feedback-novo',
 } as const
+
+// Destinatário dos 2 eventos admin-only abaixo — não é um membro, é o
+// e-mail do próprio admin (mesma variável já usada pelo Resend antes).
+const adminEmail = process.env.ADMIN_EMAIL ?? ''
 
 // Busca (e renova se preciso) o access_token guardado em rdstation_tokens.
 // Nunca lido/escrito via client de sessão — só adminClient (tabela sem
@@ -101,6 +107,29 @@ export async function rdNewTraining(emails: string[], title: string, body: strin
   for (const email of emails) {
     await sendConversion(RD_EVENTS.treinamento_novo, email, { cf_titulo: title, cf_corpo: body, cf_link: link })
   }
+}
+
+// Os 2 avisos internos ao admin (antes via Resend, agora aqui também) —
+// o "lead" desse evento é o próprio admin, marcado com cf_tags_lv: "Admin"
+// pra dar pra filtrar/segmentar fora dos leads reais nos relatórios da RD
+// Station (mesmo campo já usado pra tags de membro, reaproveitado aqui).
+export async function rdAdminNewMemberPending(memberName: string, memberEmail: string) {
+  if (!adminEmail) return
+  await sendConversion(RD_EVENTS.admin_cadastro_pendente, adminEmail, {
+    cf_tags_lv: 'Admin',
+    cf_titulo: memberName || memberEmail,
+    cf_corpo: memberEmail,
+  })
+}
+
+export async function rdAdminNewFeedback(memberName: string, memberEmail: string, type: string, title: string, excerpt: string) {
+  if (!adminEmail) return
+  const typeLabel = type === 'bug' ? 'Bug reportado' : 'Sugestão enviada'
+  await sendConversion(RD_EVENTS.admin_feedback_novo, adminEmail, {
+    cf_tags_lv: 'Admin',
+    cf_titulo: `${typeLabel}: ${title || memberName || memberEmail}`,
+    cf_corpo: `${memberName} (${memberEmail}): ${excerpt}`,
+  })
 }
 
 // Mantém cursos/tags/empresa/cargo do lead sempre atualizados na RD Station

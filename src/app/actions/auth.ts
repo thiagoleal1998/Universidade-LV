@@ -4,8 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { emailAdminNewMemberPending } from '@/lib/email'
-import { rdWelcomeOnRegister } from '@/lib/rdstation'
+import { rdWelcomeOnRegister, rdAdminNewMemberPending } from '@/lib/rdstation'
 import { notifyAllAdmins } from '@/app/actions/notifications'
 
 export async function login(_state: unknown, formData: FormData) {
@@ -96,7 +95,7 @@ export async function register(_state: unknown, formData: FormData) {
   // Deixa conta inativa até o admin aprovar
   if (data.user) {
     await adminClient.from('profiles').update({ active: false, full_name }).eq('id', data.user.id)
-    emailAdminNewMemberPending(full_name, email)
+    rdAdminNewMemberPending(full_name, email)
     rdWelcomeOnRegister(email, full_name)
     await notifyAllAdmins(data.user.id, {
       type: 'new_member_pending',

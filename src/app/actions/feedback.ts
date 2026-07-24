@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { emailAdminNewFeedback } from '@/lib/email'
+import { rdAdminNewFeedback } from '@/lib/rdstation'
 import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
 import { toWebP } from '@/lib/image'
@@ -184,7 +184,7 @@ export async function submitFeedback(formData: FormData) {
     actor_name: memberName,
   })
 
-  emailAdminNewFeedback(memberName, user.email ?? '', type, title, messageText.slice(0, 300))
+  rdAdminNewFeedback(memberName, user.email ?? '', type, title, messageText.slice(0, 300))
   await notifyAllAdmins(user.id, {
     type: 'new_feedback',
     title: `[${typeLabel}] ${title}`,

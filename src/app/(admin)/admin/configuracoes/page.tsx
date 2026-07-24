@@ -2,7 +2,6 @@ import { getSettings } from '@/lib/settings'
 import { SettingsForm } from '@/components/admin/settings-form'
 import { PreferencesForm } from '@/components/members/preferences-form'
 import { requireContentPage } from '@/lib/authz'
-import { getEmailTemplates } from '@/app/actions/email-templates'
 
 export default async function ConfiguracoesPage() {
   const ctx = await requireContentPage()
@@ -13,10 +12,7 @@ export default async function ConfiguracoesPage() {
     return <PreferencesForm />
   }
 
-  const [settings, emailTemplates] = await Promise.all([
-    getSettings(),
-    getEmailTemplates(),
-  ])
+  const settings = await getSettings()
 
   return (
     <div className="p-4 md:p-8 max-w-3xl">
@@ -27,7 +23,7 @@ export default async function ConfiguracoesPage() {
         </p>
       </div>
 
-      <SettingsForm settings={settings} emailTemplates={emailTemplates} />
+      <SettingsForm settings={settings} />
     </div>
   )
 }
