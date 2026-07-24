@@ -23,7 +23,8 @@ O painel administrativo permite gerenciar cursos, módulos, aulas, treinamentos,
 | Ícones | Lucide React |
 | Notificações | Sonner |
 | Backend / Auth | Supabase (Postgres + Storage + RLS) |
-| Deploy | Vercel |
+| Deploy | VPS (PM2) |
+| E-mail | Resend (avisos internos ao admin) + RD Station (e-mails de aluno) |
 
 ## Pré-requisitos
 
@@ -94,25 +95,29 @@ src/
 
 | Tabela | Descrição |
 |--------|-----------|
-| `profiles` | Usuários com role (`admin` / `member`) |
-| `courses` | Cursos disponíveis |
-| `modules` | Módulos dos cursos |
-| `lessons` | Aulas individuais |
-| `member_courses` | Controle de acesso por membro |
-| `member_progress` | Progresso de aulas concluídas |
-| `training_items` | Treinamentos ao vivo, replay e link |
-| `training_materials` | Materiais de apoio dos treinamentos |
+| `profiles` | Usuários com role (`admin` / `collaborator` / `member`) |
+| `collaborator_areas` | Áreas de colaborador (permissões por capacidade) |
+| `courses` / `modules` / `lessons` | Cursos, módulos e aulas |
+| `member_courses` / `member_progress` | Acesso e progresso por membro |
+| `certificates` | Certificados emitidos |
+| `training_items` / `training_materials` | Treinamentos e materiais de apoio |
+| `marketing_items` / `famtours` / `grupos` / `commercial_conditions` | Conteúdo de Marketing |
+| `tags` / `profile_tags` | Tags de membro |
 | `notifications` | Notificações por usuário |
 | `announcements` | Comunicados com agendamento e expiração |
+| `feedback_reports` / `feedback_events` / `feedback_attachments` | Chamados de feedback |
+| `admin_activity_log` | Log de atividades administrativas |
+| `email_templates` | Templates dos 2 e-mails internos ao admin (Resend) |
+| `rdstation_tokens` | Tokens OAuth2 da integração com a RD Station |
 | `site_settings` | Configurações do site (pares chave-valor) |
 
-Migrações ficam em `supabase/migrations/` e devem ser aplicadas via Supabase Dashboard (SQL Editor) ou CLI.
+Migrações ficam em `supabase/migrations/` e devem ser aplicadas via Supabase Dashboard (SQL Editor).
 
 ## Deploy
 
-O projeto é implantado automaticamente via **Vercel** a cada push na branch `main`.
+O projeto roda numa **VPS** com **PM2**. Deploy: push no GitHub → SSH na VPS → `git pull` + `npm run build` + `pm2 restart`. Sem staging — validação direto em produção.
 
-Variáveis de ambiente de produção são configuradas diretamente no painel da Vercel (Settings → Environment Variables).
+Variáveis de ambiente de produção ficam no `.env.local` da própria VPS.
 
 ---
 
