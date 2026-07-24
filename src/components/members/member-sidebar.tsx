@@ -137,8 +137,8 @@ function SidebarContent({
           className="shrink-0"
         >
           {logoUrl ? (
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/20 shadow-sm bg-white/10">
-              <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full brightness-0 invert" />
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/20 shadow-sm bg-white p-1">
+              <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full" />
             </div>
           ) : (
             <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shadow-sm">
@@ -341,7 +341,9 @@ export function MemberSidebar(props: Props) {
           <Menu className="w-5 h-5" />
         </button>
         {props.logoUrl ? (
-          <Image src={props.logoUrl} alt={props.siteName} width={24} height={24} className="object-contain brightness-0 invert" />
+          <div className="w-7 h-7 rounded-lg overflow-hidden shadow-sm bg-white p-1 shrink-0">
+            <Image src={props.logoUrl} alt={props.siteName} width={20} height={20} className="object-contain w-full h-full" />
+          </div>
         ) : (
           <GraduationCap className="w-5 h-5 text-white" />
         )}
