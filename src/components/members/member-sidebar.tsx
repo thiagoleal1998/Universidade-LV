@@ -138,7 +138,7 @@ function SidebarContent({
         >
           {logoUrl ? (
             <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/20 shadow-sm bg-white/10">
-              <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full" />
+              <Image src={logoUrl} alt={siteName} width={32} height={32} className="object-contain w-full h-full brightness-0 invert" />
             </div>
           ) : (
             <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shadow-sm">
@@ -198,11 +198,11 @@ function SidebarContent({
               onClick={onClose}
               title={collapsed ? label : undefined}
               className={cn(
-                'flex items-center rounded-lg font-medium transition-colors',
+                'flex items-center rounded-lg font-semibold transition-colors',
                 collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
                 isActive
                   ? 'bg-white/15 text-white border border-white/25'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white border border-transparent',
+                  : 'text-white/90 hover:bg-white/10 hover:text-white border border-transparent',
               )}
             >
               <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-white')} />
@@ -341,7 +341,7 @@ export function MemberSidebar(props: Props) {
           <Menu className="w-5 h-5" />
         </button>
         {props.logoUrl ? (
-          <Image src={props.logoUrl} alt={props.siteName} width={24} height={24} className="object-contain" />
+          <Image src={props.logoUrl} alt={props.siteName} width={24} height={24} className="object-contain brightness-0 invert" />
         ) : (
           <GraduationCap className="w-5 h-5 text-white" />
         )}
