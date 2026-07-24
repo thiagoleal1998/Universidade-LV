@@ -3,7 +3,8 @@
 import { useState, useTransition, useEffect } from 'react'
 import Image from 'next/image'
 import { updateSettings, uploadSiteLogo, uploadSiteFavicon } from '@/app/actions/settings'
-import { COLOR_PRESETS } from '@/lib/color-presets'
+import { COLOR_PRESETS, ColorKey } from '@/lib/color-presets'
+import { isValidHex } from '@/lib/tag-colors'
 import type { Settings } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -479,6 +480,10 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [trainingHeroTitle, setTrainingHeroTitle] = useState(settings.training_hero_title)
   const [trainingHeroDescription, setTrainingHeroDescription] = useState(settings.training_hero_description)
   const [trainingHeroColor, setTrainingHeroColor] = useState(settings.training_hero_color || 'primary')
+  const [memberAccentColor, setMemberAccentColor] = useState(settings.member_accent_color || 'default')
+  const [memberAccentHexInput, setMemberAccentHexInput] = useState(
+    isValidHex(settings.member_accent_color) ? settings.member_accent_color : (COLOR_PRESETS[(settings.member_accent_color || 'default') as ColorKey]?.hex ?? COLOR_PRESETS.default.hex)
+  )
   const [trainingWhatsappUrl, setTrainingWhatsappUrl] = useState(settings.training_whatsapp_url)
   const [trainingWhatsappPhrase, setTrainingWhatsappPhrase] = useState(settings.training_whatsapp_phrase)
   const [trainingWhatsappCtaText, setTrainingWhatsappCtaText] = useState(settings.training_whatsapp_cta_text)
@@ -730,16 +735,43 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         <section>
           <h3 className="text-sm font-semibold text-foreground mb-1">Cor da Área do Membro</h3>
           <p className="text-xs text-muted-foreground mb-4">Destaque (botões, links, menu ativo) só da área do aluno — independente da cor principal do admin. Fundo das páginas continua branco/preto conforme o tema.</p>
+          <input type="hidden" name="member_accent_color" value={memberAccentColor} />
           <div className="grid grid-cols-7 gap-2">
             {(Object.entries(COLOR_PRESETS) as [string, typeof COLOR_PRESETS[keyof typeof COLOR_PRESETS]][]).map(([key, preset]) => (
-              <label key={key} className="cursor-pointer group">
-                <input type="radio" name="member_accent_color" value={key} defaultChecked={settings.member_accent_color === key} className="sr-only" />
-                <div className={cn('flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all', 'group-has-[input:checked]:border-foreground border-transparent hover:border-border')}>
-                  <div className="w-7 h-7 rounded-full shadow-sm border border-black/10" style={{ backgroundColor: preset.hex }} />
-                  <span className="text-[10px] text-muted-foreground leading-tight text-center">{preset.label}</span>
-                </div>
-              </label>
+              <button
+                key={key}
+                type="button"
+                onClick={() => { setMemberAccentColor(key); setMemberAccentHexInput(preset.hex) }}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all',
+                  memberAccentColor === key ? 'border-foreground' : 'border-transparent hover:border-border'
+                )}
+              >
+                <div className="w-7 h-7 rounded-full shadow-sm border border-black/10" style={{ backgroundColor: preset.hex }} />
+                <span className="text-[10px] text-muted-foreground leading-tight text-center">{preset.label}</span>
+              </button>
             ))}
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-xs text-muted-foreground">Ou escolha o código exato:</span>
+            <input
+              type="color"
+              value={isValidHex(memberAccentHexInput) ? memberAccentHexInput : '#16a34a'}
+              onChange={(e) => { setMemberAccentColor(e.target.value); setMemberAccentHexInput(e.target.value) }}
+              className="w-8 h-8 rounded cursor-pointer border border-border p-0 bg-transparent"
+              title="Escolher na paleta do sistema"
+            />
+            <input
+              type="text"
+              value={memberAccentHexInput}
+              onChange={(e) => {
+                setMemberAccentHexInput(e.target.value)
+                if (isValidHex(e.target.value)) setMemberAccentColor(e.target.value)
+              }}
+              placeholder="#16a34a"
+              maxLength={7}
+              className="w-24 text-xs border border-border rounded-lg px-2 py-1.5 bg-card text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+            />
           </div>
         </section>
 

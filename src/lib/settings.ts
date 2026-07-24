@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { COLOR_PRESETS, ColorKey } from '@/lib/color-presets'
+import { COLOR_PRESETS, ColorKey, pickForegroundForHex } from '@/lib/color-presets'
+import { isValidHex } from '@/lib/tag-colors'
 
 export type Settings = {
   site_name: string
@@ -468,6 +469,29 @@ export function getColorStyleTag(colorKey: string): string | null {
 // diferente do admin sem afetar `/admin`. Fundos de página (--background/
 // --card) não são tocados, só os tokens de destaque (primary/ring/sidebar).
 export function getMemberColorStyleTag(colorKey: string): string | null {
+  // Cor customizada (hex livre, digitado ou escolhido na paleta do SO) —
+  // mesma cor pros dois temas de propósito (o pedido foi "eu escolho a cor
+  // exata que eu quero", não uma variante auto-ajustada por tema); o texto
+  // por cima (--primary-foreground) é calculado por luminância.
+  if (isValidHex(colorKey)) {
+    const fg = pickForegroundForHex(colorKey)
+    return `
+      .member-theme {
+        --primary: ${colorKey};
+        --primary-foreground: ${fg};
+        --ring: ${colorKey};
+        --sidebar-primary: ${colorKey};
+        --sidebar-primary-foreground: ${fg};
+      }
+      .dark .member-theme {
+        --primary: ${colorKey};
+        --primary-foreground: ${fg};
+        --ring: ${colorKey};
+        --sidebar-primary: ${colorKey};
+        --sidebar-primary-foreground: ${fg};
+      }
+    `
+  }
   if (colorKey === 'default' || !(colorKey in COLOR_PRESETS)) return null
   const preset = COLOR_PRESETS[colorKey as ColorKey]
   return `
