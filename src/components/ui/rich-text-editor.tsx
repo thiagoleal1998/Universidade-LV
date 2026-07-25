@@ -163,9 +163,20 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
   ]
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    // Sem overflow-hidden aqui: esse overflow (mesmo sem barra de rolagem
+    // visível) vira a "âncora de rolagem" do CSS pra qualquer sticky lá
+    // dentro — como este próprio div nunca rola (quem rola é a página por
+    // trás dele), o toolbar sticky ficava preso sem nunca "grudar" no topo
+    // de verdade. O arredondamento do card sai daqui e vai pros dois filhos
+    // (canto de cima no toolbar, canto de baixo no conteúdo).
+    <div className="border rounded-lg">
       {editable && (
-      <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/40">
+      // Com o chamado muito longo, o toolbar ficava lá em cima e exigia
+      // rolar de volta até o topo pra formatar algo mais abaixo. Sticky
+      // mantém a barra visível no topo da tela enquanto o usuário rola
+      // pelo conteúdo — a "ancestral de rolagem" é a própria página na
+      // maioria dos usos, ou o modal/dialog que estiver por volta.
+      <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/95 backdrop-blur-sm sticky top-0 z-10 rounded-t-lg">
         {toolbar.map(({ icon: Icon, action, active, label }) => (
           <Button
             key={label}
@@ -211,7 +222,7 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
         )}
       </div>
       )}
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="rounded-b-lg overflow-hidden" />
     </div>
   )
 }

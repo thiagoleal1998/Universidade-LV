@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { assignFeedback, updateFeedbackStatus, addFeedbackNote, uploadFeedbackFile } from '@/app/actions/feedback'
 import type { FeedbackReport, FeedbackStatus, AdminOption } from '@/app/actions/feedback'
@@ -15,6 +15,12 @@ import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/not
 import { toast } from 'sonner'
 import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
+import { isRichTextEmpty } from '@/lib/rich-text-content'
+
+function draftKey(reportId: string) {
+  return `feedback-admin-reply-${reportId}`
+}
 
 type StatusFilter = FeedbackStatus | 'all'
 
@@ -32,13 +38,7 @@ const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
 
 const UNASSIGNED = '__unassigned__'
 
-// Uma resposta só com imagem colada (sem texto nenhum) é válida — sem o
-// `<img`, o texto stripado dava vazio e o botão de enviar ficava travado
-// para sempre num caso de uso bem comum (colar print sem escrever nada).
-function isNoteEmpty(html: string): boolean {
-  if (/<img[\s/]/i.test(html)) return false
-  return !html.replace(/<[^>]*>/g, '').trim()
-}
+const isNoteEmpty = isRichTextEmpty
 
 async function handleEditorImageUpload(file: File): Promise<string | null> {
   const r = await uploadFeedbackFile(file)
@@ -65,6 +65,34 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Recupera rascunhos de resposta da sessão do navegador — só uma vez, pra
+  // não sobrescrever o que o admin já está digitando se `reports` mudar
+  // (ex.: depois de um router.refresh()).
+  const restoredDraftsRef = useRef(false)
+  useEffect(() => {
+    if (restoredDraftsRef.current) return
+    restoredDraftsRef.current = true
+    const found: Record<string, string> = {}
+    const keysToBump: Record<string, number> = {}
+    reports.forEach((r) => {
+      const draft = readDraft(draftKey(r.id))
+      if (draft && !isNoteEmpty(draft)) { found[r.id] = draft; keysToBump[r.id] = 1 }
+    })
+    if (Object.keys(found).length > 0) {
+      setNotes((p) => ({ ...p, ...found }))
+      // O RichTextEditor só lê `content` na montagem — sem bumpar a key
+      // específica deste report, o texto restaurado fica no state mas nunca
+      // aparece no editor já montado.
+      setNoteResetKey((p) => ({ ...p, ...keysToBump }))
+    }
+  }, [reports])
+
+  function handleNoteChange(reportId: string, html: string) {
+    setNotes((p) => ({ ...p, [reportId]: html }))
+    if (isNoteEmpty(html)) clearDraft(draftKey(reportId))
+    else writeDraft(draftKey(reportId), html)
+  }
 
   // Mantém o card aberto visível mesmo se o status mudar para fora do filtro
   // atual — senão o chamado some da tela no meio da edição do admin.
@@ -95,6 +123,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
       if (r?.error) toast.error(r.error)
       else {
         toast.success('Resposta enviada! O membro foi notificado.')
+        clearDraft(draftKey(id))
         setNotes((p) => ({ ...p, [id]: '' }))
         setNoteAttachments((p) => ({ ...p, [id]: [] }))
         setNoteResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
@@ -250,7 +279,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
                       <RichTextEditor
                         key={`note-${report.id}-${noteResetKey[report.id] ?? 0}`}
                         content={notes[report.id] ?? ''}
-                        onChange={(v) => setNotes((p) => ({ ...p, [report.id]: v }))}
+                        onChange={(v) => handleNoteChange(report.id, v)}
                         onImageUpload={handleEditorImageUpload}
                       />
                       <NoteAttachmentPicker

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { FeedbackReport, FeedbackStatus } from '@/app/actions/feedback'
 import { addFeedbackNote, uploadFeedbackFile } from '@/app/actions/feedback'
@@ -15,6 +15,8 @@ import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/not
 import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
+import { isRichTextEmpty } from '@/lib/rich-text-content'
 
 const STATUS_LABEL: Record<FeedbackStatus, string> = {
   open: 'Aberto',
@@ -28,12 +30,10 @@ const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
   resolved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
 }
 
-// Uma resposta só com imagem colada (sem texto nenhum) é válida — sem o
-// `<img`, o texto stripado dava vazio e o botão de enviar ficava travado
-// para sempre num caso de uso bem comum (colar print sem escrever nada).
-function isNoteEmpty(html: string): boolean {
-  if (/<img[\s/]/i.test(html)) return false
-  return !html.replace(/<[^>]*>/g, '').trim()
+const isNoteEmpty = isRichTextEmpty
+
+function draftKey(reportId: string) {
+  return `feedback-member-reply-${reportId}`
 }
 
 async function handleEditorImageUpload(file: File): Promise<string | null> {
@@ -65,6 +65,33 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
     getUnreadFeedbackUpdateReportIds().then((ids) => setUnreadReportIds(new Set(ids)))
   }, [])
 
+  // Recupera rascunhos de resposta da sessão do navegador — só uma vez, pra
+  // não sobrescrever o que o membro já está digitando se `reports` mudar.
+  const restoredDraftsRef = useRef(false)
+  useEffect(() => {
+    if (restoredDraftsRef.current) return
+    restoredDraftsRef.current = true
+    const found: Record<string, string> = {}
+    const keysToBump: Record<string, number> = {}
+    reports.forEach((r) => {
+      const draft = readDraft(draftKey(r.id))
+      if (draft && !isNoteEmpty(draft)) { found[r.id] = draft; keysToBump[r.id] = 1 }
+    })
+    if (Object.keys(found).length > 0) {
+      setReplies((p) => ({ ...p, ...found }))
+      // O RichTextEditor só lê `content` na montagem — sem bumpar a key
+      // específica deste report, o texto restaurado fica no state mas nunca
+      // aparece no editor já montado.
+      setReplyResetKey((p) => ({ ...p, ...keysToBump }))
+    }
+  }, [reports])
+
+  function handleReplyChange(reportId: string, html: string) {
+    setReplies((p) => ({ ...p, [reportId]: html }))
+    if (isNoteEmpty(html)) clearDraft(draftKey(reportId))
+    else writeDraft(draftKey(reportId), html)
+  }
+
   function toggleOpen(id: string) {
     const willOpen = openId !== id
     setOpenId(willOpen ? id : null)
@@ -82,6 +109,7 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
       if (r?.error) toast.error(r.error)
       else {
         toast.success('Resposta enviada!')
+        clearDraft(draftKey(id))
         setReplies((p) => ({ ...p, [id]: '' }))
         setReplyAttachments((p) => ({ ...p, [id]: [] }))
         setReplyResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
@@ -182,7 +210,7 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
                   <RichTextEditor
                     key={`reply-${report.id}-${replyResetKey[report.id] ?? 0}`}
                     content={replies[report.id] ?? ''}
-                    onChange={(v) => setReplies((p) => ({ ...p, [report.id]: v }))}
+                    onChange={(v) => handleReplyChange(report.id, v)}
                     onImageUpload={handleEditorImageUpload}
                   />
                   <NoteAttachmentPicker
