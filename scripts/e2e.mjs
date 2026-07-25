@@ -78,7 +78,12 @@ try {
 
   // ── Login + navegação ───────────────────────────────────────────────
   browser = await chromium.launch()
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  // Altura ajustável porque o layout tem scroll interno: --full (fullPage do
+  // Playwright) não alcança conteúdo abaixo da dobra nesse caso; aumentar a
+  // viewport é o que funciona.
+  const page = await browser.newPage({
+    viewport: { width: Number(arg('width', 1280)), height: Number(arg('height', 900)) },
+  })
 
   await page.goto(`${baseUrl}/login`)
   await page.fill('input[name="email"]', email)
@@ -109,6 +114,8 @@ try {
     if (clip) {
       const [x, y, width, height] = clip.split(',').map(Number)
       opts.clip = { x, y, width, height }
+    } else if (flag('full')) {
+      opts.fullPage = true
     }
     await page.screenshot(opts)
     console.log(`✓ screenshot: ${shot}`)

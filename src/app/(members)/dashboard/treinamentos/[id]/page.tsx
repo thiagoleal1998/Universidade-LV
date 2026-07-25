@@ -176,35 +176,24 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
           </div>
         )}
 
-        {/* Replay */}
-        {isReplay && (
-          <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 space-y-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-500">
-                <RotateCcw className="w-3 h-3" />
-                Replay
-              </span>
-              {isExpiredLive && item.live_at && (
-                <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                  <CalendarDays className="w-4 h-4 shrink-0 text-blue-400" />
-                  <span className="capitalize">Realizado em {formatDate(item.live_at)}</span>
-                </span>
-              )}
+        {/* Replay — com o vídeo tocando acima, sobra só a data (quando existe).
+            Sem player embutido, cai no cartão com o link externo de sempre. */}
+        {isReplay && (replayVideoId ? (
+          isExpiredLive && item.live_at && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CalendarDays className="w-4 h-4 shrink-0 text-blue-400" />
+              <span className="capitalize">Realizado em {formatDate(item.live_at)}</span>
             </div>
-
-            {replayVideoId ? (
-              /* Vídeo já está tocando acima — aqui fica só a saída alternativa,
-                 útil se o dono do vídeo bloquear a reprodução incorporada. */
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Abrir no YouTube
-                <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-              </a>
-            ) : item.url ? (
+          )
+        ) : (
+          <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 space-y-4">
+            {isExpiredLive && item.live_at && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarDays className="w-4 h-4 shrink-0 text-blue-400" />
+                <span className="capitalize">Realizado em {formatDate(item.live_at)}</span>
+              </div>
+            )}
+            {item.url ? (
               <a
                 href={item.url}
                 target="_blank"
@@ -219,7 +208,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
               <p className="text-sm text-muted-foreground italic">Link do replay em breve.</p>
             )}
           </div>
-        )}
+        ))}
 
         {/* Treinamento (link) */}
         {item.type === 'link' && item.url && (
