@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
-import { ClipboardList, CheckCircle2, Eye, CalendarClock, CalendarCheck2, CalendarX2, Clock, Paperclip, Upload, X, FileText, Loader2 } from 'lucide-react'
+import { ClipboardList, CheckCircle2, XCircle, Minus, Eye, CalendarClock, CalendarCheck2, CalendarX2, Clock, Paperclip, Upload, X, FileText, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -99,14 +99,25 @@ function TaskDateBanner({
 function SubmittedView({ task, response }: { task: LessonTask; response: TaskResponse }) {
   const sorted = [...task.questions].sort((a, b) => a.order_index - b.order_index)
 
-  function getAnswer(q: TaskQuestion) {
+  function getTextAnswer(q: TaskQuestion) {
     const a = response.answers.find((ans) => ans.question_id === q.id)
-    if (!a) return null
-    if (a.text_answer) return a.text_answer
-    if (a.option_indices && q.options.length) {
-      return a.option_indices.map((i) => q.options[i]).filter(Boolean).join(', ')
-    }
-    return null
+    return a?.text_answer || null
+  }
+
+  function getSelectedIndices(q: TaskQuestion): number[] {
+    const a = response.answers.find((ans) => ans.question_id === q.id)
+    return a?.option_indices ?? []
+  }
+
+  // Só dá pra saber "certo ou errado" na hora para múltipla escolha/checkbox
+  // (o gabarito já vem no correct_options). Texto livre depende de correção
+  // manual do admin — segue sem indicador aqui, aparece depois em "Notas".
+  function isChoiceCorrect(q: TaskQuestion, selected: number[]): boolean | null {
+    if (!q.correct_options || q.correct_options.length === 0) return null
+    const correctSet = new Set(q.correct_options)
+    const selectedSet = new Set(selected)
+    if (correctSet.size !== selectedSet.size) return false
+    return [...correctSet].every((i) => selectedSet.has(i))
   }
 
   return (
@@ -120,30 +131,89 @@ function SubmittedView({ task, response }: { task: LessonTask; response: TaskRes
       </div>
 
       {sorted.map((q, i) => {
-        const answer = getAnswer(q)
         const isFile = q.type === 'file_upload'
+        const isChoice = q.type === 'multiple_choice' || q.type === 'checkboxes'
+        const textAnswer = getTextAnswer(q)
+        const selected = isChoice ? getSelectedIndices(q) : []
+        const correct = isChoice ? isChoiceCorrect(q, selected) : null
+
         return (
-          <div key={q.id} className="space-y-1">
-            <p className="text-sm font-medium text-foreground">
-              {i + 1}. {q.question || 'Sem título'}
-              {q.required && <span className="text-destructive ml-0.5">*</span>}
-            </p>
-            {isFile && answer ? (
-              <a
-                href={answer}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline rounded-lg px-3 py-2 bg-muted/50"
-              >
-                <FileText className="w-4 h-4 shrink-0" />
-                {decodeURIComponent(answer.split('/').pop() ?? 'Arquivo enviado')}
-              </a>
+          <div key={q.id} className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium text-foreground">
+                {i + 1}. {q.question || 'Sem título'}
+                {q.required && <span className="text-destructive ml-0.5">*</span>}
+              </p>
+              {correct === true && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Você acertou
+                </span>
+              )}
+              {correct === false && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
+                  <XCircle className="w-3.5 h-3.5" /> Você errou
+                </span>
+              )}
+            </div>
+
+            {isFile ? (
+              textAnswer ? (
+                <a
+                  href={textAnswer}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline rounded-lg px-3 py-2 bg-muted/50"
+                >
+                  <FileText className="w-4 h-4 shrink-0" />
+                  {decodeURIComponent(textAnswer.split('/').pop() ?? 'Arquivo enviado')}
+                </a>
+              ) : (
+                <p className="text-sm rounded-lg px-3 py-2 bg-muted/50 text-muted-foreground italic">
+                  Nenhum arquivo enviado
+                </p>
+              )
+            ) : isChoice ? (
+              q.options.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">Não respondida</p>
+              ) : (
+                <div className="space-y-1">
+                  {q.options.map((opt, idx) => {
+                    const wasSelected = selected.includes(idx)
+                    const isCorrectOpt = q.correct_options?.includes(idx) ?? false
+                    const hasGabarito = (q.correct_options?.length ?? 0) > 0
+                    const wrong = hasGabarito && wasSelected && !isCorrectOpt
+                    const missed = hasGabarito && !wasSelected && isCorrectOpt
+                    const rightPick = hasGabarito && wasSelected && isCorrectOpt
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border',
+                          rightPick && 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700 text-green-800 dark:text-green-300',
+                          wrong && 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-400',
+                          missed && 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300',
+                          !hasGabarito && wasSelected && 'bg-muted/50 border-border',
+                          !hasGabarito && !wasSelected && 'border-transparent text-muted-foreground',
+                          hasGabarito && !wasSelected && !isCorrectOpt && 'border-transparent text-muted-foreground/60',
+                        )}
+                      >
+                        {rightPick && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                        {wrong && <XCircle className="w-3.5 h-3.5 shrink-0" />}
+                        {missed && <Minus className="w-3.5 h-3.5 shrink-0" />}
+                        {!hasGabarito && wasSelected && <div className="w-3.5 h-3.5 shrink-0 rounded-full bg-current opacity-60" />}
+                        <span>{opt}</span>
+                        {missed && <span className="ml-auto text-[10px] font-medium">era essa</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
             ) : (
               <p className={cn(
-                'text-sm rounded-lg px-3 py-2 bg-muted/50',
-                !answer && 'text-muted-foreground italic'
+                'text-sm rounded-lg px-3 py-2 bg-muted/50 whitespace-pre-wrap break-words',
+                !textAnswer && 'text-muted-foreground italic'
               )}>
-                {answer ?? (isFile ? 'Nenhum arquivo enviado' : 'Não respondida')}
+                {textAnswer ?? 'Não respondida'}
               </p>
             )}
           </div>
