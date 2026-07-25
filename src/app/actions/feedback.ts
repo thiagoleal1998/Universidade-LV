@@ -128,41 +128,80 @@ export async function uploadFeedbackFile(file: File) {
   return { success: true, url: publicUrl, path, mimeType: webpFile.type, sizeBytes: webpFile.size }
 }
 
-const ALLOWED_ATTACHMENT_MIME = [
-  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain', 'text/csv',
-]
+// Extensão → MIME canônico. A extensão é a fonte de verdade porque o
+// navegador NÃO é confiável aqui: um .docx vindo de máquina Windows sem a
+// associação registrada chega como 'application/octet-stream' (ou vazio),
+// e tanto a validação quanto o bucket rejeitariam um arquivo legítimo.
+const ATTACHMENT_MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  txt: 'text/plain', csv: 'text/csv',
+}
+const ALLOWED_ATTACHMENT_MIME = Object.values(ATTACHMENT_MIME_BY_EXT)
+
+// Resolve o tipo real do anexo. Aceita o MIME do navegador quando ele é
+// reconhecido; senão cai na extensão. Devolve null quando nenhum dos dois
+// bate — aí o arquivo é mesmo de um tipo não suportado.
+function resolveAttachmentMime(file: File): string | null {
+  if (ALLOWED_ATTACHMENT_MIME.includes(file.type)) return file.type
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  return ATTACHMENT_MIME_BY_EXT[ext] ?? null
+}
+
+// Extensão canônica de um MIME permitido (o primeiro match do mapa).
+function extForMime(mime: string): string {
+  return Object.keys(ATTACHMENT_MIME_BY_EXT).find((k) => ATTACHMENT_MIME_BY_EXT[k] === mime) ?? 'bin'
+}
+
+// Nome exibido e usado no download. Troca a extensão original pela do tipo
+// realmente aceito, para o outro lado do chamado nunca baixar um arquivo com
+// extensão diferente do conteúdo que o servidor validou.
+function safeFileName(original: string, ext: string): string {
+  const base = original.replace(/\.[^.]*$/, '').replace(/[/\\]/g, '_').slice(0, 120) || 'arquivo'
+  return `${base}.${ext}`
+}
 
 // Upload de anexo separado do chamado — aceita imagem (print) e documento
-// (PDF/Word/Excel/texto). toWebP() já devolve o arquivo original sem alterar
-// quando não é imagem, então é seguro chamar incondicionalmente aqui.
+// (PDF/Word/Excel/texto).
 export async function uploadFeedbackAttachment(file: File) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado.' }
 
-  if (!ALLOWED_ATTACHMENT_MIME.includes(file.type)) {
+  const mime = resolveAttachmentMime(file)
+  if (!mime) {
     return { error: 'Tipo de arquivo não suportado. Envie imagem, PDF, Word, Excel ou texto.' }
   }
 
   const MAX = 10 * 1024 * 1024
   if (file.size > MAX) return { error: 'Arquivo muito grande. O limite é 10 MB.' }
 
-  const uploadFile = await toWebP(file, { maxWidth: 1600, quality: 85 })
-  const isConverted = uploadFile.type === 'image/webp' && file.type !== 'image/webp'
-  const ext = isConverted ? 'webp' : (file.name.split('.').pop() || 'bin')
+  // Reembrulha com o MIME resolvido: sem isso, toWebP() não reconheceria uma
+  // imagem que chegou como octet-stream, e o bucket (que tem allowlist de
+  // MIME própria) recusaria o upload.
+  const normalized = file.type === mime ? file : new File([file], file.name, { type: mime })
+
+  const uploadFile = await toWebP(normalized, { maxWidth: 1600, quality: 85 })
+  const isConverted = uploadFile.type === 'image/webp' && mime !== 'image/webp'
+  // Extensão vem do tipo RESOLVIDO, nunca do nome original: um arquivo
+  // chamado "x.exe" enviado com MIME de PDF seria salvo como .exe e baixado
+  // como executável pelo outro lado do chamado.
+  const ext = isConverted ? 'webp' : extForMime(uploadFile.type)
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
   const { error } = await supabase.storage.from('feedback-attachments').upload(path, uploadFile, { contentType: uploadFile.type })
   if (error) return { error: error.message }
 
   const { data: { publicUrl } } = supabase.storage.from('feedback-attachments').getPublicUrl(path)
-  return { success: true, url: publicUrl, path, mimeType: uploadFile.type, sizeBytes: uploadFile.size, fileName: file.name }
+  return {
+    success: true, url: publicUrl, path,
+    mimeType: uploadFile.type, sizeBytes: uploadFile.size,
+    fileName: safeFileName(file.name, ext),
+  }
 }
 
 export async function submitFeedback(formData: FormData) {
