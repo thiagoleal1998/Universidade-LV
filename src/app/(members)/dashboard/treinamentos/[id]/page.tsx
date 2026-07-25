@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getTrainingItem } from '@/app/actions/training'
 import type { TrainingMaterial } from '@/app/actions/training'
 import { LiveCountdown } from '@/components/members/live-countdown'
+import { StudyVideoPlayer } from '@/components/members/study-video-player'
+import { extractYouTubeId } from '@/lib/youtube'
 import {
   ArrowLeft, ExternalLink, FileText, Play, File, Link2,
   Radio, RotateCcw, Clock, CalendarDays, GraduationCap,
@@ -42,6 +44,10 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
   const isExpiredLive  = item.type === 'live' && liveMs !== null && liveMs <= now - TWO_HOURS
   const isReplay       = item.type === 'replay' || isExpiredLive
 
+  // Replay de YouTube toca embutido, no lugar da capa. Qualquer outra origem
+  // (Vimeo, Drive, Zoom gravado) continua caindo no link externo de sempre.
+  const replayVideoId = isReplay && item.url ? extractYouTubeId(item.url) : null
+
   const materials = [...(item.materials ?? [])].sort((a, b) => a.order_index - b.order_index)
 
   return (
@@ -56,7 +62,14 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
         Voltar para Treinamentos
       </Link>
 
-      {/* ── Cover ── */}
+      {/* ── Player do replay (substitui a capa) ── */}
+      {replayVideoId ? (
+        <div className="rounded-2xl overflow-hidden mb-6 border border-border">
+          <StudyVideoPlayer videoId={replayVideoId} />
+        </div>
+      ) : (
+
+      /* ── Cover ── */
       <div className="relative rounded-2xl overflow-hidden mb-6 bg-muted">
         {item.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -99,6 +112,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
           </div>
         )}
       </div>
+      )}
 
       {/* ── Body ── */}
       <div className="space-y-6">
@@ -165,13 +179,32 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
         {/* Replay */}
         {isReplay && (
           <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 space-y-4">
-            {isExpiredLive && item.live_at && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CalendarDays className="w-4 h-4 shrink-0 text-blue-400" />
-                <span className="capitalize">Realizado em {formatDate(item.live_at)}</span>
-              </div>
-            )}
-            {item.url ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-500">
+                <RotateCcw className="w-3 h-3" />
+                Replay
+              </span>
+              {isExpiredLive && item.live_at && (
+                <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  <CalendarDays className="w-4 h-4 shrink-0 text-blue-400" />
+                  <span className="capitalize">Realizado em {formatDate(item.live_at)}</span>
+                </span>
+              )}
+            </div>
+
+            {replayVideoId ? (
+              /* Vídeo já está tocando acima — aqui fica só a saída alternativa,
+                 útil se o dono do vídeo bloquear a reprodução incorporada. */
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Abrir no YouTube
+                <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+              </a>
+            ) : item.url ? (
               <a
                 href={item.url}
                 target="_blank"

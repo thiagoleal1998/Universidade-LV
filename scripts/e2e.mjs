@@ -87,6 +87,16 @@ try {
   await page.waitForURL(/dashboard|admin/, { timeout: 30000 })
   console.log('✓ login ok')
 
+  // Conta nova sempre cai no modal de onboarding, que cobre a tela inteira e
+  // intercepta cliques — sem fechar, todo teste visual fotografa o tutorial.
+  await page.waitForTimeout(1200)
+  const pular = page.getByRole('button', { name: /^Pular$/i })
+  if (await pular.count()) {
+    await pular.click().catch(() => {})
+    await page.waitForTimeout(600)
+    console.log('✓ onboarding dispensado')
+  }
+
   if (path !== '/dashboard') {
     await page.goto(`${baseUrl}${path}`)
     await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {})
