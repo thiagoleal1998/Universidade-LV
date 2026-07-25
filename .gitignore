@@ -40,3 +40,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code — settings.json e agents/skills são versionados (valem pro time);
+# settings.local.json é pessoal e acumula permissões one-off de cada máquina.
+.claude/settings.local.json
+
+# scripts e capturas descartáveis de verificação (criados durante testes E2E).
+# Os scripts permanentes ficam em scripts/, que É versionado.
+/verify-*.mjs
+/debug-*.mjs
+/check-*.mjs
+/*-tmp.mjs
+/*-test.png
+/*-shot.png
