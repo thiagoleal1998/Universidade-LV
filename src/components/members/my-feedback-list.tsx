@@ -132,14 +132,22 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
         const isOpen = openId === report.id
         const hasUpdate = unreadReportIds.has(report.id)
         return (
+          // Sem overflow-hidden no card: quebraria o sticky do toolbar da
+          // resposta lá dentro (mesmo motivo do fix no RichTextEditor —
+          // overflow diferente de visible num ancestral vira a âncora de
+          // rolagem do sticky, e este card nunca rola sozinho). O
+          // arredondamento do topo vai direto no botão do cabeçalho.
           <div key={report.id} id={`feedback-report-${report.id}`} className={cn(
-            'bg-card border rounded-xl overflow-hidden',
+            'bg-card border rounded-xl',
             hasUpdate && 'border-primary/40'
           )}>
             <button
               type="button"
               onClick={() => toggleOpen(report.id)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+              className={cn(
+                'w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left',
+                isOpen ? 'rounded-t-xl' : 'rounded-xl',
+              )}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className={cn(

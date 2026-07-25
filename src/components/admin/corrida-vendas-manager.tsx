@@ -289,7 +289,10 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
         const StatusIcon = sc.icon
 
         return (
-          <div key={cIdx} className="bg-card border rounded-xl overflow-hidden">
+          // Sem overflow-hidden: quebraria o sticky do toolbar do
+          // RichTextEditor (descrição/regras) lá dentro — mesmo motivo do
+          // fix em feedback-panel.tsx/my-feedback-list.tsx.
+          <div key={cIdx} className="bg-card border rounded-xl">
             {/* Cabeçalho do accordion */}
             <div className="flex items-center gap-2 p-4">
               <button type="button" onClick={() => toggleOpen(cIdx)} className="flex-1 flex items-center gap-3 text-left min-w-0">
