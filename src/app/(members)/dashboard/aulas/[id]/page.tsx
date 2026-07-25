@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
+import { requireLessonAccess } from '@/lib/authz'
 import { getNote } from '@/app/actions/notes'
 import { StudyInterface } from '@/components/members/study-interface'
 import type { Lesson, LessonPhoto, LessonAttachment } from '@/lib/supabase/types'
@@ -51,6 +52,10 @@ export default async function LessonPage({
   const { data: profileData } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   const isAdmin = profileData?.role === 'admin'
   const client = isAdmin ? await createAdminClient() : supabase
+
+  // Moderar comentários: admin, ou colaborador dono do curso desta aula. O
+  // guard devolve erro para membro comum, que é o caso normal aqui.
+  const canModerate = !('error' in (await requireLessonAccess(id)))
 
   // Fetch the lesson with module + course info
   const { data: lessonData } = await client
@@ -129,7 +134,7 @@ export default async function LessonPage({
   ] = await Promise.all([
     client.from('lesson_photos').select('*').eq('lesson_id', id).order('order_index'),
     client.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
-    supabase.from('lesson_comments').select('id, body, created_at, user_id, parent_id').eq('lesson_id', id).order('created_at'),
+    supabase.from('lesson_comments').select('id, body, created_at, user_id, parent_id, is_pinned, is_hidden').eq('lesson_id', id).order('created_at'),
     supabase
       .from('lesson_tasks')
       .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, required, order_index)')
@@ -157,7 +162,7 @@ export default async function LessonPage({
   }
 
   // Resolve nomes dos autores dos comentários via adminClient (bypassa RLS de profiles)
-  const rawComments = (commentsData ?? []) as { id: string; body: string; created_at: string; user_id: string; parent_id: string | null }[]
+  const rawComments = (commentsData ?? []) as { id: string; body: string; created_at: string; user_id: string; parent_id: string | null; is_pinned: boolean; is_hidden: boolean }[]
   const commentUserIds = [...new Set(rawComments.map((c) => c.user_id))]
   const adminForProfiles = createAdminClient()
   const { data: commentProfiles } = commentUserIds.length > 0
@@ -204,6 +209,7 @@ export default async function LessonPage({
       attachments={attachments}
       isCompleted={completedSet.has(id)}
       isAdmin={isAdmin}
+      canModerate={canModerate}
       isDraft={!lesson.is_published}
       note={note}
       courseId={courseId}

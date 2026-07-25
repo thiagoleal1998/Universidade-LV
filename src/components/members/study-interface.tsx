@@ -158,6 +158,8 @@ type Comment = {
   created_at: string
   user_id: string
   parent_id: string | null
+  is_pinned: boolean
+  is_hidden: boolean
   profiles: { full_name: string } | null
 }
 
@@ -175,6 +177,7 @@ type Props = {
   attachments: Attachment[]
   isCompleted: boolean
   isAdmin: boolean
+  canModerate?: boolean
   isDraft: boolean
   note: string
   courseId: string
@@ -210,6 +213,7 @@ export function StudyInterface({
   attachments,
   isCompleted: initialCompleted,
   isAdmin,
+  canModerate = false,
   isDraft,
   note,
   courseId,
@@ -479,6 +483,7 @@ export function StudyInterface({
                 comments={comments}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
+                canModerate={canModerate}
               />
             )}
 

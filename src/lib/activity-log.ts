@@ -37,6 +37,7 @@ export const ACTIVITY_ENTITY_LABELS = {
   comunicado: 'Comunicado',
   post_comunidade: 'Post da comunidade',
   resposta_comunidade: 'Resposta da comunidade',
+  comentario_aula: 'Comentário de aula',
   feedback: 'Chamado de feedback',
   seo: 'SEO',
   faq: 'Pergunta frequente',

@@ -85,22 +85,17 @@ try {
     viewport: { width: Number(arg('width', 1280)), height: Number(arg('height', 900)) },
   })
 
+  // Conta nova cai no modal de onboarding, que cobre a tela e intercepta
+  // cliques. Marcar como visto antes de carregar é confiável; clicar em
+  // "Pular" depois do login corre contra a montagem do modal e falha às vezes.
+  await page.addInitScript(() => localStorage.setItem('onboarding_complete_v1', '1'))
+
   await page.goto(`${baseUrl}/login`)
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', password)
   await page.click('button[type="submit"]')
   await page.waitForURL(/dashboard|admin/, { timeout: 30000 })
   console.log('✓ login ok')
-
-  // Conta nova sempre cai no modal de onboarding, que cobre a tela inteira e
-  // intercepta cliques — sem fechar, todo teste visual fotografa o tutorial.
-  await page.waitForTimeout(1200)
-  const pular = page.getByRole('button', { name: /^Pular$/i })
-  if (await pular.count()) {
-    await pular.click().catch(() => {})
-    await page.waitForTimeout(600)
-    console.log('✓ onboarding dispensado')
-  }
 
   if (path !== '/dashboard') {
     await page.goto(`${baseUrl}${path}`)
