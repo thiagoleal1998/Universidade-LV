@@ -157,6 +157,7 @@ type Comment = {
   body: string
   created_at: string
   user_id: string
+  parent_id: string | null
   profiles: { full_name: string } | null
 }
 

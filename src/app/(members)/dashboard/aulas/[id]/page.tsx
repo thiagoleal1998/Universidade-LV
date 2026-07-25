@@ -129,7 +129,7 @@ export default async function LessonPage({
   ] = await Promise.all([
     client.from('lesson_photos').select('*').eq('lesson_id', id).order('order_index'),
     client.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
-    supabase.from('lesson_comments').select('id, body, created_at, user_id').eq('lesson_id', id).order('created_at'),
+    supabase.from('lesson_comments').select('id, body, created_at, user_id, parent_id').eq('lesson_id', id).order('created_at'),
     supabase
       .from('lesson_tasks')
       .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, required, order_index)')
@@ -157,7 +157,7 @@ export default async function LessonPage({
   }
 
   // Resolve nomes dos autores dos comentários via adminClient (bypassa RLS de profiles)
-  const rawComments = (commentsData ?? []) as { id: string; body: string; created_at: string; user_id: string }[]
+  const rawComments = (commentsData ?? []) as { id: string; body: string; created_at: string; user_id: string; parent_id: string | null }[]
   const commentUserIds = [...new Set(rawComments.map((c) => c.user_id))]
   const adminForProfiles = createAdminClient()
   const { data: commentProfiles } = commentUserIds.length > 0
