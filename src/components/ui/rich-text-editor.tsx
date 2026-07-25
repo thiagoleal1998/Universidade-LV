@@ -32,6 +32,55 @@ interface RichTextEditorProps {
   editable?: boolean
 }
 
+// Tags que o editor de fato entende — tudo fora daqui é "desembrulhado" (o
+// texto de dentro sobe um nível, a tag em si some) em vez de ser inserido
+// como está.
+const PASTE_ALLOWED_TAGS = new Set([
+  'P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'H2', 'H3',
+  'UL', 'OL', 'LI', 'BLOCKQUOTE', 'A', 'IMG',
+])
+const PASTE_ALLOWED_ATTRS: Record<string, string[]> = {
+  A: ['href'],
+  IMG: ['src', 'alt'],
+}
+
+// Cola de qualquer origem — inclusive selecionar um trecho da própria página
+// (que pode abranger a barra de ferramentas e o miolo de OUTRO editor rico
+// aberto ao lado) — carrega o HTML bruto de origem, com classes e tudo.
+// Sem isso, o Tiptap tenta honrar essa estrutura, e um <div> com as mesmas
+// classes Tailwind do nosso próprio toolbar aparece renderizado dentro do
+// editor de destino como se fosse um segundo editor embutido (bug real:
+// colar uma seleção que cobria a área de outra resposta reproduzia a
+// barra de ferramentas inteira, com botões, dentro do texto).
+function sanitizePastedHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+
+  function clean(node: ParentNode) {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const el = child as Element
+        if (!PASTE_ALLOWED_TAGS.has(el.tagName)) {
+          // Desembrulha: promove os filhos pro lugar do elemento removido,
+          // sem perder o texto que estava dentro.
+          while (el.firstChild) el.parentNode?.insertBefore(el.firstChild, el)
+          el.remove()
+        } else {
+          const keep = new Set(PASTE_ALLOWED_ATTRS[el.tagName] ?? [])
+          Array.from(el.attributes).forEach((attr) => {
+            if (!keep.has(attr.name)) el.removeAttribute(attr.name)
+          })
+          clean(el)
+        }
+      } else if (child.nodeType !== Node.TEXT_NODE) {
+        child.remove() // comentários, etc.
+      }
+    })
+  }
+
+  clean(doc.body)
+  return doc.body.innerHTML
+}
+
 export function RichTextEditor({ content, onChange, onImageUpload, editable = true }: RichTextEditorProps) {
   const imgInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingImg, setIsUploadingImg] = useState(false)
@@ -76,6 +125,7 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
         files.forEach((f) => handleImageFile(f))
         return true
       },
+      transformPastedHTML: sanitizePastedHtml,
     },
   })
 
