@@ -8,6 +8,7 @@ import TiptapImage from '@tiptap/extension-image'
 import Underline from '@tiptap/extension-underline'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { toast } from 'sonner'
 import {
   Bold,
   Italic,
@@ -53,6 +54,28 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
       attributes: {
         class: 'min-h-[200px] rich-text focus:outline-none p-3',
       },
+      // Colar (Ctrl+V) uma imagem do clipboard, ou arrastar um arquivo, sem
+      // este handler, cai no comportamento padrão do Tiptap: como
+      // `allowBase64: false`, a imagem colada é descartada/inserida sem src
+      // — aparece como ícone de imagem quebrada, sem erro nenhum no console.
+      // Interceptamos antes disso e subimos pelo mesmo onImageUpload do botão.
+      handlePaste: (_view, event) => {
+        if (!onImageUpload) return false
+        const item = Array.from(event.clipboardData?.items ?? []).find((it) => it.type.startsWith('image/'))
+        const file = item?.getAsFile()
+        if (!file) return false
+        event.preventDefault()
+        handleImageFile(file)
+        return true
+      },
+      handleDrop: (_view, event) => {
+        if (!onImageUpload) return false
+        const files = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'))
+        if (files.length === 0) return false
+        event.preventDefault()
+        files.forEach((f) => handleImageFile(f))
+        return true
+      },
     },
   })
 
@@ -69,6 +92,7 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
     try {
       const url = await onImageUpload(file)
       if (url) editor.chain().focus().setImage({ src: url }).run()
+      else toast.error('Não foi possível inserir a imagem.')
     } finally {
       setIsUploadingImg(false)
     }

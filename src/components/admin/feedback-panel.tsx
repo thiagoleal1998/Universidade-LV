@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { assignFeedback, updateFeedbackStatus, addFeedbackNote } from '@/app/actions/feedback'
+import { assignFeedback, updateFeedbackStatus, addFeedbackNote, uploadFeedbackFile } from '@/app/actions/feedback'
 import type { FeedbackReport, FeedbackStatus, AdminOption } from '@/app/actions/feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,8 +32,18 @@ const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
 
 const UNASSIGNED = '__unassigned__'
 
+// Uma resposta só com imagem colada (sem texto nenhum) é válida — sem o
+// `<img`, o texto stripado dava vazio e o botão de enviar ficava travado
+// para sempre num caso de uso bem comum (colar print sem escrever nada).
 function isNoteEmpty(html: string): boolean {
+  if (/<img[\s/]/i.test(html)) return false
   return !html.replace(/<[^>]*>/g, '').trim()
+}
+
+async function handleEditorImageUpload(file: File): Promise<string | null> {
+  const r = await uploadFeedbackFile(file)
+  if (r?.error) { toast.error(r.error); return null }
+  return r.url ?? null
 }
 
 export function FeedbackPanel({ reports, admins, initialOpenId = null }: { reports: FeedbackReport[]; admins: AdminOption[]; initialOpenId?: string | null }) {
@@ -241,6 +251,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
                         key={`note-${report.id}-${noteResetKey[report.id] ?? 0}`}
                         content={notes[report.id] ?? ''}
                         onChange={(v) => setNotes((p) => ({ ...p, [report.id]: v }))}
+                        onImageUpload={handleEditorImageUpload}
                       />
                       <NoteAttachmentPicker
                         attachments={noteAttachments[report.id] ?? []}

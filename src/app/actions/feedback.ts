@@ -44,6 +44,13 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+// Mensagem só com imagem colada (sem nenhum texto) é conteúdo válido — sem
+// esta checagem, stripHtml devolve string vazia e a validação abaixo
+// rejeitaria um chamado/resposta que só tem um print, mesmo com upload certo.
+function hasContent(html: string): boolean {
+  return !!stripHtml(html) || /<img[\s/]/i.test(html)
+}
+
 export type FeedbackStatus = 'open' | 'in_progress' | 'resolved'
 
 export type FeedbackAttachment = {
@@ -221,7 +228,7 @@ export async function submitFeedback(formData: FormData) {
 
   const message = sanitizeRichText(messageRaw)
   const messageText = stripHtml(message)
-  if (!messageText) return { error: 'Descreva o problema ou sugestão.' }
+  if (!hasContent(message)) return { error: 'Descreva o problema ou sugestão.' }
 
   if (linkUrl) {
     try { new URL(linkUrl) } catch { return { error: 'Link inválido. Cole uma URL completa (https://...).' } }
@@ -263,11 +270,12 @@ export async function submitFeedback(formData: FormData) {
     actor_name: memberName,
   })
 
-  rdAdminNewFeedback(memberName, user.email ?? '', type, title, messageText.slice(0, 300))
+  const messagePreview = messageText.slice(0, 300) || '📎 Chamado com imagem, sem texto'
+  rdAdminNewFeedback(memberName, user.email ?? '', type, title, messagePreview)
   await notifyAllAdmins(user.id, {
     type: 'new_feedback',
     title: `[${typeLabel}] ${title}`,
-    body: `${memberName || user.email} — ${messageText.slice(0, 140)}`,
+    body: `${memberName || user.email} — ${messagePreview.slice(0, 140)}`,
     link: `/admin/feedback?report=${inserted.id}`,
   })
 
@@ -279,7 +287,7 @@ export async function submitFeedback(formData: FormData) {
     type: type as 'bug' | 'suggestion',
     status: 'open',
     authorName: memberName,
-    messageText: messageText.slice(0, 500),
+    messageText: messagePreview,
     pageUrl,
     createdAtIso: new Date().toISOString(),
   }).then(async (pageId) => {
@@ -507,7 +515,7 @@ export async function addFeedbackNote(
 ) {
   const sanitized = sanitizeRichText(note)
   const preview = stripHtml(sanitized)
-  if (!preview) return { error: 'Escreva algo antes de salvar.' }
+  if (!hasContent(sanitized)) return { error: 'Escreva algo antes de salvar.' }
 
   const supabase = await createClient()
   const { data: { user: actor } } = await supabase.auth.getUser()
@@ -557,7 +565,7 @@ export async function addFeedbackNote(
   }
 
   const title = report.title || 'Sem título'
-  const body = preview.slice(0, 140)
+  const body = preview.slice(0, 140) || '📎 Enviou uma imagem'
 
   if (isAdminActor) {
     await notifyUser(report.user_id, {
