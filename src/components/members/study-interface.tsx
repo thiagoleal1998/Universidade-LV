@@ -180,6 +180,7 @@ type Props = {
   canModerate?: boolean
   isDraft: boolean
   note: string
+  noteDraft?: string
   courseId: string
   courseName: string
   logoUrl: string
@@ -216,6 +217,7 @@ export function StudyInterface({
   canModerate = false,
   isDraft,
   note,
+  noteDraft = '',
   courseId,
   courseName,
   logoUrl,
@@ -488,7 +490,7 @@ export function StudyInterface({
             )}
 
             {tab === 'anotacoes' && (
-              <StudyNotes lessonId={lessonId} initialContent={note} />
+              <StudyNotes lessonId={lessonId} initialContent={note} initialDraft={noteDraft} />
             )}
           </div>
 

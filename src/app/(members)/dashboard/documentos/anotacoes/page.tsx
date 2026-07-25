@@ -10,6 +10,8 @@ export default async function AnotacoesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Só anotações salvas: um rascunho ainda em edição na aula não entra aqui
+  // (a coluna content guarda a última versão salva; o rascunho fica à parte).
   const { data: notesRaw } = await supabase
     .from('lesson_notes')
     .select('lesson_id, content, updated_at')

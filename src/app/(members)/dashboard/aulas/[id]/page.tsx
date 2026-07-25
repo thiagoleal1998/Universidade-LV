@@ -211,7 +211,8 @@ export default async function LessonPage({
       isAdmin={isAdmin}
       canModerate={canModerate}
       isDraft={!lesson.is_published}
-      note={note}
+      note={note.content}
+      noteDraft={note.draftContent}
       courseId={courseId}
       courseName={courseName}
       logoUrl={settings.logo_url}
