@@ -24,17 +24,38 @@ type Props = {
   onClose: () => void
 }
 
-export function StudyCurriculum({ modules, currentLessonId, isOpen, onClose }: Props) {
-  const [expanded, setExpanded] = useState<Set<string>>(() => {
-    const currentModule = modules.find((m) => m.lessons.some((l) => l.id === currentLessonId))
-    return new Set(currentModule ? [currentModule.id] : modules.slice(0, 1).map((m) => m.id))
-  })
+const isModuleDone = (m: CurriculumModule) =>
+  m.lessons.length > 0 && m.lessons.every((l) => l.isCompleted)
 
+// Módulo concluído fica fechado; abre o da aula atual e, quando esse também
+// já terminou, o próximo que ainda tem aula pendente.
+function defaultExpanded(modules: CurriculumModule[], currentLessonId: string): Set<string> {
+  const current = modules.find((m) => m.lessons.some((l) => l.id === currentLessonId))
+  const open = new Set<string>()
+
+  if (current && !isModuleDone(current)) open.add(current.id)
+
+  if (!current || isModuleDone(current)) {
+    const startAt = current ? modules.indexOf(current) + 1 : 0
+    const next = modules.slice(startAt).find((m) => !isModuleDone(m))
+      ?? modules.find((m) => !isModuleDone(m))
+    if (next) open.add(next.id)
+    // Curso inteiro concluído: mantém o módulo da aula atual visível para não
+    // deixar a lista toda fechada.
+    else if (current) open.add(current.id)
+  }
+
+  return open
+}
+
+export function StudyCurriculum({ modules, currentLessonId, isOpen, onClose }: Props) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => defaultExpanded(modules, currentLessonId))
+
+  // Recalcula ao trocar de aula (inclusive quando a conclusão de uma aula
+  // fecha o módulo e abre o seguinte). Toggle manual do usuário vale até a
+  // próxima navegação.
   useEffect(() => {
-    const currentModule = modules.find((m) => m.lessons.some((l) => l.id === currentLessonId))
-    if (currentModule) {
-      setExpanded((prev) => new Set([...prev, currentModule.id]))
-    }
+    setExpanded(defaultExpanded(modules, currentLessonId))
   }, [currentLessonId, modules])
 
   function toggle(id: string) {
@@ -82,19 +103,36 @@ export function StudyCurriculum({ modules, currentLessonId, isOpen, onClose }: P
         {modules.map((mod) => {
           const isExpanded = expanded.has(mod.id)
           const modDone = mod.lessons.filter((l) => l.isCompleted).length
+          const done = isModuleDone(mod)
           return (
             <div key={mod.id} className="border-b border-border/50 last:border-0">
               <button
                 onClick={() => toggle(mod.id)}
-                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+                className={cn(
+                  'w-full flex items-center justify-between gap-2 px-4 py-3 text-left transition-colors',
+                  done ? 'bg-green-500/[0.07] hover:bg-green-500/[0.12]' : 'hover:bg-muted/40'
+                )}
               >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{mod.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{modDone}/{mod.lessons.length}</p>
+                <div className="min-w-0 flex items-start gap-2">
+                  {done && <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <p className={cn(
+                      'text-sm font-medium truncate',
+                      done ? 'text-green-700 dark:text-green-500' : 'text-foreground'
+                    )}>
+                      {mod.title}
+                    </p>
+                    <p className={cn(
+                      'text-xs mt-0.5',
+                      done ? 'text-green-600/80 font-medium' : 'text-muted-foreground'
+                    )}>
+                      {done ? `Módulo concluído · ${mod.lessons.length}/${mod.lessons.length}` : `${modDone}/${mod.lessons.length}`}
+                    </p>
+                  </div>
                 </div>
                 {isExpanded
-                  ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                  : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  ? <ChevronDown className={cn('w-4 h-4 shrink-0', done ? 'text-green-600/70' : 'text-muted-foreground')} />
+                  : <ChevronRight className={cn('w-4 h-4 shrink-0', done ? 'text-green-600/70' : 'text-muted-foreground')} />}
               </button>
 
               {isExpanded && (

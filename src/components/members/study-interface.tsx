@@ -244,35 +244,47 @@ export function StudyInterface({
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showNextBanner, setShowNextBanner] = useState(false)
   const [countdown, setCountdown] = useState(5)
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const pct = totalLessons > 0 ? Math.round((totalDone / totalLessons) * 100) : 0
 
+  // Reset só ao TROCAR de aula. Não pode depender de initialCompleted: o
+  // revalidatePath de toggleLessonComplete devolve esse valor atualizado
+  // segundos depois do clique, e o reset matava o banner no meio da contagem
+  // — o aluno via "Ir agora (3s)" sumir e nunca era levado adiante.
+  const prevLessonRef = useRef(lessonId)
   useEffect(() => {
+    if (prevLessonRef.current === lessonId) return
+    prevLessonRef.current = lessonId
     setCompleted(initialCompleted)
     setShowNextBanner(false)
-    if (countdownRef.current) clearInterval(countdownRef.current)
   }, [lessonId, initialCompleted])
 
   function startCountdown() {
     if (!nextLessonId) return
     setCountdown(5)
     setShowNextBanner(true)
-    countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current!)
-          router.push(`/dashboard/aulas/${nextLessonId}`)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    // Busca a próxima aula durante a contagem. Sem isso, o commit da rota só
+    // começa quando a contagem zera e a tela fica ~3s parada em "Ir agora (0s)",
+    // parecendo travada.
+    router.prefetch(`/dashboard/aulas/${nextLessonId}`)
   }
+
+  // A contagem vive num efeito que reage ao state, e não dentro do updater do
+  // setCountdown: navegar de dentro de um updater é efeito colateral em fase
+  // de atualização, e o React descarta — o banner contava até zero e o aluno
+  // ficava parado na mesma aula.
+  useEffect(() => {
+    if (!showNextBanner || !nextLessonId) return
+    if (countdown <= 0) {
+      router.push(`/dashboard/aulas/${nextLessonId}`)
+      return
+    }
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [showNextBanner, countdown, nextLessonId, router])
 
   function dismissBanner() {
     setShowNextBanner(false)
-    if (countdownRef.current) clearInterval(countdownRef.current)
   }
 
   function handleToggle() {
@@ -549,12 +561,10 @@ export function StudyInterface({
           </div>
           <Button
             size="sm"
-            onClick={() => {
-              if (countdownRef.current) clearInterval(countdownRef.current)
-              router.push(`/dashboard/aulas/${nextLessonId}`)
-            }}
+            onClick={() => router.push(`/dashboard/aulas/${nextLessonId}`)}
+            disabled={countdown <= 0}
           >
-            Ir agora ({countdown}s)
+            {countdown > 0 ? `Ir agora (${countdown}s)` : 'Abrindo...'}
           </Button>
           <button
             onClick={dismissBanner}
