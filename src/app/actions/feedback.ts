@@ -50,6 +50,7 @@ export type FeedbackAttachment = {
   id: string
   url: string
   mime_type: string
+  file_name: string
 }
 
 export type FeedbackEvent = {
@@ -61,6 +62,7 @@ export type FeedbackEvent = {
   assigned_name: string | null
   note_text: string | null
   created_at: string
+  attachments: FeedbackAttachment[]
 }
 
 export type FeedbackReport = {
@@ -103,7 +105,7 @@ function attachmentPublicUrl(storagePath: string): string {
   return adminClient.storage.from('feedback-attachments').getPublicUrl(storagePath).data.publicUrl
 }
 
-// Upload usado tanto para imagem inline (no editor) quanto para anexo separado
+// Upload de imagem inline no editor de texto rico — só imagem, vira <img> no HTML.
 export async function uploadFeedbackFile(file: File) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -124,6 +126,43 @@ export async function uploadFeedbackFile(file: File) {
 
   const { data: { publicUrl } } = supabase.storage.from('feedback-attachments').getPublicUrl(path)
   return { success: true, url: publicUrl, path, mimeType: webpFile.type, sizeBytes: webpFile.size }
+}
+
+const ALLOWED_ATTACHMENT_MIME = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+]
+
+// Upload de anexo separado do chamado — aceita imagem (print) e documento
+// (PDF/Word/Excel/texto). toWebP() já devolve o arquivo original sem alterar
+// quando não é imagem, então é seguro chamar incondicionalmente aqui.
+export async function uploadFeedbackAttachment(file: File) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado.' }
+
+  if (!ALLOWED_ATTACHMENT_MIME.includes(file.type)) {
+    return { error: 'Tipo de arquivo não suportado. Envie imagem, PDF, Word, Excel ou texto.' }
+  }
+
+  const MAX = 10 * 1024 * 1024
+  if (file.size > MAX) return { error: 'Arquivo muito grande. O limite é 10 MB.' }
+
+  const uploadFile = await toWebP(file, { maxWidth: 1600, quality: 85 })
+  const isConverted = uploadFile.type === 'image/webp' && file.type !== 'image/webp'
+  const ext = isConverted ? 'webp' : (file.name.split('.').pop() || 'bin')
+  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  const { error } = await supabase.storage.from('feedback-attachments').upload(path, uploadFile, { contentType: uploadFile.type })
+  if (error) return { error: error.message }
+
+  const { data: { publicUrl } } = supabase.storage.from('feedback-attachments').getPublicUrl(path)
+  return { success: true, url: publicUrl, path, mimeType: uploadFile.type, sizeBytes: uploadFile.size, fileName: file.name }
 }
 
 export async function submitFeedback(formData: FormData) {
@@ -149,7 +188,7 @@ export async function submitFeedback(formData: FormData) {
     try { new URL(linkUrl) } catch { return { error: 'Link inválido. Cole uma URL completa (https://...).' } }
   }
 
-  let attachments: { path: string; mimeType: string; sizeBytes: number }[] = []
+  let attachments: { path: string; mimeType: string; sizeBytes: number; fileName?: string }[] = []
   try {
     const parsed = JSON.parse(attachmentsRaw)
     if (Array.isArray(parsed)) attachments = parsed
@@ -169,6 +208,7 @@ export async function submitFeedback(formData: FormData) {
         storage_path: a.path,
         mime_type: a.mimeType,
         size_bytes: a.sizeBytes,
+        file_name: a.fileName || '',
       }))
     )
   }
@@ -217,11 +257,12 @@ type ReportRow = {
   resolved_at: string | null; created_at: string
   profiles: { full_name: string }[] | { full_name: string } | null
   assigned: { full_name: string }[] | { full_name: string } | null
-  feedback_attachments: { id: string; storage_path: string; mime_type: string }[]
+  feedback_attachments: { id: string; storage_path: string; mime_type: string; file_name: string; event_id: string | null }[]
   feedback_events: {
     id: string; event_type: FeedbackEvent['event_type']; actor_name: string
     from_status: FeedbackStatus | null; to_status: FeedbackStatus | null
     assigned_name: string | null; note_text: string | null; created_at: string
+    feedback_attachments: { id: string; storage_path: string; mime_type: string; file_name: string }[]
   }[]
 }
 
@@ -240,10 +281,11 @@ function mapReports(rows: ReportRow[]): FeedbackReport[] {
     resolved_at: r.resolved_at,
     created_at: r.created_at,
     member_name: toOne(r.profiles)?.full_name ?? '',
-    attachments: (r.feedback_attachments ?? []).map((a) => ({
+    attachments: (r.feedback_attachments ?? []).filter((a) => !a.event_id).map((a) => ({
       id: a.id,
       url: attachmentPublicUrl(a.storage_path),
       mime_type: a.mime_type,
+      file_name: a.file_name || '',
     })),
     events: (r.feedback_events ?? [])
       .slice()
@@ -257,6 +299,12 @@ function mapReports(rows: ReportRow[]): FeedbackReport[] {
         assigned_name: e.assigned_name,
         note_text: e.note_text,
         created_at: e.created_at,
+        attachments: (e.feedback_attachments ?? []).map((a) => ({
+          id: a.id,
+          url: attachmentPublicUrl(a.storage_path),
+          mime_type: a.mime_type,
+          file_name: a.file_name || '',
+        })),
       })),
   }))
 }
@@ -265,8 +313,8 @@ const REPORT_SELECT = `
   id, user_id, type, title, message, link_url, page_url, status, assigned_to, resolved_at, created_at,
   profiles!feedback_reports_user_id_fkey(full_name),
   assigned:profiles!feedback_reports_assigned_to_fkey(full_name),
-  feedback_attachments(id, storage_path, mime_type),
-  feedback_events(id, event_type, actor_name, from_status, to_status, assigned_name, note_text, created_at)
+  feedback_attachments!feedback_attachments_feedback_id_fkey(id, storage_path, mime_type, file_name, event_id),
+  feedback_events(id, event_type, actor_name, from_status, to_status, assigned_name, note_text, created_at, feedback_attachments(id, storage_path, mime_type, file_name))
 `
 
 export async function getFeedbackReports(): Promise<FeedbackReport[]> {
@@ -413,7 +461,11 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
 // notificação vai para "quem não escreveu": admin escreveu -> avisa o membro
 // dono; membro escreveu -> avisa o responsável (ou todos os admins, se ninguém
 // foi atribuído ainda).
-export async function addFeedbackNote(id: string, note: string) {
+export async function addFeedbackNote(
+  id: string,
+  note: string,
+  attachments: { path: string; mimeType: string; sizeBytes: number; fileName?: string }[] = [],
+) {
   const sanitized = sanitizeRichText(note)
   const preview = stripHtml(sanitized)
   if (!preview) return { error: 'Escreva algo antes de salvar.' }
@@ -434,12 +486,25 @@ export async function addFeedbackNote(id: string, note: string) {
     return { error: 'Você não tem permissão para responder este chamado.' }
   }
 
-  await adminClient.from('feedback_events').insert({
+  const { data: event } = await adminClient.from('feedback_events').insert({
     feedback_id: id,
     event_type: 'note_added',
     actor_name: actorProfile?.full_name ?? '',
     note_text: sanitized,
-  })
+  }).select('id').single()
+
+  if (attachments.length > 0 && event) {
+    await adminClient.from('feedback_attachments').insert(
+      attachments.map((a) => ({
+        feedback_id: id,
+        event_id: event.id,
+        storage_path: a.path,
+        mime_type: a.mimeType,
+        size_bytes: a.sizeBytes,
+        file_name: a.fileName || '',
+      }))
+    )
+  }
 
   notionAppendTimelineRow(report.notion_page_id, new Date().toISOString(), timelineRowNote(actorProfile?.full_name ?? '', preview))
 

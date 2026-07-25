@@ -1,6 +1,7 @@
 import type { FeedbackEvent } from '@/app/actions/feedback'
 import { PlusCircle, UserCog, ArrowRightCircle, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Aberto',
@@ -46,6 +47,20 @@ export function FeedbackTimeline({ events }: { events: FeedbackEvent[] }) {
                   className="mt-1 bg-muted/60 rounded-lg px-3 py-2 text-sm text-foreground rich-text"
                   dangerouslySetInnerHTML={{ __html: e.note_text }}
                 />
+              )}
+              {e.attachments.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {e.attachments.map((a) => (
+                    a.mime_type.startsWith('image/') ? (
+                      <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.url} alt="Anexo" className="w-14 h-14 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                      </a>
+                    ) : (
+                      <AttachmentFileChip key={a.id} url={a.url} fileName={a.file_name} mimeType={a.mime_type} />
+                    )
+                  ))}
+                </div>
               )}
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {new Date(e.created_at).toLocaleString('pt-BR')}

@@ -2,17 +2,18 @@
 
 import { useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { submitFeedback, uploadFeedbackFile } from '@/app/actions/feedback'
+import { submitFeedback, uploadFeedbackFile, uploadFeedbackAttachment } from '@/app/actions/feedback'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
+import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 import { Bug, Lightbulb, Paperclip, X, Loader2, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-type Attachment = { path: string; mimeType: string; sizeBytes: number; url: string }
+type Attachment = { path: string; mimeType: string; sizeBytes: number; url: string; fileName: string }
 
 export function FeedbackTicketForm() {
   const pathname = usePathname()
@@ -37,10 +38,10 @@ export function FeedbackTicketForm() {
     if (files.length === 0) return
     setIsUploadingAttachment(true)
     for (const file of files) {
-      const r = await uploadFeedbackFile(file)
+      const r = await uploadFeedbackAttachment(file)
       if (r?.error) toast.error(r.error)
       else if (r.url && r.path) {
-        setAttachments((prev) => [...prev, { path: r.path!, mimeType: r.mimeType!, sizeBytes: r.sizeBytes!, url: r.url! }])
+        setAttachments((prev) => [...prev, { path: r.path!, mimeType: r.mimeType!, sizeBytes: r.sizeBytes!, url: r.url!, fileName: r.fileName! }])
       }
     }
     setIsUploadingAttachment(false)
@@ -58,7 +59,7 @@ export function FeedbackTicketForm() {
     fd.set('message', message)
     fd.set('link_url', linkUrl)
     fd.set('page_url', pathname)
-    fd.set('attachments', JSON.stringify(attachments.map((a) => ({ path: a.path, mimeType: a.mimeType, sizeBytes: a.sizeBytes }))))
+    fd.set('attachments', JSON.stringify(attachments.map((a) => ({ path: a.path, mimeType: a.mimeType, sizeBytes: a.sizeBytes, fileName: a.fileName }))))
     startTransition(async () => {
       const r = await submitFeedback(fd)
       if (r?.error) toast.error(r.error)
@@ -134,31 +135,42 @@ export function FeedbackTicketForm() {
       </div>
 
       <div>
-        <Label>Anexar fotos (opcional)</Label>
-        <p className="text-xs text-muted-foreground mt-0.5 mb-2">Além das imagens inseridas no texto, você pode anexar fotos separadas — como prints do problema.</p>
+        <Label>Anexar arquivos (opcional)</Label>
+        <p className="text-xs text-muted-foreground mt-0.5 mb-2">Além das imagens inseridas no texto, você pode anexar fotos ou documentos separados — como prints, PDFs ou planilhas.</p>
 
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a) => (
-              <div key={a.path} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={a.url} alt="Anexo" className="w-20 h-20 object-cover rounded-lg border border-border" />
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(a.path)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
-                  title="Remover anexo"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
+              a.mimeType.startsWith('image/') ? (
+                <div key={a.path} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.url} alt="Anexo" className="w-20 h-20 object-cover rounded-lg border border-border" />
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(a.path)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
+                    title="Remover anexo"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <AttachmentFileChip
+                  key={a.path}
+                  url={a.url}
+                  fileName={a.fileName}
+                  mimeType={a.mimeType}
+                  sizeBytes={a.sizeBytes}
+                  onRemove={() => removeAttachment(a.path)}
+                />
+              )
             ))}
           </div>
         )}
 
         <input
           type="file"
-          accept="image/*"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
           multiple
           id="feedback-attach-input"
           className="hidden"
@@ -173,7 +185,7 @@ export function FeedbackTicketForm() {
           className="gap-2"
         >
           {isUploadingAttachment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
-          {isUploadingAttachment ? 'Enviando...' : 'Anexar foto'}
+          {isUploadingAttachment ? 'Enviando...' : 'Anexar arquivo'}
         </Button>
       </div>
 

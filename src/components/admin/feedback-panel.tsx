@@ -10,6 +10,8 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
+import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
+import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
 import { toast } from 'sonner'
 import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -39,6 +41,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [noteAttachments, setNoteAttachments] = useState<Record<string, PickedAttachment[]>>({})
   const [noteResetKey, setNoteResetKey] = useState<Record<string, number>>({})
   const [isPending, startSave] = useTransition()
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
@@ -76,12 +79,14 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
 
   function handleSaveNote(id: string) {
     const note = notes[id] ?? ''
+    const attachments = (noteAttachments[id] ?? []).map((a) => ({ path: a.path, mimeType: a.mimeType, sizeBytes: a.sizeBytes, fileName: a.fileName }))
     startSave(async () => {
-      const r = await addFeedbackNote(id, note)
+      const r = await addFeedbackNote(id, note, attachments)
       if (r?.error) toast.error(r.error)
       else {
         toast.success('Resposta enviada! O membro foi notificado.')
         setNotes((p) => ({ ...p, [id]: '' }))
+        setNoteAttachments((p) => ({ ...p, [id]: [] }))
         setNoteResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
         router.refresh()
       }
@@ -164,16 +169,24 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
 
                     {report.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {report.attachments.map((a, i) => (
-                          <button
-                            key={a.id}
-                            type="button"
-                            onClick={() => setLightbox({ reportId: report.id, index: i })}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
-                          </button>
-                        ))}
+                        {report.attachments.map((a) => {
+                          const isImage = a.mime_type.startsWith('image/')
+                          const imageIndex = isImage
+                            ? report.attachments.filter((x) => x.mime_type.startsWith('image/')).findIndex((x) => x.id === a.id)
+                            : -1
+                          return isImage ? (
+                            <button
+                              key={a.id}
+                              type="button"
+                              onClick={() => setLightbox({ reportId: report.id, index: imageIndex })}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                            </button>
+                          ) : (
+                            <AttachmentFileChip key={a.id} url={a.url} fileName={a.file_name} mimeType={a.mime_type} />
+                          )
+                        })}
                       </div>
                     )}
 
@@ -223,11 +236,16 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
 
                     <FeedbackTimeline events={report.events} />
 
-                    <div>
+                    <div className="space-y-2">
                       <RichTextEditor
                         key={`note-${report.id}-${noteResetKey[report.id] ?? 0}`}
                         content={notes[report.id] ?? ''}
                         onChange={(v) => setNotes((p) => ({ ...p, [report.id]: v }))}
+                      />
+                      <NoteAttachmentPicker
+                        attachments={noteAttachments[report.id] ?? []}
+                        onChange={(next) => setNoteAttachments((p) => ({ ...p, [report.id]: next }))}
+                        idSuffix={`admin-${report.id}`}
                       />
                     </div>
 
@@ -249,9 +267,10 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
       {lightbox && (() => {
         const report = reports.find((r) => r.id === lightbox.reportId)
         if (!report) return null
+        const images = report.attachments.filter((a) => a.mime_type.startsWith('image/'))
         return (
           <ImageLightbox
-            images={report.attachments}
+            images={images}
             index={lightbox.index}
             onClose={() => setLightbox(null)}
             onNavigate={(index) => setLightbox({ reportId: lightbox.reportId, index })}

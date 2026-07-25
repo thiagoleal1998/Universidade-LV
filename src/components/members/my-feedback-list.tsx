@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
+import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
+import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
 import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -35,6 +37,7 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
   const [replies, setReplies] = useState<Record<string, string>>({})
+  const [replyAttachments, setReplyAttachments] = useState<Record<string, PickedAttachment[]>>({})
   const [replyResetKey, setReplyResetKey] = useState<Record<string, number>>({})
   const [isSending, startSend] = useTransition()
   const [unreadReportIds, setUnreadReportIds] = useState<Set<string>>(new Set())
@@ -63,12 +66,14 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
 
   function handleSendReply(id: string) {
     const note = replies[id] ?? ''
+    const attachments = (replyAttachments[id] ?? []).map((a) => ({ path: a.path, mimeType: a.mimeType, sizeBytes: a.sizeBytes, fileName: a.fileName }))
     startSend(async () => {
-      const r = await addFeedbackNote(id, note)
+      const r = await addFeedbackNote(id, note, attachments)
       if (r?.error) toast.error(r.error)
       else {
         toast.success('Resposta enviada!')
         setReplies((p) => ({ ...p, [id]: '' }))
+        setReplyAttachments((p) => ({ ...p, [id]: [] }))
         setReplyResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
         router.refresh()
       }
@@ -140,26 +145,39 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
 
                 {report.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {report.attachments.map((a, i) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => setLightbox({ reportId: report.id, index: i })}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
-                      </button>
-                    ))}
+                    {report.attachments.map((a) => {
+                      const isImage = a.mime_type.startsWith('image/')
+                      const imageIndex = isImage
+                        ? report.attachments.filter((x) => x.mime_type.startsWith('image/')).findIndex((x) => x.id === a.id)
+                        : -1
+                      return isImage ? (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setLightbox({ reportId: report.id, index: imageIndex })}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                        </button>
+                      ) : (
+                        <AttachmentFileChip key={a.id} url={a.url} fileName={a.file_name} mimeType={a.mime_type} />
+                      )
+                    })}
                   </div>
                 )}
 
                 <FeedbackTimeline events={report.events} />
 
-                <div>
+                <div className="space-y-2">
                   <RichTextEditor
                     key={`reply-${report.id}-${replyResetKey[report.id] ?? 0}`}
                     content={replies[report.id] ?? ''}
                     onChange={(v) => setReplies((p) => ({ ...p, [report.id]: v }))}
+                  />
+                  <NoteAttachmentPicker
+                    attachments={replyAttachments[report.id] ?? []}
+                    onChange={(next) => setReplyAttachments((p) => ({ ...p, [report.id]: next }))}
+                    idSuffix={`member-${report.id}`}
                   />
                 </div>
 
@@ -179,9 +197,10 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
       {lightbox && (() => {
         const report = reports.find((r) => r.id === lightbox.reportId)
         if (!report) return null
+        const images = report.attachments.filter((a) => a.mime_type.startsWith('image/'))
         return (
           <ImageLightbox
-            images={report.attachments}
+            images={images}
             index={lightbox.index}
             onClose={() => setLightbox(null)}
             onNavigate={(index) => setLightbox({ reportId: lightbox.reportId, index })}
