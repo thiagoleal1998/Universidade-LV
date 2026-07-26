@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, PlayCircle, Eye, UserCircle2 } from 'lucide-react'
-import { CourseModulesAccordion } from '@/components/members/course-modules-accordion'
+import { ArrowLeft, PlayCircle, Eye } from 'lucide-react'
+import { CourseDetailTabs } from '@/components/members/course-detail-tabs'
 import { cn } from '@/lib/utils'
 import type { Course, Module } from '@/lib/supabase/types'
 
@@ -166,52 +166,24 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      {/* Instructor */}
-      {(() => {
-        const displayName = linkedInstructor?.full_name || course.instructor_name
-        const displayRole = linkedInstructor?.job_title || course.instructor_role
-        const displayPhoto = linkedInstructor?.avatar_url || course.instructor_photo_url
-        const displayBio = linkedInstructor?.bio || ''
-        if (!displayName && !displayPhoto) return null
-        return (
-          <div className="px-5 py-4 bg-card border rounded-xl space-y-3">
-            <div className="flex items-center gap-4">
-              {displayPhoto ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={displayPhoto}
-                  alt={displayName ?? 'Instrutor'}
-                  className="w-14 h-14 rounded-full object-cover shrink-0 border-2 border-border"
-                />
-              ) : (
-                <UserCircle2 className="w-14 h-14 text-muted-foreground shrink-0" />
-              )}
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground mb-0.5">Instrutor(a)</p>
-                <p className="font-semibold text-foreground leading-tight">{displayName}</p>
-                {displayRole && (
-                  <p className="text-sm text-muted-foreground">{displayRole}</p>
-                )}
-              </div>
-            </div>
-            {displayBio && (
-              <div className="rich-text text-sm text-muted-foreground pt-1 border-t border-border" dangerouslySetInnerHTML={{ __html: displayBio }} />
-            )}
-          </div>
-        )
-      })()}
-
-      {/* Modules accordion */}
-      <div>
-        <h2 className="text-base font-semibold text-foreground mb-3">Módulos do curso</h2>
-        <CourseModulesAccordion
-          modules={modules}
-          completedIds={completedIds}
-          completedModuleIds={completedModuleIds}
-          defaultOpenId={defaultOpenId}
-          isAdmin={isAdmin}
-        />
-      </div>
+      {/* Conteúdo do curso + instrutor (em abas quando há instrutor cadastrado) */}
+      <CourseDetailTabs
+        modules={modules}
+        completedIds={completedIds}
+        completedModuleIds={completedModuleIds}
+        defaultOpenId={defaultOpenId}
+        isAdmin={isAdmin}
+        instructor={(() => {
+          const name = linkedInstructor?.full_name || course.instructor_name
+          if (!name) return null
+          return {
+            name,
+            role: linkedInstructor?.job_title || course.instructor_role,
+            photo: linkedInstructor?.avatar_url || course.instructor_photo_url,
+            bio: linkedInstructor?.bio || '',
+          }
+        })()}
+      />
     </div>
   )
 }
