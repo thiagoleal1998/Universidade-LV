@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Circle,
   PanelRight, PanelRightClose, GraduationCap, X, Table2,
-  Volume2, Play, Pause, StopCircle,
+  Volume2, VolumeX, Play, Pause, StopCircle, Gauge,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -27,6 +27,23 @@ function stripHtml(html: string) {
 }
 
 type TtsState = 'idle' | 'playing' | 'paused'
+
+// Web Speech API não expõe duração real do áudio nem posição exata de
+// reprodução — só o evento `boundary` (charIndex, suporte inconsistente
+// entre navegadores). A barra de progresso abaixo é uma ESTIMATIVA: um
+// timer avança a posição com base numa velocidade média de leitura
+// (chars/segundo, ajustada pela velocidade escolhida), corrigida sempre
+// que um evento `boundary` chega (nos navegadores que o disparam).
+const CHARS_PER_SECOND_AT_1X = 15 // ~150-170 palavras/min, média de TTS
+const SPEED_PRESETS = [0.75, 1, 1.25, 1.5, 2] as const
+
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+  const total = Math.round(seconds)
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
 
 function pickBestVoice(): SpeechSynthesisVoice | null {
   const voices = window.speechSynthesis.getVoices()
@@ -49,31 +66,91 @@ function pickBestVoice(): SpeechSynthesisVoice | null {
 }
 
 function TextToSpeechPlayer({ html }: { html: string }) {
+  const text = useMemo(() => stripHtml(html), [html])
+  const totalChars = text.length
+
   const [ttsState, setTtsState] = useState<TtsState>('idle')
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const [rate, setRate] = useState<number>(1)
+  const [volume, setVolume] = useState(1)
+  const [prevVolume, setPrevVolume] = useState(1)
+  const [playedChars, setPlayedChars] = useState(0)
+  const [speedMenuOpen, setSpeedMenuOpen] = useState(false)
+
+  // Posição absoluta (em `text`) onde a fala ATUAL começou, e referência de
+  // tempo/posição pro timer estimar o avanço a partir dali.
+  const startCharRef = useRef(0)
+  const playStartTimeRef = useRef(0)
+  const playStartCharRef = useRef(0)
+  const hasLiveUtteranceRef = useRef(false)
+  const generationRef = useRef(0)
 
   useEffect(() => {
     return () => { window.speechSynthesis?.cancel() }
   }, [html])
 
+  // Timer que estima o avanço da leitura enquanto toca — é o que faz a
+  // barra se mover em navegadores que não disparam o evento `boundary`.
+  useEffect(() => {
+    if (ttsState !== 'playing') return
+    const id = setInterval(() => {
+      const elapsedSec = (performance.now() - playStartTimeRef.current) / 1000
+      const estimate = playStartCharRef.current + elapsedSec * CHARS_PER_SECOND_AT_1X * rate
+      setPlayedChars(Math.min(estimate, totalChars))
+    }, 200)
+    return () => clearInterval(id)
+  }, [ttsState, rate, totalChars])
+
+  function buildUtterance(fromChar: number, atRate: number, atVolume: number) {
+    const gen = ++generationRef.current
+    const utterance = new SpeechSynthesisUtterance(text.slice(fromChar))
+    utterance.lang = 'pt-BR'
+    utterance.rate = atRate
+    utterance.pitch = 1
+    utterance.volume = atVolume
+    const voice = pickBestVoice()
+    if (voice) utterance.voice = voice
+    utterance.onboundary = (e) => {
+      if (gen !== generationRef.current) return
+      const abs = fromChar + e.charIndex
+      playStartCharRef.current = abs
+      playStartTimeRef.current = performance.now()
+      setPlayedChars(abs)
+    }
+    utterance.onend = () => {
+      if (gen !== generationRef.current) return
+      hasLiveUtteranceRef.current = false
+      setTtsState('idle')
+      setPlayedChars(0)
+    }
+    utterance.onerror = () => {
+      if (gen !== generationRef.current) return
+      hasLiveUtteranceRef.current = false
+      setTtsState('idle')
+    }
+    return utterance
+  }
+
+  function playFrom(fromChar: number) {
+    window.speechSynthesis.cancel()
+    const clamped = Math.max(0, Math.min(fromChar, totalChars - 1))
+    startCharRef.current = clamped
+    playStartCharRef.current = clamped
+    playStartTimeRef.current = performance.now()
+    hasLiveUtteranceRef.current = true
+    setPlayedChars(clamped)
+    window.speechSynthesis.speak(buildUtterance(clamped, rate, volume))
+    setTtsState('playing')
+  }
+
   function handlePlay() {
-    if (ttsState === 'paused') {
+    if (ttsState === 'paused' && hasLiveUtteranceRef.current) {
       window.speechSynthesis.resume()
+      playStartCharRef.current = playedChars
+      playStartTimeRef.current = performance.now()
       setTtsState('playing')
       return
     }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(stripHtml(html))
-    utterance.lang = 'pt-BR'
-    utterance.rate = 0.92
-    utterance.pitch = 1
-    const voice = pickBestVoice()
-    if (voice) utterance.voice = voice
-    utterance.onend = () => setTtsState('idle')
-    utterance.onerror = () => setTtsState('idle')
-    utteranceRef.current = utterance
-    window.speechSynthesis.speak(utterance)
-    setTtsState('playing')
+    playFrom(playedChars >= totalChars - 1 ? 0 : playedChars)
   }
 
   function handlePause() {
@@ -83,55 +160,153 @@ function TextToSpeechPlayer({ html }: { html: string }) {
 
   function handleStop() {
     window.speechSynthesis.cancel()
+    hasLiveUtteranceRef.current = false
+    generationRef.current++
     setTtsState('idle')
+    setPlayedChars(0)
   }
 
-  const iconBtn = 'w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground hover:text-foreground'
+  function handleSeek(fraction: number) {
+    const target = Math.round(fraction * totalChars)
+    if (ttsState === 'playing') {
+      playFrom(target)
+    } else {
+      window.speechSynthesis.cancel()
+      hasLiveUtteranceRef.current = false
+      generationRef.current++
+      setPlayedChars(target)
+    }
+  }
+
+  // Rate/volume não são alteráveis de forma confiável numa fala já em
+  // andamento entre navegadores — a correção é recriar a utterance a
+  // partir da posição atual, preservando play/pause.
+  function applyRate(next: number) {
+    setRate(next)
+    setSpeedMenuOpen(false)
+    if (ttsState === 'idle') return
+    const wasPlaying = ttsState === 'playing'
+    window.speechSynthesis.cancel()
+    const clamped = Math.max(0, Math.min(Math.round(playedChars), totalChars - 1))
+    startCharRef.current = clamped
+    playStartCharRef.current = clamped
+    playStartTimeRef.current = performance.now()
+    hasLiveUtteranceRef.current = true
+    window.speechSynthesis.speak(buildUtterance(clamped, next, volume))
+    if (!wasPlaying) window.speechSynthesis.pause()
+    setTtsState(wasPlaying ? 'playing' : 'paused')
+  }
+
+  function applyVolume(next: number) {
+    setVolume(next)
+    if (ttsState === 'idle') return
+    const wasPlaying = ttsState === 'playing'
+    window.speechSynthesis.cancel()
+    const clamped = Math.max(0, Math.min(Math.round(playedChars), totalChars - 1))
+    startCharRef.current = clamped
+    playStartCharRef.current = clamped
+    playStartTimeRef.current = performance.now()
+    hasLiveUtteranceRef.current = true
+    window.speechSynthesis.speak(buildUtterance(clamped, rate, next))
+    if (!wasPlaying) window.speechSynthesis.pause()
+    setTtsState(wasPlaying ? 'playing' : 'paused')
+  }
+
+  function toggleMute() {
+    if (volume > 0) {
+      setPrevVolume(volume)
+      applyVolume(0)
+    } else {
+      applyVolume(prevVolume > 0 ? prevVolume : 1)
+    }
+  }
+
+  if (!text) return null
+
+  const duration = totalChars / (CHARS_PER_SECOND_AT_1X * rate)
+  const current = Math.min(playedChars, totalChars) / (CHARS_PER_SECOND_AT_1X * rate)
+  const fraction = totalChars > 0 ? Math.min(playedChars / totalChars, 1) : 0
+  const iconBtn = 'w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground hover:text-foreground shrink-0'
 
   return (
-    <div className="flex items-center justify-between py-3 border-y border-border">
-      {/* Label + status */}
-      <div className="flex items-center gap-2.5">
+    <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-2.5">
+      <div className="flex items-center gap-2">
         <Volume2 className={cn('w-4 h-4 shrink-0', ttsState === 'playing' ? 'text-primary' : 'text-muted-foreground')} />
         <span className="text-sm text-muted-foreground">Ouvir esta aula</span>
-        {ttsState === 'playing' && (
-          <span className="inline-flex gap-0.5 items-end h-4">
-            {[0, 150, 300].map((delay) => (
-              <span
-                key={delay}
-                className="w-0.5 rounded-full bg-primary animate-bounce"
-                style={{ height: '10px', animationDelay: `${delay}ms`, animationDuration: '800ms' }}
-              />
-            ))}
-          </span>
-        )}
-        {ttsState === 'paused' && (
-          <span className="text-xs text-muted-foreground italic">pausado</span>
-        )}
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-0.5">
-        {ttsState === 'idle' ? (
-          <button onClick={handlePlay} title="Reproduzir" className={iconBtn}>
-            <Play className="w-4 h-4 fill-current" />
+      <div className="flex items-center gap-2 sm:gap-3">
+        {ttsState === 'playing' ? (
+          <button onClick={handlePause} title="Pausar" className={iconBtn}>
+            <Pause className="w-4 h-4 fill-current" />
           </button>
         ) : (
-          <>
-            <button
-              onClick={ttsState === 'playing' ? handlePause : handlePlay}
-              title={ttsState === 'playing' ? 'Pausar' : 'Continuar'}
-              className={iconBtn}
-            >
-              {ttsState === 'playing'
-                ? <Pause className="w-4 h-4 fill-current" />
-                : <Play className="w-4 h-4 fill-current" />}
-            </button>
-            <button onClick={handleStop} title="Parar" className={iconBtn}>
-              <StopCircle className="w-4 h-4" />
-            </button>
-          </>
+          <button onClick={handlePlay} title={ttsState === 'paused' ? 'Continuar' : 'Reproduzir'} className={iconBtn}>
+            <Play className="w-4 h-4 fill-current" />
+          </button>
         )}
+        <button onClick={handleStop} title="Parar" className={iconBtn}>
+          <StopCircle className="w-4 h-4" />
+        </button>
+
+        <span className="text-xs tabular-nums text-muted-foreground w-9 text-right shrink-0">{formatTime(current)}</span>
+        <input
+          type="range"
+          min={0}
+          max={1000}
+          value={Math.round(fraction * 1000)}
+          onChange={(e) => handleSeek(Number(e.target.value) / 1000)}
+          className="flex-1 h-1.5 accent-primary cursor-pointer"
+          aria-label="Posição da leitura"
+        />
+        <span className="text-xs tabular-nums text-muted-foreground w-9 shrink-0">{formatTime(duration)}</span>
+
+        {/* Velocidade */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setSpeedMenuOpen((o) => !o)}
+            title="Velocidade de leitura"
+            className="h-8 px-2 rounded-full flex items-center gap-1 transition-colors hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium"
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            {rate}×
+          </button>
+          {speedMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setSpeedMenuOpen(false)} />
+              <div className="absolute bottom-full right-0 mb-1 z-20 bg-popover border border-border rounded-lg shadow-md py-1 min-w-[4.5rem]">
+                {SPEED_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => applyRate(p)}
+                    className={cn(
+                      'w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors',
+                      p === rate && 'text-primary font-medium'
+                    )}
+                  >
+                    {p}×
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Volume */}
+        <div className="hidden sm:flex items-center gap-1 shrink-0">
+          <button onClick={toggleMute} title={volume > 0 ? 'Mudo' : 'Ativar som'} className={iconBtn}>
+            {volume > 0 ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(volume * 100)}
+            onChange={(e) => applyVolume(Number(e.target.value) / 100)}
+            className="w-16 h-1.5 accent-primary cursor-pointer"
+            aria-label="Volume"
+          />
+        </div>
       </div>
     </div>
   )
