@@ -19,8 +19,19 @@ export type AdminContext = {
 
 export async function getAdminContext(): Promise<AdminContext | null> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (!user) {
+    // DIAGNÓSTICO TEMPORÁRIO (v1.102.4): investigando logout no meio do save.
+    // Remover assim que a causa for identificada.
+    const jar = await cookies()
+    const names = jar.getAll().map((c) => c.name).filter((n) => n.startsWith('sb-'))
+    console.error('[AUTHZ-DIAG] getUser sem user |',
+      'erro:', authError?.message ?? '(nenhum)',
+      '| status:', authError?.status ?? '-',
+      '| code:', (authError as { code?: string } | null)?.code ?? '-',
+      '| cookies sb-:', names.length ? names.join(',') : 'NENHUM')
+    return null
+  }
 
   const adminClient = createAdminClient()
   const { data: profile } = await adminClient

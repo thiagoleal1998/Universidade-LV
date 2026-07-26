@@ -23,8 +23,19 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: mwAuthError } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
+
+  // DIAGNÓSTICO TEMPORÁRIO (v1.102.4): investigando logout no meio do save.
+  // Remover assim que a causa for identificada.
+  if (!user && pathname.startsWith('/admin')) {
+    const sb = request.cookies.getAll().map((c) => c.name).filter((n) => n.startsWith('sb-'))
+    console.error('[MW-DIAG]', request.method, pathname,
+      '| erro:', mwAuthError?.message ?? '(nenhum)',
+      '| status:', mwAuthError?.status ?? '-',
+      '| cookies sb-:', sb.length ? sb.join(',') : 'NENHUM',
+      '| next-action:', request.headers.get('next-action') ? 'sim' : 'nao')
+  }
 
   // Server Action (POST com header `next-action`) NUNCA pode receber redirect
   // deste middleware. O cliente do Next espera o payload da action na resposta;
