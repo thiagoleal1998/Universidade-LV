@@ -74,6 +74,7 @@ export type FeedbackEvent = {
 
 export type FeedbackReport = {
   id: string
+  ticket_number: number
   user_id: string
   type: 'bug' | 'suggestion'
   title: string
@@ -299,7 +300,7 @@ export async function submitFeedback(formData: FormData) {
 }
 
 type ReportRow = {
-  id: string; user_id: string; type: 'bug' | 'suggestion'; title: string; message: string
+  id: string; ticket_number: number; user_id: string; type: 'bug' | 'suggestion'; title: string; message: string
   link_url: string; page_url: string; status: FeedbackStatus; assigned_to: string | null
   resolved_at: string | null; created_at: string
   profiles: { full_name: string }[] | { full_name: string } | null
@@ -316,6 +317,7 @@ type ReportRow = {
 function mapReports(rows: ReportRow[]): FeedbackReport[] {
   return rows.map((r) => ({
     id: r.id,
+    ticket_number: r.ticket_number,
     user_id: r.user_id,
     type: r.type,
     title: r.title,
@@ -357,7 +359,7 @@ function mapReports(rows: ReportRow[]): FeedbackReport[] {
 }
 
 const REPORT_SELECT = `
-  id, user_id, type, title, message, link_url, page_url, status, assigned_to, resolved_at, created_at,
+  id, ticket_number, user_id, type, title, message, link_url, page_url, status, assigned_to, resolved_at, created_at,
   profiles!feedback_reports_user_id_fkey(full_name),
   assigned:profiles!feedback_reports_assigned_to_fkey(full_name),
   feedback_attachments!feedback_attachments_feedback_id_fkey(id, storage_path, mime_type, file_name, event_id),

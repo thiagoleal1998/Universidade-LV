@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
 import { isRichTextEmpty } from '@/lib/rich-text-content'
+import { formatTicketNumber } from '@/lib/feedback-ticket-number'
 
 const STATUS_LABEL: Record<FeedbackStatus, string> = {
   open: 'Aberto',
@@ -158,7 +159,8 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
-                    {report.title || 'Sem título'}
+                    <span className="text-muted-foreground font-normal tabular-nums shrink-0">{formatTicketNumber(report.ticket_number)}</span>
+                    <span className="truncate">· {report.title || 'Sem título'}</span>
                     {hasUpdate && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-1.5 py-0.5 shrink-0">
                         <Sparkles className="w-2.5 h-2.5" /> Nova atualização

@@ -17,6 +17,7 @@ import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink } from 'luc
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
 import { isRichTextEmpty } from '@/lib/rich-text-content'
+import { formatTicketNumber } from '@/lib/feedback-ticket-number'
 
 function draftKey(reportId: string) {
   return `feedback-admin-reply-${reportId}`
@@ -186,7 +187,10 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
                       {report.type === 'bug' ? <Bug className="w-3.5 h-3.5" /> : <Lightbulb className="w-3.5 h-3.5" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
+                      <p className="text-sm font-medium text-foreground truncate">
+                        <span className="text-muted-foreground font-normal tabular-nums">{formatTicketNumber(report.ticket_number)}</span>
+                        {' · '}{report.title || 'Sem título'}
+                      </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {report.member_name || 'Membro'}
                         {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
