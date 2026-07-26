@@ -6,7 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, PlayCircle, Eye } from 'lucide-react'
-import { CourseDetailTabs } from '@/components/members/course-detail-tabs'
+import { CourseModulesAccordion } from '@/components/members/course-modules-accordion'
+import { CourseInstructorCard } from '@/components/members/course-instructor-card'
 import { cn } from '@/lib/utils'
 import type { Course, Module } from '@/lib/supabase/types'
 
@@ -166,24 +167,33 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      {/* Conteúdo do curso + instrutor (em abas quando há instrutor cadastrado) */}
-      <CourseDetailTabs
-        modules={modules}
-        completedIds={completedIds}
-        completedModuleIds={completedModuleIds}
-        defaultOpenId={defaultOpenId}
-        isAdmin={isAdmin}
-        instructor={(() => {
-          const name = linkedInstructor?.full_name || course.instructor_name
-          if (!name) return null
-          return {
-            name,
-            role: linkedInstructor?.job_title || course.instructor_role,
-            photo: linkedInstructor?.avatar_url || course.instructor_photo_url,
-            bio: linkedInstructor?.bio || '',
-          }
-        })()}
-      />
+      {/* Instrutor */}
+      {(() => {
+        const name = linkedInstructor?.full_name || course.instructor_name
+        if (!name) return null
+        return (
+          <CourseInstructorCard
+            instructor={{
+              name,
+              role: linkedInstructor?.job_title || course.instructor_role,
+              photo: linkedInstructor?.avatar_url || course.instructor_photo_url,
+              bio: linkedInstructor?.bio || '',
+            }}
+          />
+        )
+      })()}
+
+      {/* Modules accordion */}
+      <div>
+        <h2 className="text-base font-semibold text-foreground mb-3">Módulos do curso</h2>
+        <CourseModulesAccordion
+          modules={modules}
+          completedIds={completedIds}
+          completedModuleIds={completedModuleIds}
+          defaultOpenId={defaultOpenId}
+          isAdmin={isAdmin}
+        />
+      </div>
     </div>
   )
 }
