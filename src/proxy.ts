@@ -112,5 +112,22 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: [
+    {
+      source: '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+      // Prefetch do Next NÃO passa por aqui. O Next pré-carrega todo <Link>
+      // visível, e cada passagem pelo middleware chama `supabase.auth.getUser()`
+      // — que RENOVA o token quando ele está vencendo. Com dezenas de prefetches
+      // disparando juntos, várias renovações concorriam pelo mesmo
+      // refresh_token; o Supabase rotaciona esse token, então as retardatárias
+      // chegavam com um token já consumido e a sessão inteira era invalidada.
+      // Sintoma: o usuário era deslogado no meio de um salvamento e a action
+      // respondia "Apenas admins podem fazer isso" (v1.102.3).
+      //
+      // Seguro: prefetch é só pré-carregamento, e cada página protegida tem
+      // guard próprio (`requireAdminPage`/`requireContentPage`/…), que continua
+      // valendo quando a rota é realmente aberta.
+      missing: [{ type: 'header', key: 'next-router-prefetch' }],
+    },
+  ],
 }
