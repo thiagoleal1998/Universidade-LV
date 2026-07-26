@@ -38,6 +38,7 @@ type Member = {
   avatar_url?: string
   member_number?: number | null
   bio?: string
+  linkedin_url?: string | null
   tagIds?: string[]
   courseIds?: string[]
 }
@@ -102,6 +103,7 @@ export function EditMemberDialog({
         new_password: newPassword || undefined,
         collaborator_area_id: role === 'collaborator' ? selectedAreaId : null,
         bio: role !== 'member' ? bioValue : undefined,
+        linkedin_url: data.get('linkedin_url') as string,
       })
       const tagsResult = await assignMemberTags(member.id, selectedTagIds)
       const coursesResult = await assignMemberCourses(member.id, selectedCourseIds)
@@ -137,12 +139,12 @@ export function EditMemberDialog({
         <Pencil className="w-4 h-4" />
       </DialogTrigger>
 
-      <DialogContent className="max-h-[90vh] flex flex-col">
+      <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Editar Membro</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1">
+        <form onSubmit={handleSubmit} className="space-y-5 overflow-y-auto pr-1">
           {/* Avatar + member code */}
           <div className="flex items-center gap-3 pb-1">
             <Avatar className="w-12 h-12 shrink-0">
@@ -157,57 +159,78 @@ export function EditMemberDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Nome completo</Label>
-            <Input id="full_name" name="full_name" defaultValue={member.full_name} placeholder="Nome do membro" required />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" defaultValue={member.email} placeholder="email@exemplo.com" required />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="full_name">Nome completo</Label>
+              <Input id="full_name" name="full_name" defaultValue={member.full_name} placeholder="Nome do membro" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" name="email" type="email" defaultValue={member.email} placeholder="email@exemplo.com" required />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="linkedin_url">LinkedIn</Label>
+              <Input id="linkedin_url" name="linkedin_url" type="url" defaultValue={member.linkedin_url ?? ''} placeholder="https://linkedin.com/in/perfil" />
+            </div>
           </div>
 
           <Separator />
 
-          <div className="space-y-2">
-            <Label>Tipo de acesso</Label>
-            <div className="flex gap-3 flex-wrap">
-              {(['member', 'collaborator', 'admin'] as const).map((r) => (
-                <label key={r} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    value={r}
-                    checked={selectedRole === r}
-                    onChange={() => setSelectedRole(r)}
-                    className="accent-black"
-                  />
-                  <span className="text-sm">{r === 'member' ? 'Membro' : r === 'collaborator' ? 'Colaborador' : 'Admin'}</span>
-                </label>
-              ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tipo de acesso</Label>
+              <div className="flex gap-3 flex-wrap">
+                {(['member', 'collaborator', 'admin'] as const).map((r) => (
+                  <label key={r} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="role"
+                      value={r}
+                      checked={selectedRole === r}
+                      onChange={() => setSelectedRole(r)}
+                      className="accent-black"
+                    />
+                    <span className="text-sm">{r === 'member' ? 'Membro' : r === 'collaborator' ? 'Colaborador' : 'Admin'}</span>
+                  </label>
+                ))}
+              </div>
+
+              {selectedRole === 'collaborator' && (
+                <div className="pt-1">
+                  <Label htmlFor="collaborator_area" className="text-xs text-muted-foreground">Área do colaborador</Label>
+                  <select
+                    id="collaborator_area"
+                    value={selectedAreaId}
+                    onChange={(e) => setSelectedAreaId(e.target.value)}
+                    className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Selecione a área...</option>
+                    {allAreas.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                  {allAreas.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Nenhuma área criada ainda — crie uma em &quot;Áreas de Colaborador&quot; na tela de Membros.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
-            {selectedRole === 'collaborator' && (
-              <div className="pt-1">
-                <Label htmlFor="collaborator_area" className="text-xs text-muted-foreground">Área do colaborador</Label>
-                <select
-                  id="collaborator_area"
-                  value={selectedAreaId}
-                  onChange={(e) => setSelectedAreaId(e.target.value)}
-                  className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">Selecione a área...</option>
-                  {allAreas.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-                {allAreas.length === 0 && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Nenhuma área criada ainda — crie uma em &quot;Áreas de Colaborador&quot; na tela de Membros.
-                  </p>
-                )}
+            <div className="space-y-2">
+              <Label>Status da conta</Label>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="active" value="true" defaultChecked={member.active} className="accent-black" />
+                  <span className="text-sm text-green-700">Ativo</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="active" value="false" defaultChecked={!member.active} className="accent-black" />
+                  <span className="text-sm text-red-600">Inativo</span>
+                </label>
               </div>
-            )}
+            </div>
           </div>
 
           {selectedRole !== 'member' && (
@@ -217,20 +240,6 @@ export function EditMemberDialog({
               <RichTextEditor content={bioValue} onChange={setBioValue} />
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label>Status da conta</Label>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="active" value="true" defaultChecked={member.active} className="accent-black" />
-                <span className="text-sm text-green-700">Ativo</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="active" value="false" defaultChecked={!member.active} className="accent-black" />
-                <span className="text-sm text-red-600">Inativo</span>
-              </label>
-            </div>
-          </div>
 
           <Separator />
 
@@ -271,7 +280,7 @@ export function EditMemberDialog({
                   <BookOpen className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label>Acesso a cursos</Label>
                 </div>
-                <div className="space-y-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                   {allCourses.map((course) => (
                     <label
                       key={course.id}
@@ -283,7 +292,7 @@ export function EditMemberDialog({
                         onChange={() => toggleCourse(course.id)}
                         className="accent-black w-4 h-4 shrink-0"
                       />
-                      <span className="text-sm text-foreground">{course.name}</span>
+                      <span className="text-sm text-foreground truncate">{course.name}</span>
                     </label>
                   ))}
                 </div>

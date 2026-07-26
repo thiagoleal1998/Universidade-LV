@@ -30,6 +30,7 @@ export type MemberWithEmail = {
   member_number?: number | null
   collaborator_area_id?: string | null
   bio?: string
+  linkedin_url?: string | null
   tagIds?: string[]
   courseIds?: string[]
   isOnline?: boolean
