@@ -26,6 +26,23 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
+  // Server Action (POST com header `next-action`) NUNCA pode receber redirect
+  // deste middleware. O cliente do Next espera o payload da action na resposta;
+  // se vier um 307 pra outra rota, ele recebe HTML no lugar e derruba a aba
+  // inteira ("This page couldn't load") em vez de mostrar um erro tratável.
+  //
+  // Bug real (v1.102.2): um diálogo que dispara várias actions em sequência
+  // (EditMemberDialog) com o access_token perto de expirar causa disputa na
+  // renovação — a primeira requisição rotaciona o refresh_token e as seguintes
+  // chegam aqui com o token antigo, sem `user`. Nos logs: `POST 200` seguido
+  // de `POST 307` no MESMO segundo. Só afetava sessão antiga (token precisando
+  // renovar); em janela anônima, com login novo, nunca reproduzia.
+  //
+  // Deixar passar é seguro: toda action de mutação tem guard próprio
+  // (requireAdmin/requireCapability/...) e devolve `{ error }`, que o cliente
+  // exibe como toast — a segurança não depende deste middleware.
+  const isServerAction = request.method === 'POST' && request.headers.has('next-action')
+
   // Rotas públicas: acessíveis sem autenticação
   const isPublic =
     pathname === '/' ||
@@ -57,11 +74,11 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  if (!user) {
+  if (!user && !isServerAction) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (pathname.startsWith('/admin')) {
+  if (user && pathname.startsWith('/admin')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, active')
@@ -74,19 +91,19 @@ export async function proxy(request: NextRequest) {
       profile?.role === 'admin' ||
       (profile?.role === 'collaborator' && profile.active)
 
-    if (!allowed) {
+    if (!allowed && !isServerAction) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 
-  if (pathname.startsWith('/dashboard')) {
+  if (user && pathname.startsWith('/dashboard')) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('active')
       .eq('id', user.id)
       .single()
 
-    if (!profile || !profile.active) {
+    if ((!profile || !profile.active) && !isServerAction) {
       return NextResponse.redirect(new URL('/login?error=inactive', request.url))
     }
   }
