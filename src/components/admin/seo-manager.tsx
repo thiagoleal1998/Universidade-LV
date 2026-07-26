@@ -212,7 +212,7 @@ export function SeoManager({
         </Field>
         <div className="flex gap-3">
           <a
-            href={`${seoCanonicalUrl || '#'}/sitemap.xml`}
+            href="/sitemap.xml"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-xs text-primary hover:underline"
@@ -221,7 +221,7 @@ export function SeoManager({
             Ver sitemap.xml
           </a>
           <a
-            href={`${seoCanonicalUrl || '#'}/robots.txt`}
+            href="/robots.txt"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-xs text-primary hover:underline"
