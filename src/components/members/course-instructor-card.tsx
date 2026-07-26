@@ -37,7 +37,7 @@ export function CourseInstructorCard({ instructor }: { instructor: Instructor })
           {instructor.role && <p className="text-sm text-muted-foreground">{instructor.role}</p>}
         </div>
         <span className="text-xs text-primary shrink-0 flex items-center gap-0.5">
-          Saber mais
+          Saiba mais
           <ChevronRight className="w-3.5 h-3.5" />
         </span>
       </button>
