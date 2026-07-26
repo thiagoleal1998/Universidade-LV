@@ -227,8 +227,14 @@ export function MembersTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
+                    {/* prefetch desligado: são ~1 link por membro, e cada
+                        prefetch renderiza a página de detalhe inteira no
+                        servidor. Com o router.refresh() do auto-refresh, a
+                        cascata era redisparada a cada ciclo (dezenas de
+                        requisições por minuto, com aborts 499 no nginx). */}
                     <Link
                       href={`/admin/membros/${member.id}`}
+                      prefetch={false}
                       className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
                       title="Ver progresso e notas"
                     >

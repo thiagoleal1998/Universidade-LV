@@ -71,9 +71,17 @@ export async function updateMember(
     return { error: 'Escolha a área do colaborador.' }
   }
 
-  // Atualiza email e senha no auth (via admin API)
+  // Atualiza email e senha no auth (via admin API).
+  // O email só entra no update se REALMENTE mudou: reescrever o mesmo email
+  // via admin API revoga as sessões daquele usuário, e como o admin edita a
+  // própria conta por esta mesma tela, isso derrubava a sessão dele no meio
+  // do save — o middleware então respondia 307 ao POST da Server Action e o
+  // navegador matava a aba ("This page couldn't load"). Bug real, v1.102.1.
+  const { data: currentUser } = await adminClient.auth.admin.getUserById(userId)
+  const emailChanged = !!data.email && data.email !== currentUser?.user?.email
+
   const authUpdate: { email?: string; password?: string } = {}
-  if (data.email) authUpdate.email = data.email
+  if (emailChanged) authUpdate.email = data.email
   if (data.new_password) authUpdate.password = data.new_password
 
   if (Object.keys(authUpdate).length > 0) {
@@ -107,7 +115,7 @@ export async function updateMember(
   if (prevProfile?.role !== data.role) changed.push('papel')
   if (prevProfile?.active !== data.active) changed.push('status')
   if (data.new_password) changed.push('senha')
-  if (data.email) changed.push('e-mail')
+  if (emailChanged) changed.push('e-mail')
   if (data.bio !== undefined) changed.push('bio')
   if (data.linkedin_url !== undefined) changed.push('linkedin')
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
