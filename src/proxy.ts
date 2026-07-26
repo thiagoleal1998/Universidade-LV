@@ -26,15 +26,22 @@ export async function proxy(request: NextRequest) {
   const { data: { user }, error: mwAuthError } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
-  // DIAGNÓSTICO TEMPORÁRIO (v1.102.4): investigando logout no meio do save.
-  // Remover assim que a causa for identificada.
-  if (!user && pathname.startsWith('/admin')) {
-    const sb = request.cookies.getAll().map((c) => c.name).filter((n) => n.startsWith('sb-'))
-    console.error('[MW-DIAG]', request.method, pathname,
-      '| erro:', mwAuthError?.message ?? '(nenhum)',
-      '| status:', mwAuthError?.status ?? '-',
-      '| cookies sb-:', sb.length ? sb.join(',') : 'NENHUM',
-      '| next-action:', request.headers.get('next-action') ? 'sim' : 'nao')
+  // DIAGNÓSTICO TEMPORÁRIO (v1.102.5): comparar o cookie no caso que FUNCIONA
+  // (GET) com o que FALHA (POST de Server Action). Remover depois.
+  if (pathname.startsWith('/admin')) {
+    const sb = request.cookies.getAll().filter((c) => c.name.startsWith('sb-'))
+    const isAction = !!request.headers.get('next-action')
+    if (!user || isAction) {
+      const desc = sb.map((c) => {
+        const v = c.value
+        return `${c.name}[len=${v.length} ini="${v.slice(0, 12)}" fim="${v.slice(-8)}"]`
+      }).join(' ')
+      console.error('[MW-DIAG]', request.method, pathname,
+        '| user:', user ? 'OK' : 'NULL',
+        '| erro:', mwAuthError?.message ?? '-',
+        '| action:', isAction ? 'sim' : 'nao',
+        '| cookie:', desc || 'NENHUM')
+    }
   }
 
   // Server Action (POST com header `next-action`) NUNCA pode receber redirect
