@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateMember, deleteMember, assignMemberCourses, syncMemberRdStation } from '@/app/actions/members'
-import { assignMemberTags } from '@/app/actions/tags'
+import { saveMemberAll, deleteMember } from '@/app/actions/members'
 import { getTagColor, formatMemberCode } from '@/lib/tag-colors'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -89,13 +88,13 @@ export function EditMemberDialog({
     }
 
     startTransition(async () => {
-      // Sequencial, não Promise.all: disparar várias Server Actions juntas
-      // num só Promise.all faz o servidor executar e persistir todas
-      // corretamente (confirmado via log), mas a resolução da Promise.all
-      // nunca chega de volta ao cliente — o admin via o botão "Salvando..."
-      // girar pra sempre, sem nunca saber que os dados já tinham sido
-      // salvos (bug real encontrado e corrigido — ver CLAUDE.md).
-      const memberResult = await updateMember(member.id, {
+      // UMA só Server Action (saveMemberAll) em vez das 4 que existiam aqui.
+      // Cada requisição passa pelo middleware, que renova o token quando ele
+      // está vencendo; com 4 requisições próximas, duas renovavam quase juntas,
+      // o refresh_token era rotacionado e a retardatária chegava sem sessão —
+      // parte do formulário salvava e o resto falhava com "Apenas admins podem
+      // fazer isso". Ver CLAUDE.md (v1.102.7).
+      const result = await saveMemberAll(member.id, {
         full_name: data.get('full_name') as string,
         email: data.get('email') as string,
         role,
@@ -104,20 +103,13 @@ export function EditMemberDialog({
         collaborator_area_id: role === 'collaborator' ? selectedAreaId : null,
         bio: role !== 'member' ? bioValue : undefined,
         linkedin_url: data.get('linkedin_url') as string,
+        tagIds: selectedTagIds,
+        courseIds: selectedCourseIds,
       })
-      const tagsResult = await assignMemberTags(member.id, selectedTagIds)
-      const coursesResult = await assignMemberCourses(member.id, selectedCourseIds)
 
-      const error = memberResult?.error || tagsResult?.error || coursesResult?.error
-      if (error) {
-        toast.error(error)
+      if (result?.error) {
+        toast.error(result.error)
       } else {
-        // Um único evento de sincronização com a RD Station, no fim de toda
-        // a sequência — em vez de cada action (updateMember/assignMemberTags/
-        // assignMemberCourses) disparar o seu próprio, redundante. Precisa de
-        // await: sem esperar, o router.refresh() logo abaixo cancela a
-        // chamada em andamento antes do servidor terminar de processá-la.
-        await syncMemberRdStation(member.id)
         toast.success('Membro atualizado!')
         setOpen(false)
         router.refresh()

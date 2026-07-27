@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { rdMemberApproved, rdMemberRejected, syncLeadProfile } from '@/lib/rdstation'
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
+import { assignMemberTags } from '@/app/actions/tags'
 
 // Dispara a sincronização de lead da RD Station (cursos/tags/empresa/cargo)
 // uma única vez, depois que o cliente já rodou toda a sequência de actions
@@ -127,6 +128,98 @@ export async function updateMember(
   // sequência com outras Server Actions (EditMemberDialog); o client chama
   // router.refresh() uma vez só, no fim de toda a sequência, em vez de cada
   // action revalidar por conta própria.
+  return { success: true }
+}
+
+/**
+ * Salva TUDO do diálogo "Editar Membro" numa ÚNICA Server Action.
+ *
+ * Antes o `EditMemberDialog` chamava 4 actions em sequência (updateMember →
+ * assignMemberTags → assignMemberCourses → syncMemberRdStation), ou seja, 4
+ * requisições HTTP. Cada uma passa pelo middleware, e o middleware RENOVA o
+ * token quando ele está vencendo — com várias requisições próximas (e o
+ * heartbeat de presença ao fundo), duas tentavam renovar quase juntas, o
+ * Supabase rotacionava o `refresh_token` e a retardatária chegava sem sessão.
+ * Resultado: parte do formulário salvava e outra falhava com "Apenas admins
+ * podem fazer isso" — o admin não entendia por quê, já que era admin mesmo
+ * (a requisição é que chegava sem credencial). Bug real, v1.102.7.
+ *
+ * Com uma requisição só, não há disputa entre as etapas do salvamento, e o
+ * resultado é tudo-ou-nada do ponto de vista de quem usa: um único `{ error }`.
+ */
+export async function saveMemberAll(
+  userId: string,
+  data: {
+    full_name: string
+    email: string
+    role: 'admin' | 'member' | 'collaborator'
+    active: boolean
+    new_password?: string
+    collaborator_area_id?: string | null
+    bio?: string
+    linkedin_url?: string
+    tagIds: string[]
+    courseIds: string[]
+  }
+) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
+  const memberResult = await updateMember(userId, {
+    full_name: data.full_name,
+    email: data.email,
+    role: data.role,
+    active: data.active,
+    new_password: data.new_password,
+    collaborator_area_id: data.collaborator_area_id,
+    bio: data.bio,
+    linkedin_url: data.linkedin_url,
+  })
+  if (memberResult?.error) return { error: memberResult.error }
+
+  const tagsResult = await assignMemberTags(userId, data.tagIds)
+  if (tagsResult?.error) return { error: tagsResult.error }
+
+  const coursesResult = await assignMemberCourses(userId, data.courseIds)
+  if (coursesResult?.error) return { error: coursesResult.error }
+
+  // Fire-and-forget, igual ao padrão de logActivity: a sincronização com a RD
+  // Station não pode atrasar nem derrubar o salvamento.
+  syncLeadProfile(userId)
+
+  revalidatePath('/admin/membros')
+  return { success: true }
+}
+
+/**
+ * Aprova o cadastro pendente definindo papel/área/tags/cursos numa ÚNICA
+ * Server Action. Mesmo motivo de `saveMemberAll` acima: várias requisições
+ * seguidas competiam pela renovação do token e uma delas chegava sem sessão.
+ */
+export async function approveMemberAll(
+  memberId: string,
+  data: {
+    courseIds: string[]
+    role: 'admin' | 'member' | 'collaborator'
+    collaboratorAreaId: string | null
+    tagIds: string[]
+  }
+) {
+  const authz = await requireAdmin()
+  if ('error' in authz) return { error: authz.error }
+
+  const approveResult = await approveMember(memberId, data.courseIds)
+  if (approveResult?.error) return { error: approveResult.error }
+
+  const roleResult = await updateMemberRole(memberId, data.role, data.collaboratorAreaId)
+  if (roleResult?.error) return { error: roleResult.error }
+
+  const tagsResult = await assignMemberTags(memberId, data.tagIds)
+  if (tagsResult?.error) return { error: tagsResult.error }
+
+  syncLeadProfile(memberId)
+
+  revalidatePath('/admin/membros')
   return { success: true }
 }
 

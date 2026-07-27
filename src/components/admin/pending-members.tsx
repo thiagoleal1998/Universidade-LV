@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { approveMember, rejectMember, updateMemberRole, syncMemberRdStation } from '@/app/actions/members'
-import { assignMemberTags } from '@/app/actions/tags'
+import { approveMemberAll, rejectMember } from '@/app/actions/members'
 import { getTagColor } from '@/lib/tag-colors'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -64,25 +63,18 @@ function ApproveDialog({
   function handleApprove() {
     if (!canSubmit || !canSubmitArea) return
     startTransition(async () => {
-      // Sequencial, não Promise.all: disparar várias Server Actions juntas
-      // num só Promise.all faz o servidor executar e persistir todas
-      // corretamente, mas a resolução da Promise.all nunca chega de volta
-      // ao cliente — o admin via "Aprovando..." girar pra sempre, sem saber
-      // que os dados já tinham sido salvos (bug real encontrado — ver
-      // CLAUDE.md).
-      const approveResult = await approveMember(memberId, selectedCourseIds)
-      const roleResult = await updateMemberRole(memberId, role, role === 'collaborator' ? areaId : null)
-      const tagsResult = await assignMemberTags(memberId, selectedTagIds)
-      const error = approveResult?.error || roleResult?.error || tagsResult?.error
-      if (error) {
-        toast.error(error)
+      // UMA só Server Action: 4 requisições seguidas competiam pela renovação
+      // do token e uma chegava sem sessão ("Apenas admins podem fazer isso"
+      // com o admin logado). Ver CLAUDE.md (v1.102.7).
+      const result = await approveMemberAll(memberId, {
+        courseIds: selectedCourseIds,
+        role,
+        collaboratorAreaId: role === 'collaborator' ? areaId : null,
+        tagIds: selectedTagIds,
+      })
+      if (result?.error) {
+        toast.error(result.error)
       } else {
-        // Um único evento de sincronização com a RD Station, no fim de toda
-        // a sequência — em vez de cada action (approveMember/assignMemberTags)
-        // disparar o seu próprio, redundante. Precisa de await: sem esperar,
-        // o router.refresh() logo abaixo cancela a chamada em andamento
-        // antes do servidor terminar de processá-la.
-        await syncMemberRdStation(memberId)
         toast.success('Membro aprovado!')
         setOpen(false)
         router.refresh()
