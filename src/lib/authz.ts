@@ -21,12 +21,23 @@ export async function getAdminContext(): Promise<AdminContext | null> {
   const supabase = await createClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (!user) {
-    // DIAG TEMPORÁRIO (v1.102.8) — remover após identificar a causa.
+    // DIAG TEMPORÁRIO (v1.102.9) — remover após identificar a causa.
     const jar = await cookies()
     const sb = jar.getAll().filter((c) => c.name.startsWith('sb-'))
+    const detalhes = sb.map((c) => {
+      try {
+        const raw = c.value.startsWith('base64-') ? c.value.slice(7) : c.value
+        const parsed = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'))
+        const exp = parsed.expires_at ? new Date(parsed.expires_at * 1000).toISOString() : '?'
+        const venceu = parsed.expires_at ? (parsed.expires_at * 1000 < Date.now()) : '?'
+        return `${c.name}[${c.value.length}b expira=${exp} venceu=${venceu} temRefresh=${!!parsed.refresh_token} user=${parsed.user?.id?.slice(0, 8) ?? 'SEM'}]`
+      } catch (e) {
+        return `${c.name}[${c.value.length}b ILEGIVEL: ${(e as Error).message.slice(0, 60)} ini="${c.value.slice(0, 16)}"]`
+      }
+    })
     console.error('[DIAG-A] sem user | erro:', authErr?.message ?? '-',
       '| status:', authErr?.status ?? '-',
-      '| cookies:', sb.map((c) => `${c.name}=${c.value.length}b`).join(',') || 'NENHUM')
+      '| qtd:', sb.length, '|', detalhes.join(' | ') || 'NENHUM')
     return null
   }
 
