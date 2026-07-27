@@ -293,10 +293,12 @@ ul[data-type='taskList'] li[data-checked='true'] > div {
 .manual-content mark.manual-hit-current { background: #f59e0b; box-shadow: 0 0 0 2px #f59e0b; }
 
 /* Menu lateral do manual: fixo relativo ao seu próprio container de
-   rolagem, com scroll interno quando há muitas seções. */
+   rolagem, com scroll interno quando há muitas seções. `top` tem uma folga
+   (não é 0) porque o <main> do dashboard não tem padding-top no desktop —
+   sem essa folga, a busca fica colada na borda superior da tela ao rolar. */
 .manual-toc {
   position: sticky;
-  top: 0;
+  top: 1rem;
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
 }
