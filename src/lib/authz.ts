@@ -30,7 +30,8 @@ export async function getAdminContext(): Promise<AdminContext | null> {
         const parsed = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'))
         const exp = parsed.expires_at ? new Date(parsed.expires_at * 1000).toISOString() : '?'
         const venceu = parsed.expires_at ? (parsed.expires_at * 1000 < Date.now()) : '?'
-        return `${c.name}[${c.value.length}b expira=${exp} venceu=${venceu} temRefresh=${!!parsed.refresh_token} user=${parsed.user?.id?.slice(0, 8) ?? 'SEM'}]`
+        const at = typeof parsed.access_token === 'string' ? `${parsed.access_token.length}b` : 'AUSENTE'
+        return `${c.name}[${c.value.length}b chaves={${Object.keys(parsed).join(',')}} access_token=${at} expira=${exp} venceu=${venceu} temRefresh=${!!parsed.refresh_token} user=${parsed.user?.id?.slice(0, 8) ?? 'SEM'}]`
       } catch (e) {
         return `${c.name}[${c.value.length}b ILEGIVEL: ${(e as Error).message.slice(0, 60)} ini="${c.value.slice(0, 16)}"]`
       }
@@ -38,6 +39,25 @@ export async function getAdminContext(): Promise<AdminContext | null> {
     console.error('[DIAG-A] sem user | erro:', authErr?.message ?? '-',
       '| status:', authErr?.status ?? '-',
       '| qtd:', sb.length, '|', detalhes.join(' | ') || 'NENHUM')
+
+    // Testa o access_token do cookie DIRETO na API, fora do client de cookies:
+    // se funcionar, o token é bom e o problema é a leitura do cookie; se
+    // falhar, a sessão foi revogada no servidor.
+    try {
+      const c = sb[0]
+      if (c) {
+        const raw = c.value.startsWith('base64-') ? c.value.slice(7) : c.value
+        const parsed = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'))
+        if (parsed.access_token) {
+          const probe = createAdminClient()
+          const { data: probeData, error: probeErr } = await probe.auth.getUser(parsed.access_token)
+          console.error('[DIAG-D] token do cookie testado direto na API ->',
+            probeData?.user ? `VÁLIDO (user ${probeData.user.id.slice(0, 8)})` : `INVÁLIDO: ${probeErr?.message} (status ${probeErr?.status})`)
+        }
+      }
+    } catch (e) {
+      console.error('[DIAG-D] falha ao testar token:', (e as Error).message)
+    }
     return null
   }
 
