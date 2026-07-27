@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function toggleLessonComplete(lessonId: string, completed: boolean) {
+export async function toggleLessonComplete(lessonId: string, completed: boolean, moduleId?: string) {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,5 +27,10 @@ export async function toggleLessonComplete(lessonId: string, completed: boolean)
 
   revalidatePath(`/dashboard/aulas/${lessonId}`)
   revalidatePath('/dashboard')
+  // Formato Manual interativo: a barra de progresso e o ModuleCompletionBanner
+  // vivem na página do MÓDULO, não na da aula — sem isso, só atualizariam na
+  // próxima navegação (o manual mantém estado otimista no cliente, mas o
+  // revalidate garante consistência ao recarregar).
+  if (moduleId) revalidatePath(`/dashboard/modulos/${moduleId}`)
   return { success: true }
 }

@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { ImageIcon, Upload, UserCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { COURSE_LAYOUTS, type CourseLayout } from '@/lib/manual'
 import type { Course } from '@/lib/supabase/types'
 
 type InstructorCandidate = { id: string; full_name: string; job_title: string | null }
@@ -28,6 +29,7 @@ export function CourseEditor({ course, canEdit = true, instructorCandidates = []
   const [instructorName, setInstructorName] = useState(course.instructor_name ?? '')
   const [instructorRole, setInstructorRole] = useState(course.instructor_role ?? '')
   const [instructorPhotoUrl, setInstructorPhotoUrl] = useState(course.instructor_photo_url ?? '')
+  const [layout, setLayout] = useState<CourseLayout>(course.layout ?? 'padrao')
   const [instructorMode, setInstructorMode] = useState<'manual' | 'linked'>(course.instructor_profile_id ? 'linked' : 'manual')
   const [instructorProfileId, setInstructorProfileId] = useState(course.instructor_profile_id ?? '')
   const [cropSrc, setCropSrc] = useState<string | null>(null)
@@ -36,6 +38,7 @@ export function CourseEditor({ course, canEdit = true, instructorCandidates = []
 
   function handleSave(formData: FormData) {
     formData.set('is_published', String(isPublished))
+    formData.set('layout', layout)
     formData.set('instructor_name', instructorName)
     formData.set('instructor_role', instructorRole)
     formData.set('instructor_profile_id', instructorMode === 'linked' ? instructorProfileId : '')
@@ -132,6 +135,39 @@ export function CourseEditor({ course, canEdit = true, instructorCandidates = []
             placeholder="Descreva o objetivo e conteúdo deste curso..."
             rows={3}
           />
+        </div>
+
+        {/* Formato do curso */}
+        <div className="border-t border-border pt-4 space-y-3">
+          <p className="text-sm font-medium text-foreground">Formato do curso</p>
+          <div className="space-y-2">
+            {COURSE_LAYOUTS.map((opt) => (
+              <label
+                key={opt.value}
+                className={cn(
+                  'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                  layout === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'
+                )}
+              >
+                <input
+                  type="radio"
+                  name="layout_choice"
+                  checked={layout === opt.value}
+                  onChange={() => setLayout(opt.value)}
+                  className="accent-black mt-0.5"
+                />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{opt.label}</p>
+                  <p className="text-xs text-muted-foreground">{opt.hint}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+          {layout !== (course.layout ?? 'padrao') && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Nenhum conteúdo é perdido ao trocar o formato — você pode voltar para o formato anterior a qualquer momento.
+            </p>
+          )}
         </div>
 
         {/* Instrutor */}

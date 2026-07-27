@@ -6,6 +6,8 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import TiptapImage from '@tiptap/extension-image'
 import Underline from '@tiptap/extension-underline'
+import { TaskList, TaskItem } from '@tiptap/extension-list'
+import { Callout, type CalloutVariant } from '@/components/ui/rich-text-callout'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
@@ -15,6 +17,7 @@ import {
   Underline as UnderlineIcon,
   List,
   ListOrdered,
+  ListChecks,
   Heading2,
   Heading3,
   Quote,
@@ -22,6 +25,8 @@ import {
   Undo,
   Redo,
   ImageIcon,
+  AlertTriangle,
+  Lightbulb,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -30,6 +35,13 @@ interface RichTextEditorProps {
   onChange: (value: string) => void
   onImageUpload?: (file: File) => Promise<string | null>
   editable?: boolean
+  // Habilita os blocos de destaque (aviso/dica/checklist) do formato Manual
+  // interativo. Desligado por padrão porque o RichTextEditor é compartilhado
+  // com o membro (chamados de feedback): sem o gate, (a) os botões poluiriam
+  // a UI de um chamado, e (b) o HTML gerado (`data-callout`) seria descartado
+  // em silêncio pelo `sanitizeRichText` (isomorphic-dompurify) do lado do
+  // servidor — bloco sumiria sem aviso nenhum pro autor.
+  blocks?: boolean
 }
 
 // Tags que o editor de fato entende — tudo fora daqui é "desembrulhado" (o
@@ -42,6 +54,26 @@ const PASTE_ALLOWED_TAGS = new Set([
 const PASTE_ALLOWED_ATTRS: Record<string, string[]> = {
   A: ['href'],
   IMG: ['src', 'alt'],
+}
+
+// Blocos ricos (callout/checklist) são identificados pelo atributo
+// discriminante, não pela tag sozinha — DIV/UL/LI genéricos continuam sendo
+// desembrulhados como antes (não reabre o bug do toolbar colado dentro do
+// editor, já que aquele <div> não tem `data-callout`). `class` continua
+// descartado de tudo, inclusive destes: o Tiptap regenera a classe visual
+// (`callout`, etc.) sozinho ao re-serializar o nó — só o atributo que
+// discrimina o tipo do bloco precisa sobreviver ao parse do paste.
+function isRichBlock(el: Element): boolean {
+  return (
+    (el.tagName === 'DIV' && el.hasAttribute('data-callout')) ||
+    (el.tagName === 'UL' && el.getAttribute('data-type') === 'taskList') ||
+    (el.tagName === 'LI' && el.getAttribute('data-type') === 'taskItem')
+  )
+}
+const BLOCK_ALLOWED_ATTRS: Record<string, string[]> = {
+  DIV: ['data-callout'],
+  UL: ['data-type'],
+  LI: ['data-type', 'data-checked'],
 }
 
 // Cola de qualquer origem — inclusive selecionar um trecho da própria página
@@ -59,13 +91,14 @@ function sanitizePastedHtml(html: string): string {
     Array.from(node.childNodes).forEach((child) => {
       if (child.nodeType === Node.ELEMENT_NODE) {
         const el = child as Element
-        if (!PASTE_ALLOWED_TAGS.has(el.tagName)) {
+        const richBlock = isRichBlock(el)
+        if (!PASTE_ALLOWED_TAGS.has(el.tagName) && !richBlock) {
           // Desembrulha: promove os filhos pro lugar do elemento removido,
           // sem perder o texto que estava dentro.
           while (el.firstChild) el.parentNode?.insertBefore(el.firstChild, el)
           el.remove()
         } else {
-          const keep = new Set(PASTE_ALLOWED_ATTRS[el.tagName] ?? [])
+          const keep = new Set(richBlock ? BLOCK_ALLOWED_ATTRS[el.tagName] ?? [] : PASTE_ALLOWED_ATTRS[el.tagName] ?? [])
           Array.from(el.attributes).forEach((attr) => {
             if (!keep.has(attr.name)) el.removeAttribute(attr.name)
           })
@@ -81,7 +114,7 @@ function sanitizePastedHtml(html: string): string {
   return doc.body.innerHTML
 }
 
-export function RichTextEditor({ content, onChange, onImageUpload, editable = true }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, onImageUpload, editable = true, blocks = false }: RichTextEditorProps) {
   const imgInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingImg, setIsUploadingImg] = useState(false)
 
@@ -95,6 +128,10 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
         allowBase64: false,
         HTMLAttributes: { class: 'rounded-lg max-w-full' },
       }),
+      // Schema idêntico ao de hoje quando `blocks` está desligado — um
+      // callout colado num editor sem essa extensão é descartado pelo
+      // próprio ProseMirror (comportamento correto pro chamado de feedback).
+      ...(blocks ? [Callout, TaskList, TaskItem.configure({ nested: true })] : []),
     ],
     content,
     editable,
@@ -162,6 +199,15 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
     { icon: Redo,         action: () => editor.chain().focus().redo().run(),                    active: false,                                   label: 'Refazer' },
   ]
 
+  const setCallout = (variant: CalloutVariant) => editor.chain().focus().toggleCallout(variant).run()
+  const blockToolbar = blocks
+    ? [
+        { icon: AlertTriangle, action: () => setCallout('aviso'), active: editor.isActive('callout', { variant: 'aviso' }), label: 'Aviso' },
+        { icon: Lightbulb,     action: () => setCallout('dica'),  active: editor.isActive('callout', { variant: 'dica' }),  label: 'Dica' },
+        { icon: ListChecks,    action: () => editor.chain().focus().toggleTaskList().run(), active: editor.isActive('taskList'), label: 'Checklist' },
+      ]
+    : []
+
   return (
     // Sem overflow-hidden aqui: esse overflow (mesmo sem barra de rolagem
     // visível) vira a "âncora de rolagem" do CSS pra qualquer sticky lá
@@ -218,6 +264,25 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
                 if (file) { handleImageFile(file); e.target.value = '' }
               }}
             />
+          </>
+        )}
+
+        {blockToolbar.length > 0 && (
+          <>
+            <div className="w-px h-6 bg-border self-center mx-0.5" />
+            {blockToolbar.map(({ icon: Icon, action, active, label }) => (
+              <Button
+                key={label}
+                type="button"
+                variant={active ? 'default' : 'ghost'}
+                size="icon"
+                className="w-8 h-8"
+                onClick={action}
+                title={label}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </Button>
+            ))}
           </>
         )}
       </div>

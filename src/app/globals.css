@@ -213,6 +213,94 @@
   }
 }
 
+/* ── Blocos ricos (aviso/dica/checklist) — formato Manual interativo ──
+   Seletores de atributo, sem escopo em `.rich-text`: precisam valer nos
+   TRÊS lugares onde o mesmo HTML pode aparecer — dentro do editor
+   (.ProseMirror), numa aula clássica (/dashboard/aulas/[id]) e no manual
+   (uma aula com callout pode existir mesmo num curso de layout "padrao").
+   Ficam DEPOIS de `.rich-text` de propósito: `[data-callout] > p` empata
+   em especificidade com `.rich-text p` (0,1,1), e quem vem depois no
+   arquivo vence a cascata — não reordenar. */
+[data-callout] {
+  border-left: 4px solid;
+  border-radius: 0.5rem;
+  padding: 0.85rem 1rem 0.85rem 1.1rem;
+  margin: 1.1rem 0;
+}
+[data-callout] > :first-child { margin-top: 0; }
+[data-callout] > :last-child { margin-bottom: 0; }
+[data-callout]::before {
+  display: block;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.35rem;
+}
+[data-callout='aviso'] {
+  background: color-mix(in oklch, var(--destructive) 8%, transparent);
+  border-color: var(--destructive);
+}
+[data-callout='aviso']::before { content: '⚠ Atenção'; color: var(--destructive); }
+[data-callout='dica'] {
+  background: color-mix(in oklch, #f59e0b 12%, transparent);
+  border-color: #f59e0b;
+}
+[data-callout='dica']::before { content: '💡 Dica'; color: #b45309; }
+[data-callout='importante'] {
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  border-color: var(--primary);
+}
+[data-callout='importante']::before { content: '📌 Importante'; color: var(--primary); }
+
+ul[data-type='taskList'] { list-style: none; padding-left: 0; margin-top: 0.6rem; margin-bottom: 0.6rem; }
+ul[data-type='taskList'] li { display: flex; gap: 0.55rem; align-items: flex-start; margin-top: 0.3rem; margin-bottom: 0.3rem; }
+ul[data-type='taskList'] li > label { flex: 0 0 auto; margin-top: 0.28rem; user-select: none; }
+ul[data-type='taskList'] li > div { flex: 1 1 auto; }
+ul[data-type='taskList'] li > div > p { margin: 0; }
+ul[data-type='taskList'] input[type='checkbox'] {
+  accent-color: var(--primary);
+  width: 0.95rem;
+  height: 0.95rem;
+  cursor: pointer;
+}
+ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+
+/* ── Formato Manual interativo (leitura contínua) ──
+   Usada JUNTO com `.rich-text` (className="rich-text manual-content"),
+   só sobrescrevendo o que a leitura longa exige. `.rich-text` continua
+   intocada — é compartilhada por chamados, instrutores, condições
+   comerciais e outras superfícies fora do escopo do manual. */
+.manual-content { font-size: 0.95rem; line-height: 1.75; }
+.manual-content h2,
+.manual-content h3 { scroll-margin-top: 5.5rem; }
+.manual-content img { cursor: zoom-in; transition: opacity 0.15s; }
+.manual-content img:hover { opacity: 0.9; }
+.manual-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 1rem 0;
+  display: block;
+  overflow-x: auto;
+}
+.manual-content th,
+.manual-content td { border: 1px solid var(--border); padding: 0.45rem 0.6rem; text-align: left; }
+.manual-content thead th { background: var(--muted); font-weight: 600; }
+.manual-content mark.manual-hit { background: #fde68a; color: #111; border-radius: 2px; padding: 0 1px; }
+.manual-content mark.manual-hit-current { background: #f59e0b; box-shadow: 0 0 0 2px #f59e0b; }
+
+/* Menu lateral do manual: fixo relativo ao seu próprio container de
+   rolagem, com scroll interno quando há muitas seções. */
+.manual-toc {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
 /* Tiptap editor area */
 .ProseMirror { outline: none; }
 .ProseMirror > * + * { margin-top: 0.4rem; }

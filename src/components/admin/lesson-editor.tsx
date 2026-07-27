@@ -328,6 +328,7 @@ export function LessonEditor({
             content={contentText}
             onChange={setContentText}
             editable={canEdit}
+            blocks
             onImageUpload={async (file) => {
               const r = await uploadContentImage(lesson.id, file)
               if (r?.error) { toast.error(r.error); return null }

@@ -49,14 +49,16 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const instructor_name = (formData.get('instructor_name') as string) || null
   const instructor_role = (formData.get('instructor_role') as string) || null
   const instructor_profile_id = (formData.get('instructor_profile_id') as string) || null
+  // Validado no servidor, nunca confiar só no valor vindo do cliente.
+  const layout = formData.get('layout') === 'manual' ? 'manual' : 'padrao'
 
   const { data: before } = await adminClient
     .from('courses')
-    .select('name, description, is_published, instructor_name, instructor_role, instructor_profile_id')
+    .select('name, description, is_published, instructor_name, instructor_role, instructor_profile_id, layout')
     .eq('id', courseId)
     .single()
 
-  const after = { name, description, is_published, instructor_name, instructor_role, instructor_profile_id }
+  const after = { name, description, is_published, instructor_name, instructor_role, instructor_profile_id, layout }
   const { error } = await adminClient
     .from('courses')
     .update(after)
@@ -67,7 +69,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const changed = diffFields(before ?? {}, after, {
     name: 'título', description: 'descrição', is_published: 'publicação',
     instructor_name: 'nome do instrutor', instructor_role: 'cargo do instrutor',
-    instructor_profile_id: 'instrutor vinculado',
+    instructor_profile_id: 'instrutor vinculado', layout: 'formato do curso',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'curso', entityId: courseId, entityLabel: name, detail: `alterou: ${changed.join(', ')}` })
@@ -75,7 +77,9 @@ export async function updateCourse(courseId: string, formData: FormData) {
 
   revalidatePath(`/admin/cursos/${courseId}`)
   revalidatePath('/admin/cursos')
-  revalidatePath('/dashboard')
+  // 'layout' de página: invalida também as páginas de módulo/aula do curso
+  // inteiro — trocar o formato precisa refletir imediatamente pro aluno.
+  revalidatePath('/dashboard', 'layout')
   return { success: true }
 }
 

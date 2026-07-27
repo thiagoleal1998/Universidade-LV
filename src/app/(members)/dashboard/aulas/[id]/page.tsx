@@ -60,12 +60,12 @@ export default async function LessonPage({
   // Fetch the lesson with module + course info
   const { data: lessonData } = await client
     .from('lessons')
-    .select('*, modules(id, title, order_index, course_id, courses(id, name))')
+    .select('*, modules(id, title, order_index, course_id, courses(id, name, layout))')
     .eq('id', id)
     .single()
 
   const lesson = lessonData as (Lesson & {
-    modules: (ModuleRow & { courses: { id: string; name: string } | null }) | null
+    modules: (ModuleRow & { courses: { id: string; name: string; layout?: 'padrao' | 'manual' } | null }) | null
   }) | null
 
   if (!lesson || (!isAdmin && !lesson.is_published)) notFound()
@@ -74,6 +74,13 @@ export default async function LessonPage({
   const course = module?.courses
   const courseId = course?.id ?? module?.course_id ?? ''
   const courseName = course?.name ?? module?.title ?? ''
+
+  // Curso no formato "Manual interativo": link direto de aula cai na âncora
+  // certa da página do módulo (mantém notificações/busca/links salvos
+  // funcionando, sem duplicar a leitura em duas telas).
+  if (course?.layout === 'manual' && module?.id) {
+    redirect(`/dashboard/modulos/${module.id}?aula=${id}`)
+  }
 
   // Fetch curriculum: all modules + lessons for this course
   let curriculum: { id: string; title: string; order_index: number; lessons: LessonRow[] }[] = []
