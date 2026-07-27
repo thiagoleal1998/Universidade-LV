@@ -13,9 +13,15 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          // Descarta escritas que APAGAM a sessão (valor vazio): o
+          // @supabase/ssr faz isso quando uma renovação de token falha, e uma
+          // renovação concorrente que perde a corrida não pode deslogar o
+          // usuário. Mesma proteção de `src/lib/supabase/server.ts` (v1.102.6).
+          const safe = cookiesToSet.filter(({ name, value }) => !(name.startsWith('sb-') && value === ''))
+          if (safe.length === 0) return
+          safe.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
+          safe.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
         },
@@ -23,26 +29,8 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user }, error: mwAuthError } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
-
-  // DIAGNÓSTICO TEMPORÁRIO (v1.102.5): comparar o cookie no caso que FUNCIONA
-  // (GET) com o que FALHA (POST de Server Action). Remover depois.
-  if (pathname.startsWith('/admin')) {
-    const sb = request.cookies.getAll().filter((c) => c.name.startsWith('sb-'))
-    const isAction = !!request.headers.get('next-action')
-    if (!user || isAction) {
-      const desc = sb.map((c) => {
-        const v = c.value
-        return `${c.name}[len=${v.length} ini="${v.slice(0, 12)}" fim="${v.slice(-8)}"]`
-      }).join(' ')
-      console.error('[MW-DIAG]', request.method, pathname,
-        '| user:', user ? 'OK' : 'NULL',
-        '| erro:', mwAuthError?.message ?? '-',
-        '| action:', isAction ? 'sim' : 'nao',
-        '| cookie:', desc || 'NENHUM')
-    }
-  }
 
   // Server Action (POST com header `next-action`) NUNCA pode receber redirect
   // deste middleware. O cliente do Next espera o payload da action na resposta;

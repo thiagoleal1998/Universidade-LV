@@ -8,7 +8,9 @@ import { rdWelcomeOnRegister, rdAdminNewMemberPending } from '@/lib/rdstation'
 import { notifyAllAdmins } from '@/app/actions/notifications'
 
 export async function login(_state: unknown, formData: FormData) {
-  const supabase = await createClient()
+  // allowSessionClear: o login desloga de propósito quando a conta ainda não
+  // foi aprovada (signOut logo abaixo) — ver server.ts.
+  const supabase = await createClient({ allowSessionClear: true })
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -39,7 +41,8 @@ export async function login(_state: unknown, formData: FormData) {
 }
 
 export async function logout() {
-  const supabase = await createClient()
+  // allowSessionClear: aqui o apagar-sessão é intencional (ver server.ts).
+  const supabase = await createClient({ allowSessionClear: true })
   await supabase.auth.signOut()
   redirect('/login')
 }
