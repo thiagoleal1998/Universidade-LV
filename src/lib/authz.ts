@@ -2,7 +2,7 @@
 // sem 'use server' de propósito, para não expor os helpers como endpoints).
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/session-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CAPABILITIES, type Capability } from '@/lib/capabilities'
 import { PREVIEW_COOKIE } from '@/lib/preview'
@@ -18,69 +18,20 @@ export type AdminContext = {
 }
 
 export async function getAdminContext(): Promise<AdminContext | null> {
-  const supabase = await createClient()
-  const { data: { user }, error: authErr } = await supabase.auth.getUser()
-  if (!user) {
-    // DIAG TEMPORÁRIO (v1.102.9) — remover após identificar a causa.
-    const jar = await cookies()
-    const sb = jar.getAll().filter((c) => c.name.startsWith('sb-'))
-    const detalhes = sb.map((c) => {
-      try {
-        const raw = c.value.startsWith('base64-') ? c.value.slice(7) : c.value
-        const parsed = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'))
-        const exp = parsed.expires_at ? new Date(parsed.expires_at * 1000).toISOString() : '?'
-        const venceu = parsed.expires_at ? (parsed.expires_at * 1000 < Date.now()) : '?'
-        const at = typeof parsed.access_token === 'string' ? `${parsed.access_token.length}b` : 'AUSENTE'
-        return `${c.name}[${c.value.length}b chaves={${Object.keys(parsed).join(',')}} access_token=${at} expira=${exp} venceu=${venceu} temRefresh=${!!parsed.refresh_token} user=${parsed.user?.id?.slice(0, 8) ?? 'SEM'}]`
-      } catch (e) {
-        return `${c.name}[${c.value.length}b ILEGIVEL: ${(e as Error).message.slice(0, 60)} ini="${c.value.slice(0, 16)}"]`
-      }
-    })
-    console.error('[DIAG-A] sem user | erro:', authErr?.message ?? '-',
-      '| status:', authErr?.status ?? '-',
-      '| qtd:', sb.length, '|', detalhes.join(' | ') || 'NENHUM')
-
-    // Testa o access_token do cookie DIRETO na API, fora do client de cookies:
-    // se funcionar, o token é bom e o problema é a leitura do cookie; se
-    // falhar, a sessão foi revogada no servidor.
-    try {
-      const c = sb[0]
-      if (c) {
-        const raw = c.value.startsWith('base64-') ? c.value.slice(7) : c.value
-        const parsed = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'))
-        if (parsed.access_token) {
-          const probe = createAdminClient()
-          const { data: probeData, error: probeErr } = await probe.auth.getUser(parsed.access_token)
-          console.error('[DIAG-D] token do cookie testado direto na API ->',
-            probeData?.user ? `VÁLIDO (user ${probeData.user.id.slice(0, 8)})` : `INVÁLIDO: ${probeErr?.message} (status ${probeErr?.status})`)
-        }
-      }
-    } catch (e) {
-      console.error('[DIAG-D] falha ao testar token:', (e as Error).message)
-    }
-    return null
-  }
+  // getSessionUser (não `supabase.auth.getUser()` direto): em Server Actions o
+  // client de cookies às vezes responde "Auth session missing" mesmo com o
+  // cookie de sessão íntegro e no prazo — ver src/lib/session-user.ts.
+  const user = await getSessionUser()
+  if (!user) return null
 
   const adminClient = createAdminClient()
-  const { data: profile, error: profErr } = await adminClient
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('role, active, collaborator_area_id')
     .eq('id', user.id)
     .single()
 
-  if (!profile) {
-    // DIAG TEMPORÁRIO (v1.102.8) — remover após identificar a causa.
-    console.error('[DIAG-B] user OK mas SEM PERFIL | userId:', user.id,
-      '| email:', user.email, '| erro:', profErr?.message ?? '-')
-    return null
-  }
-
-  // DIAG TEMPORÁRIO (v1.102.8) — remover após identificar a causa.
-  if (profile.role !== 'admin') {
-    console.error('[DIAG-C] perfil encontrado mas NÃO é admin | userId:', user.id,
-      '| email:', user.email, '| role:', JSON.stringify(profile.role),
-      '| active:', profile.active)
-  }
+  if (!profile) return null
 
   if (profile.role === 'admin') {
     return { userId: user.id, role: 'admin', areaId: null, capabilities: [...CAPABILITIES] }
