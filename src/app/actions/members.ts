@@ -83,7 +83,16 @@ export async function updateMember(
 
   const authUpdate: { email?: string; password?: string } = {}
   if (emailChanged) authUpdate.email = data.email
-  if (data.new_password) authUpdate.password = data.new_password
+  // Trocar a senha REVOGA todas as sessões do usuário no Supabase (confirmado:
+  // o access_token passa a responder "Auth session missing!" e o refresh_token
+  // é invalidado). Como o gerenciador de senha do navegador autopreenchia o
+  // campo "Nova senha", o admin que editava o próprio perfil se deslogava sem
+  // perceber e via "Apenas admins podem fazer isso" no meio do save. O campo
+  // agora é opt-in na UI; aqui fica a segunda barreira: senha em branco/curta
+  // demais nunca chega a virar um update de auth (v1.103.1).
+  if (typeof data.new_password === 'string' && data.new_password.trim().length >= 6) {
+    authUpdate.password = data.new_password
+  }
 
   if (Object.keys(authUpdate).length > 0) {
     const { error } = await adminClient.auth.admin.updateUserById(userId, authUpdate)

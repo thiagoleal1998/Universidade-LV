@@ -19,7 +19,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Pencil, Trash2, BookOpen } from 'lucide-react'
+import { Pencil, Trash2, BookOpen, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -62,6 +62,9 @@ export function EditMemberDialog({
   const [selectedRole, setSelectedRole] = useState<Member['role']>(member.role)
   const [selectedAreaId, setSelectedAreaId] = useState<string>(member.collaborator_area_id ?? '')
   const [bioValue, setBioValue] = useState(member.bio ?? '')
+  const [showPasswordField, setShowPasswordField] = useState(false)
+  const [newPasswordValue, setNewPasswordValue] = useState('')
+
 
   function toggleCourse(id: string) {
     setSelectedCourseIds((prev) =>
@@ -79,7 +82,9 @@ export function EditMemberDialog({
     e.preventDefault()
     const form = e.currentTarget
     const data = new FormData(form)
-    const newPassword = data.get('new_password') as string
+    // Só considera a senha se o campo foi aberto de propósito. Blindagem
+    // contra autopreenchimento do navegador (ver comentário no campo abaixo).
+    const newPassword = showPasswordField ? newPasswordValue : ''
     const role = data.get('role') as Member['role']
 
     if (role === 'collaborator' && !selectedAreaId) {
@@ -294,11 +299,51 @@ export function EditMemberDialog({
 
           <Separator />
 
+          {/* Campo de senha só existe no DOM depois de pedido explicitamente.
+              Enquanto ficava sempre renderizado, gerenciador de senha do
+              navegador AUTOPREENCHIA ele — e como trocar a senha revoga todas
+              as sessões do usuário no Supabase, o admin que editava o próprio
+              perfil perdia a sessão no meio do save e via "Apenas admins podem
+              fazer isso" (bug real, v1.103.1). Sem o input no DOM, não há o
+              que autopreencher. */}
           <div className="space-y-2">
-            <Label htmlFor="new_password">
-              Nova senha <span className="text-muted-foreground font-normal">(deixe em branco para não alterar)</span>
-            </Label>
-            <Input id="new_password" name="new_password" type="password" placeholder="Nova senha" minLength={6} />
+            {!showPasswordField ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPasswordField(true)}
+                className="gap-1.5"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                Alterar senha
+              </Button>
+            ) : (
+              <>
+                <Label htmlFor="new_password">Nova senha</Label>
+                <Input
+                  id="new_password"
+                  name="new_password"
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  minLength={6}
+                  autoComplete="new-password"
+                  value={newPasswordValue}
+                  onChange={(e) => setNewPasswordValue(e.target.value)}
+                />
+                <p className="text-xs text-amber-600 dark:text-amber-500">
+                  Trocar a senha desconecta esta pessoa de todos os aparelhos — inclusive você, se for a sua própria conta.
+
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setShowPasswordField(false); setNewPasswordValue('') }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Cancelar troca de senha
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex gap-2 pt-2">
