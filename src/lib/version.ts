@@ -1,1 +1,1 @@
-export const APP_VERSION = '1.102.7'
+export const APP_VERSION = '1.102.8'

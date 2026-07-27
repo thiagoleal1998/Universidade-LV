@@ -19,17 +19,37 @@ export type AdminContext = {
 
 export async function getAdminContext(): Promise<AdminContext | null> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const { data: { user }, error: authErr } = await supabase.auth.getUser()
+  if (!user) {
+    // DIAG TEMPORÁRIO (v1.102.8) — remover após identificar a causa.
+    const jar = await cookies()
+    const sb = jar.getAll().filter((c) => c.name.startsWith('sb-'))
+    console.error('[DIAG-A] sem user | erro:', authErr?.message ?? '-',
+      '| status:', authErr?.status ?? '-',
+      '| cookies:', sb.map((c) => `${c.name}=${c.value.length}b`).join(',') || 'NENHUM')
+    return null
+  }
 
   const adminClient = createAdminClient()
-  const { data: profile } = await adminClient
+  const { data: profile, error: profErr } = await adminClient
     .from('profiles')
     .select('role, active, collaborator_area_id')
     .eq('id', user.id)
     .single()
 
-  if (!profile) return null
+  if (!profile) {
+    // DIAG TEMPORÁRIO (v1.102.8) — remover após identificar a causa.
+    console.error('[DIAG-B] user OK mas SEM PERFIL | userId:', user.id,
+      '| email:', user.email, '| erro:', profErr?.message ?? '-')
+    return null
+  }
+
+  // DIAG TEMPORÁRIO (v1.102.8) — remover após identificar a causa.
+  if (profile.role !== 'admin') {
+    console.error('[DIAG-C] perfil encontrado mas NÃO é admin | userId:', user.id,
+      '| email:', user.email, '| role:', JSON.stringify(profile.role),
+      '| active:', profile.active)
+  }
 
   if (profile.role === 'admin') {
     return { userId: user.id, role: 'admin', areaId: null, capabilities: [...CAPABILITIES] }
