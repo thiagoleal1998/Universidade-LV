@@ -186,7 +186,7 @@ function ItemForm({
 
   function uploadFile(file: File) {
     startUpload(async () => {
-      const r = await uploadMarketingFile(file)
+      const r = await uploadMarketingFile(file, 'material')
       if (r?.error) toast.error(r.error)
       else if (r.url) { setUrl(r.url); toast.success('Arquivo enviado!') }
     })

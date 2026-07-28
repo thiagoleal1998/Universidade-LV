@@ -244,13 +244,68 @@ export async function deleteMarketingItem(id: string) {
   return { success: true }
 }
 
-export async function uploadMarketingFile(file: File) {
+// Extensão → MIME canônico aceito no bucket `marketing-files`. Extensão é a
+// fonte de verdade (não `file.type`) porque o navegador não é confiável: .ai
+// e .psd costumam chegar como `application/octet-stream` (ou vazio), e ainda
+// assim precisam ser aceitos pelo grupo 'material' — mesmo raciocínio já
+// documentado para anexos de feedback (Word/Excel via MIME sniffing ruim).
+const MARKETING_MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml',
+  pdf: 'application/pdf',
+  zip: 'application/zip',
+  ai: 'application/postscript',
+  psd: 'image/vnd.adobe.photoshop',
+}
+
+// Cada chamador declara o que o próprio campo já promete no `accept` do
+// input — sem isso, o `accept` do HTML é só um filtro de UI (a pessoa pode
+// escolher "Todos os arquivos" no seletor do SO) e nada no servidor barrava
+// vídeo/executável/planilha antes desta validação existir (bug real
+// relatado: Excel e vídeo aceitos nos campos de logo/lâmina da Corrida de
+// Vendas — Excel baixava direto sem preview, vídeo caía numa página de erro
+// porque o arquivo nem chegava a subir direito).
+const MARKETING_UPLOAD_KINDS = {
+  image: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'],
+  image_pdf: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'pdf'],
+  material: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'pdf', 'zip', 'ai', 'psd'],
+} as const
+export type MarketingUploadKind = keyof typeof MARKETING_UPLOAD_KINDS
+
+const MARKETING_UPLOAD_KIND_ERROR: Record<MarketingUploadKind, string> = {
+  image: 'Apenas imagens são aceitas (JPG, PNG, WEBP, GIF ou SVG).',
+  image_pdf: 'Apenas imagem ou PDF são aceitos.',
+  material: 'Tipo de arquivo não suportado. Envie imagem, PDF, ZIP, AI ou PSD.',
+}
+
+function resolveMarketingMime(file: File, kind: MarketingUploadKind): string | null {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (!(MARKETING_UPLOAD_KINDS[kind] as readonly string[]).includes(ext)) return null
+  return MARKETING_MIME_BY_EXT[ext] ?? file.type
+}
+
+export async function uploadMarketingFile(file: File, kind: MarketingUploadKind) {
   // Qualquer capacidade de marketing serve para upload de arquivo
   const ctx = await requireAnyCapability(MARKETING_CAPABILITIES)
   if ('error' in ctx) return { error: ctx.error }
 
+  const mime = resolveMarketingMime(file, kind)
+  if (!mime) return { error: MARKETING_UPLOAD_KIND_ERROR[kind] }
+
+  // Reembrulha com o MIME resolvido: sem isso, um .psd/.ai que o navegador
+  // reporta como octet-stream não seria reconhecido como imagem por toWebP.
+  const normalized = file.type === mime ? file : new File([file], file.name, { type: mime })
+
   const adminClient = createAdminClient()
-  const outFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  let outFile: File
+  try {
+    // sharp (dentro de toWebP) lança exceção síncrona/rejeitada pra imagem
+    // corrompida/malformada — sem o try/catch, isso derruba a Server Action
+    // inteira ("This page couldn't load", confirmado testando com um PNG
+    // com bytes inválidos), em vez de virar um toast de erro normal.
+    outFile = await toWebP(normalized, { maxWidth: 1280, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar este arquivo — ele pode estar corrompido ou num formato inesperado.' }
+  }
   const isConverted = outFile.type === 'image/webp'
   const ext = isConverted ? 'webp' : file.name.split('.').pop()
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`

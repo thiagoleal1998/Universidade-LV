@@ -240,8 +240,9 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
     const pending = pendingUpload.current
     if (!file || !pending) return
     e.target.value = ''
+    const kind = pending.kind === 'vencedor' || pending.field === 'parceiro_logo_url' ? 'image' : 'image_pdf'
     startUpload(async () => {
-      const r = await uploadMarketingFile(file)
+      const r = await uploadMarketingFile(file, kind)
       if (r?.error) { toast.error(r.error); return }
       if (!r.url) return
       if (pending.kind === 'corrida') {

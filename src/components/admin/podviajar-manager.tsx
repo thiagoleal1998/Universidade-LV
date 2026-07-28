@@ -57,7 +57,7 @@ export function PodviajarManager({ raw, canEdit = true }: { raw: string; canEdit
 
   async function handleImageUpload(file: File) {
     setIsUploading(true)
-    const result = await uploadMarketingFile(file)
+    const result = await uploadMarketingFile(file, 'image')
     setIsUploading(false)
     if (result.error) {
       toast.error(result.error)
