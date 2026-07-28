@@ -28,7 +28,7 @@ export default async function AdminPostPage({
   ] = await Promise.all([
     supabase
       .from('community_posts')
-      .select('id, title, body, is_pinned, is_locked, is_hidden, created_at, user_id, course_id, profiles(full_name, role)')
+      .select('id, title, body, is_pinned, is_locked, is_hidden, deletion_requested_at, created_at, user_id, course_id, profiles(full_name, role)')
       .eq('id', postId)
       .single(),
     supabase

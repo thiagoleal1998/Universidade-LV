@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { createPost, deletePost, togglePinPost, toggleLockPost, hidePost } from '@/app/actions/community'
+import {
+  createPost, deletePost, togglePinPost, toggleLockPost, hidePost,
+  requestPostDeletion, cancelPostDeletionRequest, resolvePostDeletion,
+} from '@/app/actions/community'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Pin, Lock, Trash2, MessageSquare, Plus, X, ChevronRight, BarChart2, Minus, EyeOff, Eye } from 'lucide-react'
+import { Pin, Lock, Trash2, MessageSquare, Plus, X, ChevronRight, BarChart2, Minus, EyeOff, Eye, CheckCircle2, XCircle } from 'lucide-react'
 import { CommunityPoll } from '@/components/members/community-poll'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -25,6 +28,7 @@ type Post = {
   is_pinned: boolean
   is_locked: boolean
   is_hidden: boolean
+  deletion_requested_at: string | null
   created_at: string
   user_id: string
   profiles: { full_name: string; role: string } | null
@@ -226,12 +230,20 @@ function PostCard({
   const [isPinning, startPin] = useTransition()
   const [isLocking, startLock] = useTransition()
   const [isHiding, startHide] = useTransition()
+  const [isRequesting, startRequest] = useTransition()
+  const [isResolving, startResolve] = useTransition()
 
   const replyCount = post.reply_count?.[0]?.count ?? 0
   const isAuthor = post.user_id === currentUserId
-  const canDelete = canModerate || isAuthor
-  // Autor ainda vê o próprio conteúdo (com aviso); outros membros veem só um aviso genérico.
-  const isMaskedForViewer = post.is_hidden && !canModerate && !isAuthor
+  const hasPendingDeletion = !!post.deletion_requested_at
+  // Moderador sempre pode excluir direto; fora disso, só o autor — e só
+  // enquanto não houver uma solicitação já em aberto (aí o botão vira
+  // "Cancelar solicitação", não um segundo pedido de exclusão).
+  const canDelete = canModerate || (isAuthor && !hasPendingDeletion)
+  // Autor ainda vê o próprio conteúdo (com aviso); outros membros veem só um
+  // aviso genérico — exclusão pendente mascara igual a is_hidden, pois o
+  // post não deve continuar visível pra geral enquanto aguarda aprovação.
+  const isMaskedForViewer = (post.is_hidden || hasPendingDeletion) && !canModerate && !isAuthor
 
   function handlePin() {
     startPin(async () => {
@@ -260,6 +272,30 @@ function PostCard({
       const r = await deletePost(post.id, courseId)
       if (r?.error) toast.error(r.error)
       else toast.success('Post removido.')
+    })
+  }
+
+  function handleRequestDelete() {
+    startRequest(async () => {
+      const r = await requestPostDeletion(post.id, courseId)
+      if (r?.error) toast.error(r.error)
+      else toast.success('Solicitação enviada — aguardando aprovação da moderação.')
+    })
+  }
+
+  function handleCancelRequest() {
+    startRequest(async () => {
+      const r = await cancelPostDeletionRequest(post.id, courseId)
+      if (r?.error) toast.error(r.error)
+      else toast.success('Solicitação cancelada.')
+    })
+  }
+
+  function handleResolve(approve: boolean) {
+    startResolve(async () => {
+      const r = await resolvePostDeletion(post.id, courseId, approve)
+      if (r?.error) toast.error(r.error)
+      else toast.success(approve ? 'Discussão excluída.' : 'Solicitação recusada.')
     })
   }
 
@@ -295,11 +331,52 @@ function PostCard({
             {post.is_pinned && <Badge variant="outline" className="text-xs text-primary border-primary/40 py-0">Fixado</Badge>}
             {post.is_locked && <Badge variant="secondary" className="text-xs py-0">Encerrado</Badge>}
             {post.is_hidden && <Badge variant="outline" className="text-xs text-muted-foreground border-muted-foreground/40 py-0">Oculto</Badge>}
+            {hasPendingDeletion && <Badge variant="outline" className="text-xs text-red-500 border-red-500/40 py-0">Exclusão pendente</Badge>}
           </div>
         </div>
 
         {post.is_hidden && isAuthor && !canModerate && (
           <p className="text-xs text-amber-500 mb-1.5">Ocultado pela moderação — só você e a moderação veem.</p>
+        )}
+
+        {hasPendingDeletion && isAuthor && !canModerate && (
+          <div className="flex items-center gap-2 flex-wrap text-xs text-red-500 mb-1.5">
+            <span>Você solicitou a exclusão — aguardando aprovação da moderação.</span>
+            <button
+              type="button"
+              onClick={handleCancelRequest}
+              disabled={isRequesting}
+              className="underline hover:no-underline text-muted-foreground"
+            >
+              Cancelar solicitação
+            </button>
+          </div>
+        )}
+
+        {hasPendingDeletion && canModerate && (
+          <div className="flex items-center gap-2 flex-wrap bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2 mb-2 text-xs">
+            <span className="text-foreground flex-1">
+              <strong>{post.profiles?.full_name || 'O autor'}</strong> solicitou a exclusão desta discussão.
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleResolve(true)}
+                disabled={isResolving}
+                className="flex items-center gap-1 text-red-600 hover:underline font-medium"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> Aprovar exclusão
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResolve(false)}
+                disabled={isResolving}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline"
+              >
+                <XCircle className="w-3.5 h-3.5" /> Recusar
+              </button>
+            </div>
+          </div>
         )}
 
         {!isMaskedForViewer && post.body && (
@@ -383,22 +460,26 @@ function PostCard({
                 <AlertDialogTrigger render={
                   <button
                     className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-muted transition-colors"
-                    disabled={isDeleting}
-                    title="Excluir post"
+                    disabled={isDeleting || isRequesting}
+                    title={canModerate ? 'Excluir post' : 'Solicitar exclusão'}
                   />
                 }>
                   <Trash2 className="w-3.5 h-3.5" />
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir discussão?</AlertDialogTitle>
+                    <AlertDialogTitle>{canModerate ? 'Excluir discussão?' : 'Solicitar exclusão desta discussão?'}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Todas as respostas também serão excluídas. Essa ação não pode ser desfeita.
+                      {canModerate
+                        ? 'Todas as respostas também serão excluídas. Essa ação não pode ser desfeita.'
+                        : 'A discussão fica oculta para os demais membros até a moderação aprovar ou recusar o pedido. Você pode cancelar a solicitação depois.'}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+                    <AlertDialogAction onClick={canModerate ? handleDelete : handleRequestDelete}>
+                      {canModerate ? 'Excluir' : 'Solicitar exclusão'}
+                    </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
