@@ -58,8 +58,12 @@ export default async function MembrosPage() {
     isOnline: !!p.last_seen_at && p.last_seen_at > onlineSince,
   }))
 
-  const pending = members.filter((m) => !m.active && !m.rejected_at && m.role !== 'admin')
+  // Pendente = nunca passou pela aprovação. Inativo = já foi aprovado (tem
+  // `approved_at`) e depois foi desativado — sem essa distinção, os dois
+  // caíam juntos em "Aguardando aprovação" (ver migração 055).
+  const pending = members.filter((m) => !m.active && !m.rejected_at && !m.approved_at && m.role !== 'admin')
   const rejected = members.filter((m) => !!m.rejected_at)
+  const inactive = members.filter((m) => !m.active && !m.rejected_at && !!m.approved_at && m.role !== 'admin')
   const active = members.filter((m) => m.active || m.role === 'admin')
   const allTags = tags ?? []
   const allCourses = coursesData ?? []
@@ -74,7 +78,7 @@ export default async function MembrosPage() {
         <CreateMemberDialog />
       </div>
 
-      <MembrosTabs pending={pending} rejected={rejected} active={active} allTags={allTags} allCourses={allCourses} areas={areas} />
+      <MembrosTabs pending={pending} rejected={rejected} inactive={inactive} active={active} allTags={allTags} allCourses={allCourses} areas={areas} />
       <DashboardAutoRefresh />
     </div>
   )

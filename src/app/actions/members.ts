@@ -321,10 +321,13 @@ export async function approveMember(userId: string, courseIds: string[]) {
   const adminClient = createAdminClient()
 
   // rejected_at volta a null: aprovar alguém que tinha sido recusado antes
-  // (via "Reconsiderar" ou direto) desfaz o estado de recusa.
+  // (via "Reconsiderar" ou direto) desfaz o estado de recusa. approved_at
+  // marca que este perfil já passou pela aprovação — é o que diferencia um
+  // futuro "desativado pelo admin" (vai para Inativos) de um cadastro que
+  // nunca foi aprovado (vai para Pendentes).
   const { error } = await supabase
     .from('profiles')
-    .update({ active: true, rejected_at: null })
+    .update({ active: true, rejected_at: null, approved_at: new Date().toISOString() })
     .eq('id', userId)
   if (error) return { error: error.message }
 

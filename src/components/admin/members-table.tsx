@@ -7,11 +7,12 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EditMemberDialog } from '@/components/admin/edit-member-dialog'
 import { TagChip } from '@/components/admin/tag-chip'
-import { formatMemberCode } from '@/lib/tag-colors'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { formatMemberCode, getTagColor } from '@/lib/tag-colors'
 import { BarChart2, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -36,18 +37,28 @@ export type MemberWithEmail = {
   isOnline?: boolean
 }
 
-type Filter = 'all' | 'active' | 'inactive' | 'admin' | 'collaborator'
+type Filter = 'all' | 'admin' | 'collaborator' | 'member'
+
+const FILTER_LABEL: Record<Filter, string> = {
+  all: 'Todos os papéis',
+  member: 'Membros comuns',
+  collaborator: 'Colaboradores',
+  admin: 'Admins',
+}
 
 export function MembersTable({
   members,
   allTags = [],
   allCourses = [],
   allAreas = [],
+  emptyMessage,
 }: {
   members: MemberWithEmail[]
   allTags?: Tag[]
   allCourses?: Course[]
   allAreas?: Area[]
+  /** Mensagem exibida quando a lista vier vazia sem nenhum filtro aplicado (ex.: aba "Inativos" sem ninguém desativado). */
+  emptyMessage?: string
 }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -60,86 +71,75 @@ export function MembersTable({
       m.email.toLowerCase().includes(q) ||
       formatMemberCode(m.member_number ?? null).toLowerCase().includes(q)
 
-    const matchesFilter =
-      filter === 'all' ||
-      (filter === 'active' && m.active && m.role !== 'admin') ||
-      (filter === 'inactive' && !m.active) ||
-      (filter === 'admin' && m.role === 'admin') ||
-      (filter === 'collaborator' && m.role === 'collaborator')
+    const matchesFilter = filter === 'all' || filter === m.role
 
     const matchesTag = !tagFilter || (m.tagIds ?? []).includes(tagFilter)
 
     return matchesSearch && matchesFilter && matchesTag
   })
 
-  const filterOptions: { key: Filter; label: string }[] = [
-    { key: 'all', label: 'Todos' },
-    { key: 'active', label: 'Ativos' },
-    { key: 'inactive', label: 'Inativos' },
-    { key: 'collaborator', label: 'Colaboradores' },
-    { key: 'admin', label: 'Admins' },
-  ]
+  const activeTag = allTags.find((t) => t.id === tagFilter)
+  const hasActiveFilters = search || filter !== 'all' || tagFilter
 
   return (
     <div>
-      {/* Search + filter bar */}
-      <div className="flex flex-col gap-3 p-4 border-b border-border">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome, email ou ID (LV-0001)..."
-              className="pl-9 pr-9"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-1 flex-wrap">
-            {filterOptions.map((opt) => (
-              <Button
-                key={opt.key}
-                size="sm"
-                variant={filter === opt.key ? 'default' : 'outline'}
-                onClick={() => setFilter(opt.key)}
-                className="text-xs"
-              >
-                {opt.label}
-              </Button>
-            ))}
-          </div>
+      {/* Busca + filtros condensados em 2 selects (papel + tag), em vez de
+          uma fileira de botões por opção — reduz a poluição visual da tela. */}
+      <div className="flex flex-col sm:flex-row gap-2 p-4 border-b border-border">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome, email ou ID (LV-0001)..."
+            className="pl-9 pr-9"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* Tag filter */}
-        {allTags.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground shrink-0">Por tag:</span>
-            <button
-              onClick={() => setTagFilter(null)}
-              className={cn(
-                'text-xs px-2 py-0.5 rounded-full border transition-colors',
-                !tagFilter ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-muted-foreground'
-              )}
-            >
-              Todas
-            </button>
-            {allTags.map((tag) => (
-              <button key={tag.id} onClick={() => setTagFilter(tagFilter === tag.id ? null : tag.id)}>
-                <TagChip
-                  tag={tag}
-                  className={cn('cursor-pointer transition-opacity', tagFilter && tagFilter !== tag.id ? 'opacity-40' : '')}
-                />
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2 shrink-0">
+          <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue>{(v: Filter) => FILTER_LABEL[v]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(FILTER_LABEL) as Filter[]).map((key) => (
+                <SelectItem key={key} value={key}>{FILTER_LABEL[key]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {allTags.length > 0 && (
+            <Select value={tagFilter ?? '__all__'} onValueChange={(v) => setTagFilter(v === '__all__' ? null : v)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue>
+                  {() => activeTag ? (
+                    <span className="flex items-center gap-1.5 truncate">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={getTagColor(activeTag.color).dotStyle} />
+                      {activeTag.name}
+                    </span>
+                  ) : 'Todas as tags'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas as tags</SelectItem>
+                {allTags.map((tag) => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={getTagColor(tag.color).dotStyle} />
+                    {tag.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -158,9 +158,9 @@ export function MembersTable({
           {filtered.length === 0 && (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                {search || filter !== 'all' || tagFilter
+                {hasActiveFilters
                   ? 'Nenhum membro encontrado com esses filtros.'
-                  : 'Nenhum membro cadastrado ainda.'}
+                  : (emptyMessage ?? 'Nenhum membro cadastrado ainda.')}
               </TableCell>
             </TableRow>
           )}

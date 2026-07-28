@@ -17,8 +17,6 @@ type RejectedMember = {
 export function RejectedMembers({ members }: { members: RejectedMember[] }) {
   const [reconsideringId, setReconsideringId] = useState<string | null>(null)
 
-  if (members.length === 0) return null
-
   async function handleReconsider(id: string) {
     setReconsideringId(id)
     const result = await reconsiderMember(id)
@@ -27,16 +25,16 @@ export function RejectedMembers({ members }: { members: RejectedMember[] }) {
     else toast.success('Cadastro voltou pra "Aguardando aprovação".')
   }
 
-  return (
-    <div className="mb-8">
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-2 h-2 rounded-full bg-muted-foreground/40" />
-        <h3 className="text-sm font-semibold text-foreground">Recusados</h3>
-        <span className="text-xs bg-muted text-muted-foreground font-medium px-2 py-0.5 rounded-full">
-          {members.length}
-        </span>
+  if (members.length === 0) {
+    return (
+      <div className="bg-card border rounded-lg py-10 text-center text-sm text-muted-foreground">
+        Nenhum cadastro recusado.
       </div>
+    )
+  }
 
+  return (
+    <div>
       <div className="rounded-xl border border-border bg-muted/20 divide-y divide-border overflow-hidden">
         {members.map((member) => (
           <div key={member.id} className="flex items-center justify-between px-4 py-3 gap-4">
