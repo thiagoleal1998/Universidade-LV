@@ -21,7 +21,6 @@ import {
   Heading2,
   Heading3,
   Quote,
-  Link as LinkIcon,
   Undo,
   Redo,
   ImageIcon,
@@ -122,6 +121,11 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
     extensions: [
       StarterKit,
       Underline,
+      // Sem botão de toolbar pra criar link manualmente: o `autolink` (ligado
+      // por padrão nesta extensão) já transforma qualquer URL digitada em
+      // link real — o botão exigia selecionar um trecho de texto antes pra
+      // ter efeito visível, e sem isso (uso comum) não fazia nada, sem
+      // nenhum aviso pro autor.
       Link.configure({ openOnClick: false }),
       TiptapImage.configure({
         inline: false,
@@ -168,11 +172,6 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
 
   if (!editor) return null
 
-  function setLink() {
-    const url = window.prompt('URL do link:')
-    if (url) editor?.chain().focus().setLink({ href: url }).run()
-  }
-
   async function handleImageFile(file: File) {
     if (!onImageUpload || !editor) return
     setIsUploadingImg(true)
@@ -194,7 +193,6 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
     { icon: List,         action: () => editor.chain().focus().toggleBulletList().run(),        active: editor.isActive('bulletList'),           label: 'Lista' },
     { icon: ListOrdered,  action: () => editor.chain().focus().toggleOrderedList().run(),       active: editor.isActive('orderedList'),          label: 'Lista numerada' },
     { icon: Quote,        action: () => editor.chain().focus().toggleBlockquote().run(),        active: editor.isActive('blockquote'),           label: 'Citação' },
-    { icon: LinkIcon,     action: setLink,                                                      active: editor.isActive('link'),                 label: 'Link' },
     { icon: Undo,         action: () => editor.chain().focus().undo().run(),                    active: false,                                   label: 'Desfazer' },
     { icon: Redo,         action: () => editor.chain().focus().redo().run(),                    active: false,                                   label: 'Refazer' },
   ]
