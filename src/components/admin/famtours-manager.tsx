@@ -6,6 +6,7 @@ import {
   createFamtour, updateFamtour, deleteFamtour, toggleFamtourActive, uploadFamtourCover,
   type Famtour,
 } from '@/app/actions/famtours'
+import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,8 +17,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { Plus, Trash2, Pencil, X, Upload, ImageIcon, Luggage, ExternalLink, Calendar } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Upload, ImageIcon, Luggage, ExternalLink, Calendar, Crop } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 function formatPeriod(start: string | null, end: string | null): string {
   if (!start) return ''
@@ -38,12 +43,18 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
   const [isPending, startTransition] = useTransition()
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+
+  function revokeIfBlob(url: string | null) {
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
+  }
 
   function resetForm() {
     setShowForm(false)
     setEditing(null)
+    revokeIfBlob(coverPreview)
     setCoverPreview(null)
     setCoverFile(null)
   }
@@ -59,16 +70,45 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    e.target.value = ''
+    if (!file.type.startsWith('image/')) {
+      toast.error('Apenas imagens são aceitas (JPG, PNG, WEBP ou GIF).')
+      return
+    }
     // Foto de celular facilmente passa de 5-10MB — enviar isso cru pro server
     // action (que só comprime DEPOIS de receber) estoura o limite de body do
     // Next.js e derruba a página sem erro amigável. Barra aqui, antes do envio.
     if (file.size > 8 * 1024 * 1024) {
       toast.error('Imagem muito grande (máx. 8MB). Escolha uma foto menor ou comprima antes de enviar.')
-      e.target.value = ''
       return
     }
+    // Abre o recorte (16:9) antes de usar como capa — mesmo padrão da foto
+    // de instrutor em course-editor.tsx, em vez de aceitar o enquadramento
+    // cru que o `object-cover` do CSS decidir sozinho.
+    setCropSrc(URL.createObjectURL(file))
+  }
+
+  function handleCropConfirm(blob: Blob) {
+    revokeIfBlob(cropSrc)
+    revokeIfBlob(coverPreview)
+    setCropSrc(null)
+    const file = new File([blob], 'cover.jpg', { type: 'image/jpeg' })
     setCoverFile(file)
-    setCoverPreview(URL.createObjectURL(file))
+    setCoverPreview(URL.createObjectURL(blob))
+  }
+
+  function handleCropClose() {
+    revokeIfBlob(cropSrc)
+    setCropSrc(null)
+  }
+
+  // Clique na prévia já preenchida reabre o recorte na MESMA imagem (pra
+  // reposicionar), em vez de abrir o seletor de arquivo pra trocar por
+  // outra — isso é o botão "Trocar imagem" ao lado, que continua abrindo
+  // o seletor normalmente.
+  function handlePreviewClick() {
+    if (coverPreview) setCropSrc(coverPreview)
+    else fileInputRef.current?.click()
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -131,13 +171,27 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
               <Textarea id="famtour-description" name="description" rows={2} defaultValue={editing?.description ?? ''} placeholder="Breve descrição da viagem..." className="mt-1.5 resize-none" />
             </div>
 
+            {/* `min` trava data passada só pra valor NOVO — se o famtour em
+                edição já tinha uma data passada (viagem já rolou), o próprio
+                valor atual continua válido pro navegador, senão salvar
+                qualquer outro campo desse famtour ficaria impossível. */}
             <div>
               <Label htmlFor="famtour-start">Data de início</Label>
-              <Input id="famtour-start" name="start_date" type="date" defaultValue={editing?.start_date ?? ''} className="mt-1.5" />
+              <Input
+                id="famtour-start" name="start_date" type="date"
+                defaultValue={editing?.start_date ?? ''}
+                min={editing?.start_date && editing.start_date < todayIso() ? editing.start_date : todayIso()}
+                className="mt-1.5"
+              />
             </div>
             <div>
               <Label htmlFor="famtour-end">Data de fim</Label>
-              <Input id="famtour-end" name="end_date" type="date" defaultValue={editing?.end_date ?? ''} className="mt-1.5" />
+              <Input
+                id="famtour-end" name="end_date" type="date"
+                defaultValue={editing?.end_date ?? ''}
+                min={editing?.end_date && editing.end_date < todayIso() ? editing.end_date : todayIso()}
+                className="mt-1.5"
+              />
             </div>
 
             <div className="md:col-span-2">
@@ -157,14 +211,15 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
                     'relative w-full sm:w-48 aspect-video rounded-xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-primary/50 transition-colors',
                     coverPreview && 'border-solid border-border'
                   )}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handlePreviewClick}
+                  title={coverPreview ? 'Clique para reposicionar a imagem' : 'Clique para fazer upload'}
                 >
                   {coverPreview ? (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Upload className="w-5 h-5 text-white" />
+                        <Crop className="w-5 h-5 text-white" />
                       </div>
                     </>
                   ) : (
@@ -181,7 +236,7 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
                     {coverPreview ? 'Trocar imagem' : 'Selecionar imagem'}
                   </Button>
                   {coverPreview && (
-                    <button type="button" onClick={() => { setCoverPreview(null); setCoverFile(null) }} className="text-xs text-muted-foreground hover:text-red-500 transition-colors text-left">
+                    <button type="button" onClick={() => { revokeIfBlob(coverPreview); setCoverPreview(null); setCoverFile(null) }} className="text-xs text-muted-foreground hover:text-red-500 transition-colors text-left">
                       Remover imagem
                     </button>
                   )}
@@ -213,6 +268,15 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
             </Button>
             <Button type="button" variant="ghost" onClick={resetForm}>Cancelar</Button>
           </div>
+
+          <ImageCropModal
+            imageSrc={cropSrc}
+            onClose={handleCropClose}
+            onConfirm={handleCropConfirm}
+            title="Ajustar imagem de capa"
+            aspect={16 / 9}
+            cropShape="rect"
+          />
         </form>
       ) : canCreate ? (
         <Button onClick={() => setShowForm(true)} className="gap-2">

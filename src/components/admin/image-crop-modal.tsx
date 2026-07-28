@@ -14,6 +14,11 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { ZoomIn, ZoomOut } from 'lucide-react'
 
+// Sem forçar canvas quadrado: `pixelCrop.width/height` já respeitam o
+// `aspect` pedido ao Cropper (1:1 pro round da foto de instrutor, 16:9 pra
+// capa de famtour) — forçar quadrado aqui distorceria/cortaria qualquer
+// aspecto diferente de 1:1. Pra aspect=1 o resultado é idêntico a antes
+// (width e height já saem iguais do próprio Cropper).
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
   const image = new window.Image()
   image.crossOrigin = 'anonymous'
@@ -21,9 +26,8 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
   await new Promise<void>((resolve) => { image.onload = () => resolve() })
 
   const canvas = document.createElement('canvas')
-  const size = Math.min(pixelCrop.width, pixelCrop.height)
-  canvas.width = size
-  canvas.height = size
+  canvas.width = pixelCrop.width
+  canvas.height = pixelCrop.height
 
   const ctx = canvas.getContext('2d')!
   ctx.drawImage(
@@ -31,7 +35,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
     pixelCrop.x, pixelCrop.y,
     pixelCrop.width, pixelCrop.height,
     0, 0,
-    size, size,
+    pixelCrop.width, pixelCrop.height,
   )
 
   return new Promise((resolve, reject) => {
@@ -47,9 +51,17 @@ type Props = {
   imageSrc: string | null
   onClose: () => void
   onConfirm: (blob: Blob) => void
+  title?: string
+  aspect?: number
+  cropShape?: 'round' | 'rect'
 }
 
-export function ImageCropModal({ imageSrc, onClose, onConfirm }: Props) {
+export function ImageCropModal({
+  imageSrc, onClose, onConfirm,
+  title = 'Ajustar imagem',
+  aspect = 1,
+  cropShape = 'round',
+}: Props) {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
@@ -65,6 +77,12 @@ export function ImageCropModal({ imageSrc, onClose, onConfirm }: Props) {
     try {
       const blob = await getCroppedImg(imageSrc, croppedAreaPixels)
       onConfirm(blob)
+    } catch {
+      // Imagem remota sem CORS liberado pro storage (ou já removida) — não
+      // dá pra ler os pixels de volta do canvas. Fecha o modal em vez de
+      // travar num spinner infinito; o botão "Trocar imagem" continua
+      // funcionando pra escolher um arquivo novo.
+      onClose()
     } finally {
       setIsProcessing(false)
     }
@@ -74,7 +92,7 @@ export function ImageCropModal({ imageSrc, onClose, onConfirm }: Props) {
     <Dialog open={!!imageSrc} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-w-sm" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Ajustar foto do instrutor</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
         {/* Área de recorte */}
@@ -84,9 +102,9 @@ export function ImageCropModal({ imageSrc, onClose, onConfirm }: Props) {
               image={imageSrc}
               crop={crop}
               zoom={zoom}
-              aspect={1}
-              cropShape="round"
-              showGrid={false}
+              aspect={aspect}
+              cropShape={cropShape}
+              showGrid={cropShape === 'rect'}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}

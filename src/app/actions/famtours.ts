@@ -27,6 +27,12 @@ async function requireFamtourAccess(id: string): Promise<AdminContext | { error:
   return requireContentAccess('famtours', item.owner_area_id)
 }
 
+// Compara strings 'YYYY-MM-DD' — formato de DATE do Postgres/input date,
+// ordena corretamente como string sem precisar converter pra Date/fuso.
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export async function createFamtour(formData: FormData) {
   const ctx = await requireCapability('famtours')
   if ('error' in ctx) return { error: ctx.error }
@@ -34,14 +40,23 @@ export async function createFamtour(formData: FormData) {
   const title = ((formData.get('title') as string) ?? '').trim()
   if (!title) return { error: 'Informe o nome/destino do famtour.' }
 
+  const startDate = (formData.get('start_date') as string) || null
+  const endDate = (formData.get('end_date') as string) || null
+  const today = todayIsoDate()
+  // Famtour novo nunca deveria nascer com data no passado — o `min` do
+  // input já bloqueia isso na UI, mas quem chama a action direto (ou
+  // desabilita JS) precisa da mesma regra aplicada no servidor.
+  if (startDate && startDate < today) return { error: 'A data de início não pode ser uma data que já passou.' }
+  if (endDate && endDate < today) return { error: 'A data de fim não pode ser uma data que já passou.' }
+
   const adminClient = createAdminClient()
   const { data: inserted, error } = await adminClient.from('famtours').insert({
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
-    start_date: (formData.get('start_date') as string) || null,
-    end_date: (formData.get('end_date') as string) || null,
+    start_date: startDate,
+    end_date: endDate,
     is_active: formData.get('is_active') === 'true',
     owner_area_id: ctx.areaId,
   }).select('id').single()
@@ -68,13 +83,26 @@ export async function updateFamtour(id: string, formData: FormData) {
     .eq('id', id)
     .single()
 
+  const startDate = (formData.get('start_date') as string) || null
+  const endDate = (formData.get('end_date') as string) || null
+  const today = todayIsoDate()
+  // Só bloqueia data passada quando ela está sendo MUDADA pra uma data
+  // passada — um famtour que já aconteceu (start_date antigo, sem tocar
+  // nele) continua editável em outros campos sem exigir apagar a viagem.
+  if (startDate && startDate < today && startDate !== prev?.start_date) {
+    return { error: 'A data de início não pode ser uma data que já passou.' }
+  }
+  if (endDate && endDate < today && endDate !== prev?.end_date) {
+    return { error: 'A data de fim não pode ser uma data que já passou.' }
+  }
+
   const after = {
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
-    start_date: (formData.get('start_date') as string) || null,
-    end_date: (formData.get('end_date') as string) || null,
+    start_date: startDate,
+    end_date: endDate,
     is_active: formData.get('is_active') === 'true',
   }
   const { error } = await adminClient.from('famtours').update(after).eq('id', id)
@@ -125,15 +153,37 @@ export async function deleteFamtour(id: string) {
   return { success: true }
 }
 
+// Extensão é a fonte de verdade, não `file.type` — o navegador deriva o
+// `type` de um File justamente pela extensão, então um arquivo renomeado
+// pra ".jpg" passaria pela checagem de qualquer forma; é o try/catch em
+// volta do toWebP() (sharp) que pega esse caso na prática, na hora de
+// decodificar bytes que não são realmente uma imagem.
+const FAMTOUR_COVER_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+
 export async function uploadFamtourCover(file: File) {
   const ctx = await requireCapability('famtours')
   if ('error' in ctx) return { error: ctx.error }
 
-  const adminClient = createAdminClient()
-  const webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
-  const path = `famtour-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (!FAMTOUR_COVER_EXTS.includes(ext)) {
+    return { error: 'Apenas imagens são aceitas (JPG, PNG, WEBP ou GIF).' }
+  }
 
-  const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: 'image/webp' })
+  const adminClient = createAdminClient()
+  let webpFile: File
+  try {
+    webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar esta imagem — ela pode estar corrompida ou num formato inesperado.' }
+  }
+  // `contentType` vem do arquivo de saída de verdade — antes era sempre
+  // 'image/webp' mesmo quando toWebP() devolvia o arquivo intacto (só
+  // acontece pra `image/svg+xml`, que não é convertido), gravando um
+  // Content-Type errado no storage.
+  const isConverted = webpFile.type === 'image/webp'
+  const path = `famtour-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${isConverted ? 'webp' : ext}`
+
+  const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: webpFile.type })
   if (error) return { error: error.message }
 
   const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)

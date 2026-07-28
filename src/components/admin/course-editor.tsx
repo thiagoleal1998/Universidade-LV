@@ -308,6 +308,7 @@ export function CourseEditor({ course, canEdit = true, instructorCandidates = []
         imageSrc={cropSrc}
         onClose={handleCropClose}
         onConfirm={handleCropConfirm}
+        title="Ajustar foto do instrutor"
       />
     </form>
   )
