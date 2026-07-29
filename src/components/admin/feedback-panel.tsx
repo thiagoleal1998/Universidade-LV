@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { assignFeedback, updateFeedbackStatus, addFeedbackNote, uploadFeedbackFile } from '@/app/actions/feedback'
+import { assignFeedback, updateFeedbackStatus, addFeedbackNote, uploadFeedbackFile, notifyMemberToRespond } from '@/app/actions/feedback'
 import type { FeedbackReport, FeedbackStatus, AdminOption } from '@/app/actions/feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
 import { toast } from 'sonner'
-import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink } from 'lucide-react'
+import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink, BellRing } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
 import { isRichTextEmpty } from '@/lib/rich-text-content'
@@ -40,6 +40,25 @@ const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
 const UNASSIGNED = '__unassigned__'
 
 const isNoteEmpty = isRichTextEmpty
+
+type WaitingInfo = { days: number; waitingOn: 'admin' | 'member' }
+
+// Quem está devendo resposta e há quantos dias — só olha eventos que são de
+// fato "turno de fala" (abertura ou resposta; atribuição/mudança de status
+// não contam). `actor_name` é texto denormalizado (sem actor_id na tabela,
+// ver CLAUDE.md) — comparar com member_name é a única forma de saber se foi
+// o próprio membro ou o responsável quem respondeu por último; um admin com
+// o mesmo nome do membro é o único caso que escaparia dessa heurística.
+function computeWaitingInfo(report: FeedbackReport): WaitingInfo | null {
+  if (report.status === 'resolved') return null
+  const turnEvents = report.events.filter((e) => e.event_type === 'created' || e.event_type === 'note_added')
+  const last = turnEvents[turnEvents.length - 1]
+  const lastAt = last?.created_at ?? report.created_at
+  const waitingOn: WaitingInfo['waitingOn'] =
+    !last || last.event_type === 'created' || last.actor_name === report.member_name ? 'admin' : 'member'
+  const days = Math.max(0, Math.floor((Date.now() - new Date(lastAt).getTime()) / 86_400_000))
+  return { days, waitingOn }
+}
 
 async function handleEditorImageUpload(file: File): Promise<string | null> {
   const r = await uploadFeedbackFile(file)
@@ -116,6 +135,14 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
     })
   }
 
+  function handleNotifyMember(id: string) {
+    startSave(async () => {
+      const r = await notifyMemberToRespond(id)
+      if (r?.error) toast.error(r.error)
+      else toast.success('Membro notificado!')
+    })
+  }
+
   function handleSaveNote(id: string) {
     const note = notes[id] ?? ''
     const attachments = (noteAttachments[id] ?? []).map((a) => ({ path: a.path, mimeType: a.mimeType, sizeBytes: a.sizeBytes, fileName: a.fileName }))
@@ -164,6 +191,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
         <div className="space-y-3">
           {filtered.map((report) => {
             const isOpen = openId === report.id
+            const waitingInfo = computeWaitingInfo(report)
             return (
               // Sem overflow-hidden no card: quebraria o sticky do toolbar da
               // resposta lá dentro (mesmo motivo do fix no RichTextEditor —
@@ -194,10 +222,23 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
                       <p className="text-xs text-muted-foreground truncate">
                         {report.member_name || 'Membro'}
                         {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
+                        {' · aberto em '}{new Date(report.created_at).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {waitingInfo && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-xs whitespace-nowrap',
+                          waitingInfo.days >= 3 ? 'text-red-500 border-red-500/40' : waitingInfo.days >= 1 ? 'text-amber-500 border-amber-500/40' : 'text-muted-foreground'
+                        )}
+                      >
+                        {waitingInfo.waitingOn === 'admin' ? 'Aguardando responsável' : 'Aguardando membro'}
+                        {' · '}{waitingInfo.days === 0 ? 'hoje' : `${waitingInfo.days}d`}
+                      </Badge>
+                    )}
                     <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
                     {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </div>
@@ -283,6 +324,20 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {report.status !== 'resolved' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isPending}
+                          onClick={() => handleNotifyMember(report.id)}
+                          className="gap-1.5 h-8 text-xs"
+                          title="Envia uma notificação lembrando o membro de responder este chamado"
+                        >
+                          <BellRing className="w-3.5 h-3.5" />
+                          Notificar membro
+                        </Button>
+                      )}
                     </div>
 
                     <FeedbackTimeline events={report.events} />

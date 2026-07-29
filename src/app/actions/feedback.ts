@@ -505,6 +505,34 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
   return { success: true }
 }
 
+// Lembrete manual pro membro responder — não é uma resposta de verdade (não
+// entra em feedback_events, senão apareceria misturado na timeline como se
+// fosse uma mensagem). Usa o mesmo type 'feedback_update' que já tem
+// som/toast em tempo real do lado do membro (feedback-notification-sound.tsx)
+// — um type novo aqui ficaria mudo, sem disparar o alerta que é o objetivo.
+export async function notifyMemberToRespond(id: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
+  const adminClient = createAdminClient()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title').eq('id', id).single()
+  if (!report) return { error: 'Chamado não encontrado.' }
+
+  const title = report.title || 'Sem título'
+  await notifyUser(report.user_id, {
+    type: 'feedback_update',
+    title: `Estamos aguardando sua resposta: ${title}`,
+    body: 'A equipe de suporte está esperando você responder este chamado.',
+    link: `/dashboard/feedback?tab=minhas&report=${id}`,
+  })
+
+  logActivity(toAdminContext(auth.userId), {
+    action: 'toggle', entityType: 'feedback', entityId: id, entityLabel: title, detail: 'notificou o membro para responder',
+  })
+
+  return { success: true }
+}
+
 // Chamado tanto pelo admin (responder um chamado) quanto pelo membro (responder
 // no próprio chamado) — por isso a autorização checa os dois casos, e a
 // notificação vai para "quem não escreveu": admin escreveu -> avisa o membro
