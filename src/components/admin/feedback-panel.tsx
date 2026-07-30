@@ -340,7 +340,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
                       )}
                     </div>
 
-                    <FeedbackTimeline events={report.events} />
+                    <FeedbackTimeline events={report.events} reportId={report.id} canModerate />
 
                     <div className="space-y-2">
                       <RichTextEditor

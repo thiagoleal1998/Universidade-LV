@@ -31,9 +31,13 @@ function toAdminContext(userId: string): AdminContext {
 // Conteúdo agora é gerado por membros comuns (não só admins) e renderizado como HTML
 // no painel admin — precisa ser sanitizado antes de guardar. Allowlist casada com o
 // que o RichTextEditor (Tiptap StarterKit + Underline + Link + Image) pode gerar.
+// `width`/`height` entraram pro redimensionamento de imagem (Image.configure({
+// resize: {...} }), nativo do @tiptap/extension-image 3.28 — grava como atributo
+// HTML puro (`width="320"`), não `style`, então não precisa de sanitização extra
+// de CSS: são só números, sem superfície de ataque.
 const SANITIZE_CONFIG = {
   ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'a', 'img'],
-  ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class'],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'width', 'height'],
 }
 
 function sanitizeRichText(html: string): string {
@@ -69,6 +73,8 @@ export type FeedbackEvent = {
   assigned_name: string | null
   note_text: string | null
   created_at: string
+  is_deleted: boolean
+  edited_at: string | null
   attachments: FeedbackAttachment[]
 }
 
@@ -124,7 +130,16 @@ export async function uploadFeedbackFile(file: File) {
   const MAX = 10 * 1024 * 1024
   if (file.size > MAX) return { error: 'Imagem muito grande. O limite é 10 MB.' }
 
-  const webpFile = await toWebP(file, { maxWidth: 1600, quality: 85 })
+  // toWebP() (sharp) lança exceção síncrona/rejeitada pra imagem corrompida —
+  // sem o try/catch isso derruba a página inteira ("This page couldn't
+  // load"), mesma classe de bug já corrigida em uploadMarketingFile/
+  // uploadFamtourCover.
+  let webpFile: File
+  try {
+    webpFile = await toWebP(file, { maxWidth: 1600, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar esta imagem — ela pode estar corrompida ou num formato inesperado.' }
+  }
   const isConverted = webpFile.type === 'image/webp'
   const ext = isConverted ? 'webp' : (file.name.split('.').pop() || 'jpg')
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
@@ -193,7 +208,12 @@ export async function uploadFeedbackAttachment(file: File) {
   // MIME própria) recusaria o upload.
   const normalized = file.type === mime ? file : new File([file], file.name, { type: mime })
 
-  const uploadFile = await toWebP(normalized, { maxWidth: 1600, quality: 85 })
+  let uploadFile: File
+  try {
+    uploadFile = await toWebP(normalized, { maxWidth: 1600, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar este arquivo — ele pode estar corrompido ou num formato inesperado.' }
+  }
   const isConverted = uploadFile.type === 'image/webp' && mime !== 'image/webp'
   // Extensão vem do tipo RESOLVIDO, nunca do nome original: um arquivo
   // chamado "x.exe" enviado com MIME de PDF seria salvo como .exe e baixado
@@ -310,6 +330,7 @@ type ReportRow = {
     id: string; event_type: FeedbackEvent['event_type']; actor_name: string
     from_status: FeedbackStatus | null; to_status: FeedbackStatus | null
     assigned_name: string | null; note_text: string | null; created_at: string
+    is_deleted: boolean; edited_at: string | null
     feedback_attachments: { id: string; storage_path: string; mime_type: string; file_name: string }[]
   }[]
 }
@@ -348,6 +369,8 @@ function mapReports(rows: ReportRow[]): FeedbackReport[] {
         assigned_name: e.assigned_name,
         note_text: e.note_text,
         created_at: e.created_at,
+        is_deleted: e.is_deleted,
+        edited_at: e.edited_at,
         attachments: (e.feedback_attachments ?? []).map((a) => ({
           id: a.id,
           url: attachmentPublicUrl(a.storage_path),
@@ -363,7 +386,7 @@ const REPORT_SELECT = `
   profiles!feedback_reports_user_id_fkey(full_name),
   assigned:profiles!feedback_reports_assigned_to_fkey(full_name),
   feedback_attachments!feedback_attachments_feedback_id_fkey(id, storage_path, mime_type, file_name, event_id),
-  feedback_events(id, event_type, actor_name, from_status, to_status, assigned_name, note_text, created_at, feedback_attachments(id, storage_path, mime_type, file_name))
+  feedback_events(id, event_type, actor_name, from_status, to_status, assigned_name, note_text, created_at, is_deleted, edited_at, feedback_attachments(id, storage_path, mime_type, file_name))
 `
 
 export async function getFeedbackReports(): Promise<FeedbackReport[]> {
@@ -619,6 +642,67 @@ export async function addFeedbackNote(
       link: `/admin/feedback?report=${id}`,
     })
   }
+
+  revalidatePath('/admin/feedback')
+  revalidatePath('/dashboard/feedback')
+  return { success: true }
+}
+
+// Admin exclui uma mensagem (resposta) da timeline — do responsável ou do
+// próprio membro. Soft delete: `note_text`/anexos continuam no banco, só
+// escondidos pelo `is_deleted`; a linha do evento fica, então a timeline não
+// perde a marcação de "quando" a mensagem existiu. Sem mirror no Notion
+// (a timeline lá é só um espelho de alto nível, editar uma linha específica
+// não tem suporte no client de hoje — fora de escopo).
+export async function deleteFeedbackNote(eventId: string, reportId: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
+  const adminClient = createAdminClient()
+  const { data: event } = await adminClient.from('feedback_events').select('event_type, feedback_id').eq('id', eventId).single()
+  if (!event || event.feedback_id !== reportId || event.event_type !== 'note_added') {
+    return { error: 'Mensagem não encontrada.' }
+  }
+
+  const { error } = await adminClient.from('feedback_events').update({ is_deleted: true }).eq('id', eventId)
+  if (error) return { error: error.message }
+
+  const { data: report } = await adminClient.from('feedback_reports').select('title').eq('id', reportId).single()
+  logActivity(toAdminContext(auth.userId), {
+    action: 'delete', entityType: 'feedback', entityId: reportId, entityLabel: report?.title || 'Sem título', detail: 'excluiu uma mensagem do chamado',
+  })
+
+  revalidatePath('/admin/feedback')
+  revalidatePath('/dashboard/feedback')
+  return { success: true }
+}
+
+// Admin edita o texto de uma mensagem já enviada — sobrescreve `note_text` e
+// marca `edited_at` (exibido como "(editada)" na timeline pros dois lados).
+export async function editFeedbackNote(eventId: string, reportId: string, newNote: string) {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+
+  const sanitized = sanitizeRichText(newNote)
+  if (!hasContent(sanitized)) return { error: 'Escreva algo antes de salvar.' }
+
+  const adminClient = createAdminClient()
+  const { data: event } = await adminClient.from('feedback_events').select('event_type, feedback_id, is_deleted').eq('id', eventId).single()
+  if (!event || event.feedback_id !== reportId || event.event_type !== 'note_added') {
+    return { error: 'Mensagem não encontrada.' }
+  }
+  if (event.is_deleted) return { error: 'Não é possível editar uma mensagem excluída.' }
+
+  const { error } = await adminClient
+    .from('feedback_events')
+    .update({ note_text: sanitized, edited_at: new Date().toISOString() })
+    .eq('id', eventId)
+  if (error) return { error: error.message }
+
+  const { data: report } = await adminClient.from('feedback_reports').select('title').eq('id', reportId).single()
+  logActivity(toAdminContext(auth.userId), {
+    action: 'update', entityType: 'feedback', entityId: reportId, entityLabel: report?.title || 'Sem título', detail: 'editou uma mensagem do chamado',
+  })
 
   revalidatePath('/admin/feedback')
   revalidatePath('/dashboard/feedback')

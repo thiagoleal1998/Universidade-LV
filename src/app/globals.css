@@ -306,3 +306,24 @@ ul[data-type='taskList'] li[data-checked='true'] > div {
 /* Tiptap editor area */
 .ProseMirror { outline: none; }
 .ProseMirror > * + * { margin-top: 0.4rem; }
+
+/* Alça de redimensionar imagem (@tiptap/extension-image `resize`, 3.28) — a
+   extensão só cria o elemento com `position:absolute` inline, sem nenhum
+   estilo visual (não expõe `className` na config pública do Image); sem
+   este CSS a alça existe no DOM mas fica invisível e sem área clicável.
+   Só aparece com a imagem selecionada (`.ProseMirror-selectednode`, classe
+   que o próprio ProseMirror já aplica ao nó selecionado). */
+[data-resize-handle] {
+  display: none;
+  width: 12px;
+  height: 12px;
+  background: var(--primary);
+  border: 2px solid var(--background);
+  border-radius: 9999px;
+  z-index: 5;
+}
+.ProseMirror-selectednode [data-resize-handle] { display: block; }
+[data-resize-handle="bottom-right"] { cursor: se-resize; transform: translate(50%, 50%); }
+[data-resize-handle="bottom-left"]  { cursor: sw-resize; transform: translate(-50%, 50%); }
+[data-resize-handle="top-right"]    { cursor: ne-resize; transform: translate(50%, -50%); }
+[data-resize-handle="top-left"]     { cursor: nw-resize; transform: translate(-50%, -50%); }

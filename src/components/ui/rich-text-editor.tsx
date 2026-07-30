@@ -52,7 +52,7 @@ const PASTE_ALLOWED_TAGS = new Set([
 ])
 const PASTE_ALLOWED_ATTRS: Record<string, string[]> = {
   A: ['href'],
-  IMG: ['src', 'alt'],
+  IMG: ['src', 'alt', 'width', 'height'],
 }
 
 // Blocos ricos (callout/checklist) são identificados pelo atributo
@@ -131,6 +131,12 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
         inline: false,
         allowBase64: false,
         HTMLAttributes: { class: 'rounded-lg max-w-full' },
+        // Redimensionamento nativo (@tiptap/extension-image 3.28): clique na
+        // imagem pra selecionar, arraste a alça no canto — grava como
+        // `width`/`height` (atributo HTML puro, não `style`) direto na tag,
+        // então o tamanho persiste em qualquer lugar que renderize o HTML
+        // salvo (dangerouslySetInnerHTML), sem precisar de nó React custom.
+        resize: { enabled: true, directions: ['bottom-right'], minWidth: 80, minHeight: 40, alwaysPreserveAspectRatio: true },
       }),
       // Schema idêntico ao de hoje quando `blocks` está desligado — um
       // callout colado num editor sem essa extensão é descartado pelo
