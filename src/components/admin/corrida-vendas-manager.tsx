@@ -240,17 +240,30 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
     const pending = pendingUpload.current
     if (!file || !pending) return
     e.target.value = ''
+    // Um vídeo real facilmente passa de 10MB — o limite de body de Server
+    // Action do Next (next.config.ts) derrubava a página inteira ("This
+    // page couldn't load") antes mesmo do arquivo chegar na validação de
+    // tipo do servidor, porque o corpo da requisição já estourava o limite.
+    // Mesmo motivo/fix do bug de capa de famtour/treinamento (v1.68.1).
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Arquivo muito grande (máx. 8MB). Escolha um arquivo menor.')
+      return
+    }
     const kind = pending.kind === 'vencedor' || pending.field === 'parceiro_logo_url' ? 'image' : 'image_pdf'
     startUpload(async () => {
-      const r = await uploadMarketingFile(file, kind)
-      if (r?.error) { toast.error(r.error); return }
-      if (!r.url) return
-      if (pending.kind === 'corrida') {
-        updateAt(pending.idx, { [pending.field]: r.url })
-        toast.success(pending.field === 'parceiro_logo_url' ? 'Logo enviado!' : 'Lâmina enviada!')
-      } else {
-        updateVencedor(pending.cIdx, pending.vIdx, { logo_url: r.url })
-        toast.success('Logo do vencedor enviado!')
+      try {
+        const r = await uploadMarketingFile(file, kind)
+        if (r?.error) { toast.error(r.error); return }
+        if (!r.url) return
+        if (pending.kind === 'corrida') {
+          updateAt(pending.idx, { [pending.field]: r.url })
+          toast.success(pending.field === 'parceiro_logo_url' ? 'Logo enviado!' : 'Lâmina enviada!')
+        } else {
+          updateVencedor(pending.cIdx, pending.vIdx, { logo_url: r.url })
+          toast.success('Logo do vencedor enviado!')
+        }
+      } catch {
+        toast.error('Não foi possível enviar o arquivo. Tente novamente com um arquivo menor.')
       }
     })
   }
@@ -500,6 +513,7 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
                 {/* Logo do parceiro/hotel */}
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground font-medium">Logo do hotel / parceiro</Label>
+                  <p className="text-xs text-muted-foreground">Aceita apenas imagem: JPG, PNG, WEBP ou GIF (máx. 8MB).</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     {corrida.parceiro_logo_url && (
                       <div className="border border-border rounded-lg p-2 bg-muted/30">
@@ -524,6 +538,7 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
                     <Paperclip className="w-4 h-4 text-primary" />
                     <Label className="text-xs text-muted-foreground font-medium">Lâmina (PDF ou imagem)</Label>
                   </div>
+                  <p className="text-xs text-muted-foreground">Aceita apenas PDF ou imagem: JPG, PNG, WEBP ou GIF (máx. 8MB).</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     <Button type="button" variant="outline" size="sm" onClick={() => clickUpload(cIdx, 'lamina_url')} disabled={isUploading} className="gap-1.5">
                       {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
