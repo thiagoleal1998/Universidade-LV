@@ -91,10 +91,15 @@ async function handleEditorImageUpload(file: File): Promise<string | null> {
 }
 
 function FeedbackKanban({ reports, onCardClick }: { reports: FeedbackReport[]; onCardClick: (id: string) => void }) {
-  const columns = (['open', 'in_progress', 'resolved'] as const).map((status) => ({
-    status,
-    items: reports.filter((r) => r.status === status),
-  }))
+  const columns = (['open', 'in_progress', 'resolved'] as const).map((status) => {
+    const items = reports.filter((r) => r.status === status)
+    // Coluna "Aberto" é uma fila de triagem: do primeiro que chegou pro
+    // último, pra atender por ordem de chegada. `reports` já vem do servidor
+    // ordenado por `created_at` desc (mais recente primeiro) — aqui só essa
+    // coluna é invertida; Em andamento/Finalizado mantêm a ordem original.
+    if (status === 'open') items.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    return { status, items }
+  })
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
