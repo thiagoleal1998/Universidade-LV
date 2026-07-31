@@ -4,11 +4,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { buttonVariants } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download, ShoppingBag, History } from 'lucide-react'
+import { BarChart2, Users, BookOpen, CheckCircle2, TrendingUp, Download, ShoppingBag, History, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RelatoriosMarketing } from '@/components/admin/relatorios-marketing'
+import { RelatoriosChamados } from '@/components/admin/relatorios-chamados'
 import { AtividadesTab } from '@/components/admin/atividades-log'
 import { requireContentPage } from '@/lib/authz'
+import { getFeedbackReports } from '@/app/actions/feedback'
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -36,13 +38,14 @@ function KpiCard({ label, value, sub, icon: Icon }: { label: string; value: stri
   )
 }
 
-const TABS = [
+const ALL_TABS = [
   { key: 'ensino',     label: 'Ensino',              icon: BookOpen    },
   { key: 'marketing',  label: 'Ofertas & Marketing', icon: ShoppingBag },
   { key: 'atividades', label: 'Atividades',          icon: History     },
+  { key: 'chamados',   label: 'Chamados',            icon: Ticket      },
 ] as const
 
-type Tab = typeof TABS[number]['key']
+type Tab = typeof ALL_TABS[number]['key']
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MktItem = Record<string, any>
@@ -55,7 +58,14 @@ export default async function RelatoriosPage({
   const ctx = await requireContentPage()
 
   const { tab: rawTab = 'ensino', ator, entidade, acao, de, ate, page } = await searchParams
-  const tab: Tab = rawTab === 'marketing' ? 'marketing' : rawTab === 'atividades' ? 'atividades' : 'ensino'
+  // "Chamados" é 100% admin-only (mesma restrição da fila de triagem de
+  // Feedback) — colaborador que forçar ?tab=chamados na URL cai em "Ensino"
+  // em vez de vazar dados, o guard fica aqui, não só escondendo o link da aba.
+  const tab: Tab = rawTab === 'marketing' ? 'marketing'
+    : rawTab === 'atividades' ? 'atividades'
+    : rawTab === 'chamados' && ctx.role === 'admin' ? 'chamados'
+    : 'ensino'
+  const TABS = ctx.role === 'admin' ? ALL_TABS : ALL_TABS.filter((t) => t.key !== 'chamados')
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -92,6 +102,10 @@ export default async function RelatoriosPage({
     supabase.from('lessons').select('id, module_id, is_published'),
     supabase.from('member_progress').select('user_id, lesson_id'),
   ])
+
+  // Chamados de feedback — só admin (mesma restrição da fila de triagem);
+  // dataset pequeno, sem custo relevante buscar sempre em vez de só na aba.
+  const feedbackReports = ctx.role === 'admin' ? await getFeedbackReports() : []
 
   // Marketing data — fetch only on the marketing tab (or always, since it's fast)
   const [
@@ -300,6 +314,11 @@ export default async function RelatoriosPage({
       {/* ── Aba: Atividades ── */}
       {tab === 'atividades' && (
         <AtividadesTab filters={{ ator, entidade, acao, de, ate, page }} scope={scopeToOwnCourses} />
+      )}
+
+      {/* ── Aba: Chamados ── */}
+      {tab === 'chamados' && (
+        <RelatoriosChamados reports={feedbackReports} />
       )}
     </div>
   )

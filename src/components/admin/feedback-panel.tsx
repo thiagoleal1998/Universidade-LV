@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, useRef, useMemo, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { assignFeedback, updateFeedbackStatus, addFeedbackNote, uploadFeedbackFile, notifyMemberToRespond } from '@/app/actions/feedback'
 import type { FeedbackReport, FeedbackStatus, AdminOption } from '@/app/actions/feedback'
@@ -13,7 +13,7 @@ import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
 import { toast } from 'sonner'
-import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink, BellRing } from 'lucide-react'
+import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink, BellRing, LayoutGrid, List as ListIcon, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
 import { isRichTextEmpty } from '@/lib/rich-text-content'
@@ -24,6 +24,8 @@ function draftKey(reportId: string) {
 }
 
 type StatusFilter = FeedbackStatus | 'all'
+type ViewMode = 'kanban' | 'lista'
+type SortKey = 'number' | 'lastAction'
 
 const STATUS_LABEL: Record<FeedbackStatus, string> = {
   open: 'Aberto',
@@ -35,6 +37,12 @@ const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
   open: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   in_progress: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   resolved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+}
+
+const KANBAN_DOT_CLASS: Record<FeedbackStatus, string> = {
+  open: 'bg-blue-500',
+  in_progress: 'bg-amber-500',
+  resolved: 'bg-emerald-500',
 }
 
 const UNASSIGNED = '__unassigned__'
@@ -60,15 +68,96 @@ function computeWaitingInfo(report: FeedbackReport): WaitingInfo | null {
   return { days, waitingOn }
 }
 
+function waitingLabel(info: WaitingInfo | null): string {
+  if (!info) return ''
+  const who = info.waitingOn === 'admin' ? 'Aguardando responsável' : 'Aguardando membro'
+  return `${who} · ${info.days === 0 ? 'hoje' : `${info.days}d`}`
+}
+
+// Data da última ação = o evento mais recente da timeline (criação, atribuição,
+// mudança de status ou resposta) — mais confiável que `resolved_at`, que fica
+// desatualizado se o chamado for reaberto depois de finalizado.
+function lastActionAt(report: FeedbackReport): string {
+  const last = report.events[report.events.length - 1]
+  return last?.created_at ?? report.created_at
+}
+
 async function handleEditorImageUpload(file: File): Promise<string | null> {
   const r = await uploadFeedbackFile(file)
   if (r?.error) { toast.error(r.error); return null }
   return r.url ?? null
 }
 
+function FeedbackKanban({ reports, onCardClick }: { reports: FeedbackReport[]; onCardClick: (id: string) => void }) {
+  const columns = (['open', 'in_progress', 'resolved'] as const).map((status) => ({
+    status,
+    items: reports.filter((r) => r.status === status),
+  }))
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {columns.map(({ status, items }) => (
+        <div key={status} className="bg-muted/30 border border-border rounded-xl p-3 flex flex-col min-w-0">
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', KANBAN_DOT_CLASS[status])} />
+            <h3 className="text-sm font-semibold text-foreground">{STATUS_LABEL[status]}</h3>
+            <span className="text-xs text-muted-foreground">({items.length})</span>
+          </div>
+          <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+            {items.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Nenhum chamado aqui.</p>
+            ) : (
+              items.map((report) => {
+                const waitingInfo = computeWaitingInfo(report)
+                return (
+                  <button
+                    key={report.id}
+                    type="button"
+                    onClick={() => onCardClick(report.id)}
+                    className="w-full text-left bg-card border border-border rounded-lg p-3 hover:border-primary/40 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={cn(
+                        'w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5',
+                        report.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+                      )}>
+                        {report.type === 'bug' ? <Bug className="w-2.5 h-2.5" /> : <Lightbulb className="w-2.5 h-2.5" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground tabular-nums">{formatTicketNumber(report.ticket_number)}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{report.member_name || 'Membro'}</p>
+                      </div>
+                    </div>
+                    {waitingInfo && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'mt-2 text-[10px] whitespace-nowrap',
+                          waitingInfo.days >= 3 ? 'text-red-500 border-red-500/40' : waitingInfo.days >= 1 ? 'text-amber-500 border-amber-500/40' : 'text-muted-foreground'
+                        )}
+                      >
+                        {waitingLabel(waitingInfo)}
+                      </Badge>
+                    )}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function FeedbackPanel({ reports, admins, initialOpenId = null }: { reports: FeedbackReport[]; admins: AdminOption[]; initialOpenId?: string | null }) {
   const router = useRouter()
+  const [view, setView] = useState<ViewMode>(initialOpenId ? 'lista' : 'kanban')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('lastAction')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [noteAttachments, setNoteAttachments] = useState<Record<string, PickedAttachment[]>>({})
@@ -78,7 +167,8 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
 
   // Vindo de uma notificação (link com ?report=<id>) — rola até o chamado
   // certo, já aberto (fica visível mesmo fora do filtro de status atual,
-  // graças ao `|| r.id === openId` do filtro abaixo).
+  // graças ao `|| r.id === openId` do filtro abaixo). Só roda na montagem;
+  // não afeta o clique num card do Kanban, que usa openInList() abaixo.
   useEffect(() => {
     if (!initialOpenId) return
     const el = document.getElementById(`feedback-report-${initialOpenId}`)
@@ -114,10 +204,48 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
     else writeDraft(draftKey(reportId), html)
   }
 
+  // Clique num card do Kanban: troca pra Lista, abre o chamado e rola até a
+  // linha certa. Precisa de rAF duplo porque a tabela ainda não existe no DOM
+  // no mesmo tick da troca de view (Kanban é desmontado, Lista é montada).
+  function openInList(id: string) {
+    setView('lista')
+    setOpenId(id)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`feedback-report-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    })
+  }
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir(key === 'number' ? 'desc' : 'desc') }
+  }
+
   // Mantém o card aberto visível mesmo se o status mudar para fora do filtro
   // atual — senão o chamado some da tela no meio da edição do admin.
-  const filtered = reports.filter((r) => statusFilter === 'all' || r.status === statusFilter || r.id === openId)
+  const statusFiltered = reports.filter((r) => statusFilter === 'all' || r.status === statusFilter || r.id === openId)
   const openCount = reports.filter((r) => r.status === 'open').length
+
+  const visibleReports = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    const searched = term
+      ? statusFiltered.filter((r) => {
+          const ticketStr = formatTicketNumber(r.ticket_number).toLowerCase()
+          return (
+            ticketStr.includes(term) ||
+            (r.title || '').toLowerCase().includes(term) ||
+            (r.member_name || '').toLowerCase().includes(term)
+          )
+        })
+      : statusFiltered
+    return [...searched].sort((a, b) => {
+      const cmp = sortKey === 'number'
+        ? a.ticket_number - b.ticket_number
+        : new Date(lastActionAt(a)).getTime() - new Date(lastActionAt(b)).getTime()
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [statusFiltered, search, sortKey, sortDir])
 
   function handleStatusChange(id: string, status: FeedbackStatus) {
     startSave(async () => {
@@ -160,214 +288,284 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
     })
   }
 
+  function renderDetail(report: FeedbackReport) {
+    return (
+      <div className="border-t border-border px-4 py-4 space-y-4">
+        <div
+          className="rich-text text-sm text-foreground bg-muted/40 rounded-lg px-3 py-2"
+          dangerouslySetInnerHTML={{ __html: report.message }}
+        />
+
+        {report.link_url && (
+          <a href={report.link_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+            <Link2 className="w-3 h-3" />
+            {report.link_url}
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+
+        {report.attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {report.attachments.map((a) => {
+              const isImage = a.mime_type.startsWith('image/')
+              const imageIndex = isImage
+                ? report.attachments.filter((x) => x.mime_type.startsWith('image/')).findIndex((x) => x.id === a.id)
+                : -1
+              return isImage ? (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setLightbox({ reportId: report.id, index: imageIndex })}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                </button>
+              ) : (
+                <AttachmentFileChip key={a.id} url={a.url} fileName={a.file_name} mimeType={a.mime_type} />
+              )
+            })}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>Página: {report.page_url || '—'}</span>
+          <span>{new Date(report.created_at).toLocaleString('pt-BR')}</span>
+        </div>
+
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Status:</span>
+            <Select
+              value={report.status}
+              onValueChange={(v) => handleStatusChange(report.id, v as FeedbackStatus)}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue>{(v: FeedbackStatus) => STATUS_LABEL[v]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Aberto</SelectItem>
+                <SelectItem value="in_progress">Em andamento</SelectItem>
+                <SelectItem value="resolved">Finalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Responsável:</span>
+            <Select
+              value={report.assigned_to ?? UNASSIGNED}
+              onValueChange={(v) => handleAssign(report.id, v as string)}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue>
+                  {(v: string) => v === UNASSIGNED ? 'Ninguém' : (admins.find((a) => a.id === v)?.full_name ?? '')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNASSIGNED}>Ninguém</SelectItem>
+                {admins.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {report.status !== 'resolved' && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => handleNotifyMember(report.id)}
+              className="gap-1.5 h-8 text-xs"
+              title="Envia uma notificação lembrando o membro de responder este chamado"
+            >
+              <BellRing className="w-3.5 h-3.5" />
+              Notificar membro
+            </Button>
+          )}
+        </div>
+
+        <FeedbackTimeline events={report.events} reportId={report.id} canModerate />
+
+        <div className="space-y-2">
+          <RichTextEditor
+            key={`note-${report.id}-${noteResetKey[report.id] ?? 0}`}
+            content={notes[report.id] ?? ''}
+            onChange={(v) => handleNoteChange(report.id, v)}
+            onImageUpload={handleEditorImageUpload}
+          />
+          <NoteAttachmentPicker
+            attachments={noteAttachments[report.id] ?? []}
+            onChange={(next) => setNoteAttachments((p) => ({ ...p, [report.id]: next }))}
+            idSuffix={`admin-${report.id}`}
+          />
+        </div>
+
+        <Button
+          size="sm"
+          disabled={isPending || isNoteEmpty(notes[report.id] ?? '')}
+          onClick={() => handleSaveNote(report.id)}
+        >
+          Enviar resposta
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        {([
-          { key: 'open', label: `Abertos (${openCount})` },
-          { key: 'in_progress', label: 'Em andamento' },
-          { key: 'resolved', label: 'Finalizados' },
-          { key: 'all', label: 'Todos' },
-        ] as const).map(({ key, label }) => (
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/40">
           <button
-            key={key}
             type="button"
-            onClick={() => setStatusFilter(key)}
+            onClick={() => setView('kanban')}
             className={cn(
-              'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
-              statusFilter === key ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:bg-muted'
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              view === 'kanban' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            {label}
+            <LayoutGrid className="w-4 h-4" />
+            Kanban
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => setView('lista')}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              view === 'lista' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <ListIcon className="w-4 h-4" />
+            Lista
+          </button>
+        </div>
+
+        {view === 'lista' && (
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pesquisar chamado..."
+              className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
+      {view === 'lista' && (
+        <div className="flex flex-wrap gap-2">
+          {([
+            { key: 'open', label: `Abertos (${openCount})` },
+            { key: 'in_progress', label: 'Em andamento' },
+            { key: 'resolved', label: 'Finalizados' },
+            { key: 'all', label: 'Todos' },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                statusFilter === key ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:bg-muted'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === 'kanban' ? (
+        <FeedbackKanban reports={reports} onCardClick={openInList} />
+      ) : visibleReports.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground">
           Nenhum feedback encontrado.
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((report) => {
-            const isOpen = openId === report.id
-            const waitingInfo = computeWaitingInfo(report)
-            return (
-              // Sem overflow-hidden no card: quebraria o sticky do toolbar da
-              // resposta lá dentro (mesmo motivo do fix no RichTextEditor —
-              // overflow diferente de visible num ancestral vira a âncora de
-              // rolagem do sticky, e este card nunca rola sozinho). O
-              // arredondamento do topo vai direto no botão do cabeçalho.
-              <div key={report.id} id={`feedback-report-${report.id}`} className="border rounded-xl bg-card">
-                <button
-                  type="button"
-                  onClick={() => setOpenId(isOpen ? null : report.id)}
-                  className={cn(
-                    'w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left',
-                    isOpen ? 'rounded-t-xl' : 'rounded-xl',
-                  )}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn(
-                      'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-                      report.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
-                    )}>
-                      {report.type === 'bug' ? <Bug className="w-3.5 h-3.5" /> : <Lightbulb className="w-3.5 h-3.5" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        <span className="text-muted-foreground font-normal tabular-nums">{formatTicketNumber(report.ticket_number)}</span>
-                        {' · '}{report.title || 'Sem título'}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {report.member_name || 'Membro'}
-                        {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
-                        {' · aberto em '}{new Date(report.created_at).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {waitingInfo && (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'text-xs whitespace-nowrap',
-                          waitingInfo.days >= 3 ? 'text-red-500 border-red-500/40' : waitingInfo.days >= 1 ? 'text-amber-500 border-amber-500/40' : 'text-muted-foreground'
-                        )}
-                      >
-                        {waitingInfo.waitingOn === 'admin' ? 'Aguardando responsável' : 'Aguardando membro'}
-                        {' · '}{waitingInfo.days === 0 ? 'hoje' : `${waitingInfo.days}d`}
-                      </Badge>
-                    )}
-                    <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
-                    {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                  </div>
-                </button>
-
-                {isOpen && (
-                  <div className="border-t border-border px-4 py-4 space-y-4">
-                    <div
-                      className="rich-text text-sm text-foreground bg-muted/40 rounded-lg px-3 py-2"
-                      dangerouslySetInnerHTML={{ __html: report.message }}
-                    />
-
-                    {report.link_url && (
-                      <a href={report.link_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
-                        <Link2 className="w-3 h-3" />
-                        {report.link_url}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-
-                    {report.attachments.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {report.attachments.map((a) => {
-                          const isImage = a.mime_type.startsWith('image/')
-                          const imageIndex = isImage
-                            ? report.attachments.filter((x) => x.mime_type.startsWith('image/')).findIndex((x) => x.id === a.id)
-                            : -1
-                          return isImage ? (
-                            <button
-                              key={a.id}
-                              type="button"
-                              onClick={() => setLightbox({ reportId: report.id, index: imageIndex })}
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={a.url} alt="Anexo" className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
-                            </button>
-                          ) : (
-                            <AttachmentFileChip key={a.id} url={a.url} fileName={a.file_name} mimeType={a.mime_type} />
-                          )
-                        })}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>Página: {report.page_url || '—'}</span>
-                      <span>{new Date(report.created_at).toLocaleString('pt-BR')}</span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Status:</span>
-                        <Select
-                          value={report.status}
-                          onValueChange={(v) => handleStatusChange(report.id, v as FeedbackStatus)}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue>{(v: FeedbackStatus) => STATUS_LABEL[v]}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="open">Aberto</SelectItem>
-                            <SelectItem value="in_progress">Em andamento</SelectItem>
-                            <SelectItem value="resolved">Finalizado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Responsável:</span>
-                        <Select
-                          value={report.assigned_to ?? UNASSIGNED}
-                          onValueChange={(v) => handleAssign(report.id, v as string)}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue>
-                              {(v: string) => v === UNASSIGNED ? 'Ninguém' : (admins.find((a) => a.id === v)?.full_name ?? '')}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={UNASSIGNED}>Ninguém</SelectItem>
-                            {admins.map((a) => (
-                              <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {report.status !== 'resolved' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={isPending}
-                          onClick={() => handleNotifyMember(report.id)}
-                          className="gap-1.5 h-8 text-xs"
-                          title="Envia uma notificação lembrando o membro de responder este chamado"
-                        >
-                          <BellRing className="w-3.5 h-3.5" />
-                          Notificar membro
-                        </Button>
-                      )}
-                    </div>
-
-                    <FeedbackTimeline events={report.events} reportId={report.id} canModerate />
-
-                    <div className="space-y-2">
-                      <RichTextEditor
-                        key={`note-${report.id}-${noteResetKey[report.id] ?? 0}`}
-                        content={notes[report.id] ?? ''}
-                        onChange={(v) => handleNoteChange(report.id, v)}
-                        onImageUpload={handleEditorImageUpload}
-                      />
-                      <NoteAttachmentPicker
-                        attachments={noteAttachments[report.id] ?? []}
-                        onChange={(next) => setNoteAttachments((p) => ({ ...p, [report.id]: next }))}
-                        idSuffix={`admin-${report.id}`}
-                      />
-                    </div>
-
-                    <Button
-                      size="sm"
-                      disabled={isPending || isNoteEmpty(notes[report.id] ?? '')}
-                      onClick={() => handleSaveNote(report.id)}
+        <div className="border rounded-xl bg-card overflow-x-auto">
+          <table className="w-full text-sm min-w-[720px]">
+            <thead>
+              <tr className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+                <th className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
+                  <button type="button" onClick={() => toggleSort('number')} className="inline-flex items-center gap-1 hover:text-foreground">
+                    Número
+                    {sortKey === 'number' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+                  </button>
+                </th>
+                <th className="text-left px-4 py-2.5 font-medium">Assunto</th>
+                <th className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
+                  <button type="button" onClick={() => toggleSort('lastAction')} className="inline-flex items-center gap-1 hover:text-foreground">
+                    Data da última ação
+                    {sortKey === 'lastAction' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+                  </button>
+                </th>
+                <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                <th className="text-left px-4 py-2.5 font-medium">Justificativa</th>
+                <th className="w-8 px-2 py-2.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {visibleReports.map((report) => {
+                const isOpen = openId === report.id
+                const waitingInfo = computeWaitingInfo(report)
+                return (
+                  <Fragment key={report.id}>
+                    <tr
+                      id={`feedback-report-${report.id}`}
+                      onClick={() => setOpenId(isOpen ? null : report.id)}
+                      className="border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
                     >
-                      Enviar resposta
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            'w-5 h-5 rounded-full flex items-center justify-center shrink-0',
+                            report.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+                          )}>
+                            {report.type === 'bug' ? <Bug className="w-2.5 h-2.5" /> : <Lightbulb className="w-2.5 h-2.5" />}
+                          </div>
+                          <span className="text-muted-foreground tabular-nums whitespace-nowrap">{formatTicketNumber(report.ticket_number)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top max-w-xs">
+                        <p className="font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {report.member_name || 'Membro'}
+                          {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 align-top text-muted-foreground whitespace-nowrap">
+                        {new Date(lastActionAt(report)).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {waitingInfo && (
+                          <span className={cn(
+                            'text-xs whitespace-nowrap',
+                            waitingInfo.days >= 3 ? 'text-red-500' : waitingInfo.days >= 1 ? 'text-amber-500' : 'text-muted-foreground'
+                          )}>
+                            {waitingLabel(waitingInfo)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-3 align-top">
+                        {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr>
+                        <td colSpan={6} className="p-0">
+                          {renderDetail(report)}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
