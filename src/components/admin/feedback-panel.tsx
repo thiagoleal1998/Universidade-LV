@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef, useMemo, Fragment } from 'react'
+import { useState, useTransition, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { assignFeedback, updateFeedbackStatus, addFeedbackNote, uploadFeedbackFile, notifyMemberToRespond } from '@/app/actions/feedback'
 import type { FeedbackReport, FeedbackStatus, AdminOption } from '@/app/actions/feedback'
@@ -8,12 +8,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
 import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
 import { toast } from 'sonner'
-import { Bug, Lightbulb, ChevronDown, ChevronUp, Link2, ExternalLink, BellRing, LayoutGrid, List as ListIcon, Search, ArrowUp, ArrowDown } from 'lucide-react'
+import { Bug, Lightbulb, ChevronRight, Link2, ExternalLink, BellRing, LayoutGrid, List as ListIcon, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
 import { isRichTextEmpty } from '@/lib/rich-text-content'
@@ -153,7 +155,7 @@ function FeedbackKanban({ reports, onCardClick }: { reports: FeedbackReport[]; o
 
 export function FeedbackPanel({ reports, admins, initialOpenId = null }: { reports: FeedbackReport[]; admins: AdminOption[]; initialOpenId?: string | null }) {
   const router = useRouter()
-  const [view, setView] = useState<ViewMode>(initialOpenId ? 'lista' : 'kanban')
+  const [view, setView] = useState<ViewMode>('kanban')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('lastAction')
@@ -164,17 +166,6 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
   const [noteResetKey, setNoteResetKey] = useState<Record<string, number>>({})
   const [isPending, startSave] = useTransition()
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
-
-  // Vindo de uma notificação (link com ?report=<id>) — rola até o chamado
-  // certo, já aberto (fica visível mesmo fora do filtro de status atual,
-  // graças ao `|| r.id === openId` do filtro abaixo). Só roda na montagem;
-  // não afeta o clique num card do Kanban, que usa openInList() abaixo.
-  useEffect(() => {
-    if (!initialOpenId) return
-    const el = document.getElementById(`feedback-report-${initialOpenId}`)
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Recupera rascunhos de resposta da sessão do navegador — só uma vez, pra
   // não sobrescrever o que o admin já está digitando se `reports` mudar
@@ -202,19 +193,6 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
     setNotes((p) => ({ ...p, [reportId]: html }))
     if (isNoteEmpty(html)) clearDraft(draftKey(reportId))
     else writeDraft(draftKey(reportId), html)
-  }
-
-  // Clique num card do Kanban: troca pra Lista, abre o chamado e rola até a
-  // linha certa. Precisa de rAF duplo porque a tabela ainda não existe no DOM
-  // no mesmo tick da troca de view (Kanban é desmontado, Lista é montada).
-  function openInList(id: string) {
-    setView('lista')
-    setOpenId(id)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.getElementById(`feedback-report-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      })
-    })
   }
 
   function toggleSort(key: SortKey) {
@@ -290,7 +268,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
 
   function renderDetail(report: FeedbackReport) {
     return (
-      <div className="border-t border-border px-4 py-4 space-y-4">
+      <div className="space-y-4">
         <div
           className="rich-text text-sm text-foreground bg-muted/40 rounded-lg px-3 py-2"
           dangerouslySetInnerHTML={{ __html: report.message }}
@@ -412,6 +390,8 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
     )
   }
 
+  const openReport = reports.find((r) => r.id === openId) ?? null
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -477,7 +457,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
       )}
 
       {view === 'kanban' ? (
-        <FeedbackKanban reports={reports} onCardClick={openInList} />
+        <FeedbackKanban reports={reports} onCardClick={setOpenId} />
       ) : visibleReports.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground">
           Nenhum feedback encontrado.
@@ -507,67 +487,91 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
             </thead>
             <tbody>
               {visibleReports.map((report) => {
-                const isOpen = openId === report.id
                 const waitingInfo = computeWaitingInfo(report)
                 return (
-                  <Fragment key={report.id}>
-                    <tr
-                      id={`feedback-report-${report.id}`}
-                      onClick={() => setOpenId(isOpen ? null : report.id)}
-                      className="border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
-                    >
-                      <td className="px-4 py-3 align-top">
-                        <div className="flex items-center gap-2">
-                          <div className={cn(
-                            'w-5 h-5 rounded-full flex items-center justify-center shrink-0',
-                            report.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
-                          )}>
-                            {report.type === 'bug' ? <Bug className="w-2.5 h-2.5" /> : <Lightbulb className="w-2.5 h-2.5" />}
-                          </div>
-                          <span className="text-muted-foreground tabular-nums whitespace-nowrap">{formatTicketNumber(report.ticket_number)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 align-top max-w-xs">
-                        <p className="font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {report.member_name || 'Membro'}
-                          {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 align-top text-muted-foreground whitespace-nowrap">
-                        {new Date(lastActionAt(report)).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        {waitingInfo && (
-                          <span className={cn(
-                            'text-xs whitespace-nowrap',
-                            waitingInfo.days >= 3 ? 'text-red-500' : waitingInfo.days >= 1 ? 'text-amber-500' : 'text-muted-foreground'
-                          )}>
-                            {waitingLabel(waitingInfo)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-2 py-3 align-top">
-                        {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={6} className="p-0">
-                          {renderDetail(report)}
-                        </td>
-                      </tr>
+                  <tr
+                    key={report.id}
+                    onClick={() => setOpenId(report.id)}
+                    className={cn(
+                      'border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors',
+                      openId === report.id && 'bg-primary/5'
                     )}
-                  </Fragment>
+                  >
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          'w-5 h-5 rounded-full flex items-center justify-center shrink-0',
+                          report.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+                        )}>
+                          {report.type === 'bug' ? <Bug className="w-2.5 h-2.5" /> : <Lightbulb className="w-2.5 h-2.5" />}
+                        </div>
+                        <span className="text-muted-foreground tabular-nums whitespace-nowrap">{formatTicketNumber(report.ticket_number)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top max-w-xs">
+                      <p className="font-medium text-foreground truncate">{report.title || 'Sem título'}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {report.member_name || 'Membro'}
+                        {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 align-top text-muted-foreground whitespace-nowrap">
+                      {new Date(lastActionAt(report)).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      {waitingInfo && (
+                        <span className={cn(
+                          'text-xs whitespace-nowrap',
+                          waitingInfo.days >= 3 ? 'text-red-500' : waitingInfo.days >= 1 ? 'text-amber-500' : 'text-muted-foreground'
+                        )}>
+                          {waitingLabel(waitingInfo)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-3 align-top">
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </td>
+                  </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
       )}
+
+      <Dialog open={openReport !== null} onOpenChange={(v) => { if (!v) setOpenId(null) }}>
+        <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-3xl">
+          {openReport && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 pr-6">
+                  <span className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
+                    openReport.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+                  )}>
+                    {openReport.type === 'bug' ? <Bug className="w-3.5 h-3.5" /> : <Lightbulb className="w-3.5 h-3.5" />}
+                  </span>
+                  <span className="text-muted-foreground font-normal tabular-nums">{formatTicketNumber(openReport.ticket_number)}</span>
+                  <span className="truncate">{openReport.title || 'Sem título'}</span>
+                </DialogTitle>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{openReport.member_name || 'Membro'}</span>
+                  <span>·</span>
+                  <span>aberto em {new Date(openReport.created_at).toLocaleDateString('pt-BR')}</span>
+                  <Badge className={STATUS_BADGE_CLASS[openReport.status]}>{STATUS_LABEL[openReport.status]}</Badge>
+                </div>
+              </DialogHeader>
+              <Separator />
+              <div className="overflow-y-auto pr-1 -mr-1">
+                {renderDetail(openReport)}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {lightbox && (() => {
         const report = reports.find((r) => r.id === lightbox.reportId)
