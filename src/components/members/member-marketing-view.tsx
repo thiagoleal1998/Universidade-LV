@@ -472,6 +472,47 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }:
   )
 }
 
+function OfertaSection({
+  label, dotClass, items, products, periods, hideB2BBadge, onOpen,
+}: {
+  label: string
+  dotClass: string
+  items: MarketingItem[]
+  products: MarketingProduct[]
+  periods: MarketingPeriod[]
+  hideB2BBadge?: boolean
+  onOpen?: (item: MarketingItem) => void
+}) {
+  return (
+    <div className="space-y-3 min-w-0">
+      <div className="flex items-center gap-2">
+        <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', dotClass)} />
+        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+        <span className="text-xs text-muted-foreground">({items.length})</span>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-6 border border-dashed border-border rounded-xl">
+          Nenhuma oferta {label.toLowerCase()} no momento.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {items.map((item) => (
+            <OfertaCard
+              key={item.id}
+              item={item}
+              products={products}
+              periods={periods}
+              dayLabel={getDayLabel(item.publish_at ?? item.created_at)}
+              hideB2BBadge={hideB2BBadge}
+              onOpen={onOpen}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function OfertasDiariasLayout({ items, products, periods, hideB2BBadge, onOpen }: { items: MarketingItem[]; products: MarketingProduct[]; periods: MarketingPeriod[]; hideB2BBadge?: boolean; onOpen?: (item: MarketingItem) => void }) {
   const sorted = [...items].sort((a, b) => {
     const da = a.publish_at ? new Date(a.publish_at).getTime() : 0
@@ -502,45 +543,13 @@ function OfertasDiariasLayout({ items, products, periods, hideB2BBadge, onOpen }
         </p>
       </div>
 
-      {/* Cabeçalhos dos segmentos */}
-      <div className="grid grid-cols-2 gap-8">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-          <h3 className="text-sm font-semibold text-foreground">Nacional</h3>
-          <span className="text-xs text-muted-foreground">({nacional.length})</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-          <h3 className="text-sm font-semibold text-foreground">Internacional</h3>
-          <span className="text-xs text-muted-foreground">({internacional.length})</span>
-        </div>
-      </div>
-
-      {/* Grid unificado: Nacional nas colunas 1-2, Internacional nas 3-4 — linhas compartilhadas garantem altura igual */}
-      <div className="grid grid-cols-4 gap-3">
-        {Array.from(
-          { length: Math.max(Math.ceil(nacional.length / 2), Math.ceil(internacional.length / 2), 1) },
-          (_, row) => [
-            nacional[row * 2] ?? null,
-            nacional[row * 2 + 1] ?? null,
-            internacional[row * 2] ?? null,
-            internacional[row * 2 + 1] ?? null,
-          ]
-        ).flat().map((item, idx) =>
-          item ? (
-            <OfertaCard
-              key={item.id}
-              item={item}
-              products={products}
-              periods={periods}
-              dayLabel={getDayLabel(item.publish_at ?? item.created_at)}
-              hideB2BBadge={hideB2BBadge}
-              onOpen={onOpen}
-            />
-          ) : (
-            <div key={`empty-${idx}`} />
-          )
-        )}
+      {/* Nacional e Internacional empilham no celular/tablet (cada um com seu
+          próprio grid responsivo) e ficam lado a lado só a partir de `lg` —
+          antes disso era um único grid-cols-4 fixo, sem nenhum breakpoint,
+          que esmagava 4 colunas estreitas em qualquer tela de celular. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-4">
+        <OfertaSection label="Nacional" dotClass="bg-green-500" items={nacional} products={products} periods={periods} hideB2BBadge={hideB2BBadge} onOpen={onOpen} />
+        <OfertaSection label="Internacional" dotClass="bg-blue-500" items={internacional} products={products} periods={periods} hideB2BBadge={hideB2BBadge} onOpen={onOpen} />
       </div>
     </div>
   )
