@@ -63,7 +63,9 @@ export function NotificationBell({
   const updatePosition = useCallback(() => {
     if (!buttonRef.current) return
     const rect = buttonRef.current.getBoundingClientRect()
-    const panelW = 320
+    // Encolhe em telas bem estreitas (celulares antigos <336px) — nunca deixa
+    // o painel estourar a largura da viewport, mesmo com a folga de 16px.
+    const panelW = Math.min(320, window.innerWidth - 16)
 
     if (placement === 'sidebar') {
       // Abre para cima e para a direita do botão

@@ -314,7 +314,7 @@ export function AdminSidebar(props: Props) {
         )}
         <span className="text-sm font-semibold text-foreground truncate">{props.siteName}</span>
         <div className="ml-auto flex items-center gap-1">
-          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="sidebar" isAdmin />
+          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="header" isAdmin />
           <ThemeToggle />
         </div>
       </header>

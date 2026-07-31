@@ -349,7 +349,7 @@ export function MemberSidebar(props: Props) {
         )}
         <span className="text-sm font-semibold text-white truncate">{props.siteName}</span>
         <div className="ml-auto flex items-center gap-1">
-          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="sidebar" redirectFeedbackToAdmin={props.isCollaboratorOrAdmin} triggerClassName="text-white/70 hover:text-white hover:bg-white/10" />
+          <NotificationBell unreadCount={props.unreadCount ?? 0} placement="header" redirectFeedbackToAdmin={props.isCollaboratorOrAdmin} triggerClassName="text-white/70 hover:text-white hover:bg-white/10" />
           <ThemeToggle className="text-white/70 hover:text-white hover:bg-white/10" />
         </div>
       </header>
