@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { rdAdminNewFeedback, rdFeedbackResolved, getMemberEmailAndName } from '@/lib/rdstation'
+import { rdAdminNewFeedback, rdFeedbackOpened, rdFeedbackInProgress, rdFeedbackResolved, getMemberEmailAndName } from '@/lib/rdstation'
 import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
 import { toWebP } from '@/lib/image'
@@ -299,6 +299,7 @@ export async function submitFeedback(formData: FormData) {
     body: `${memberName || user.email} — ${messagePreview.slice(0, 140)}`,
     link: `/admin/feedback?report=${inserted.id}`,
   })
+  rdFeedbackOpened(user.email ?? '', memberName, title, `/dashboard/feedback?tab=minhas&report=${inserted.id}`)
 
   // Espelha o chamado no Notion (fire-and-forget) e grava o page_id de volta
   // pra os próximos eventos (atribuição/status/resposta) saberem qual página
@@ -524,11 +525,14 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
     link,
   })
 
-  // E-mail só quando o chamado é de fato finalizado — mudança pra "Em
-  // andamento" já é coberta pela notificação in-app, sem precisar de e-mail.
-  if (status === 'resolved') {
+  // E-mail nas 2 transições de status que o membro pode receber depois da
+  // abertura (que já manda o dela própria em submitFeedback/rdFeedbackOpened).
+  if (status === 'in_progress' || status === 'resolved') {
     const contact = await getMemberEmailAndName(report.user_id)
-    if (contact) rdFeedbackResolved(contact.email, contact.name, title, link)
+    if (contact) {
+      if (status === 'in_progress') rdFeedbackInProgress(contact.email, contact.name, title, link)
+      else rdFeedbackResolved(contact.email, contact.name, title, link)
+    }
   }
 
   revalidatePath('/admin/feedback')

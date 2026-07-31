@@ -17,6 +17,8 @@ const RD_EVENTS = {
   admin_cadastro_pendente: 'universidade-lv-admin-cadastro-pendente',
   admin_feedback_novo: 'universidade-lv-admin-feedback-novo',
   tarefa_corrigida: 'universidade-lv-tarefa-corrigida',
+  chamado_aberto: 'universidade-lv-chamado-aberto',
+  chamado_andamento: 'universidade-lv-chamado-andamento',
   chamado_resolvido: 'universidade-lv-chamado-resolvido',
 } as const
 
@@ -139,6 +141,24 @@ export async function rdTaskGraded(email: string, name: string, taskTitle: strin
     name,
     cf_titulo: taskTitle,
     cf_corpo: `Sua tarefa "${taskTitle}" foi corrigida e recebeu nota ${grade}/10.`,
+    cf_link: link,
+  })
+}
+
+export async function rdFeedbackOpened(email: string, name: string, title: string, link: string) {
+  await sendConversion(RD_EVENTS.chamado_aberto, email, {
+    name,
+    cf_titulo: title,
+    cf_corpo: `Recebemos seu chamado "${title}". Nossa equipe vai analisar e te avisamos por aqui.`,
+    cf_link: link,
+  })
+}
+
+export async function rdFeedbackInProgress(email: string, name: string, title: string, link: string) {
+  await sendConversion(RD_EVENTS.chamado_andamento, email, {
+    name,
+    cf_titulo: title,
+    cf_corpo: `Seu chamado "${title}" está em andamento — nossa equipe já começou a analisar.`,
     cf_link: link,
   })
 }
