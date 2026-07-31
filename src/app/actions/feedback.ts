@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { rdAdminNewFeedback } from '@/lib/rdstation'
+import { rdAdminNewFeedback, rdFeedbackResolved, getMemberEmailAndName } from '@/lib/rdstation'
 import { notifyAllAdmins, notifyUser } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
 import { toWebP } from '@/lib/image'
@@ -516,12 +516,20 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
   })
 
   const title = report.title || 'Sem título'
+  const link = `/dashboard/feedback?tab=minhas&report=${id}`
   await notifyUser(report.user_id, {
     type: 'feedback_update',
     title: `Chamado ${STATUS_LABEL[status].toLowerCase()}: ${title}`,
     body: `Status alterado de "${STATUS_LABEL[report.status as FeedbackStatus]}" para "${STATUS_LABEL[status]}".`,
-    link: `/dashboard/feedback?tab=minhas&report=${id}`,
+    link,
   })
+
+  // E-mail só quando o chamado é de fato finalizado — mudança pra "Em
+  // andamento" já é coberta pela notificação in-app, sem precisar de e-mail.
+  if (status === 'resolved') {
+    const contact = await getMemberEmailAndName(report.user_id)
+    if (contact) rdFeedbackResolved(contact.email, contact.name, title, link)
+  }
 
   revalidatePath('/admin/feedback')
   revalidatePath('/dashboard/feedback')

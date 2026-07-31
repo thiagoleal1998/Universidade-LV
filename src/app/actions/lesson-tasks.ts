@@ -7,6 +7,7 @@ import { logActivity } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { notifyCourseOwners, notifyUser } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
+import { rdTaskGraded, getMemberEmailAndName } from '@/lib/rdstation'
 
 export type QuestionType = 'short_text' | 'long_text' | 'multiple_choice' | 'checkboxes' | 'file_upload'
 
@@ -277,12 +278,15 @@ export async function gradeTaskResponse(
     const rd = responseData as any
     const memberId = rd.user_id
     const taskTitle = rd.lesson_task?.title ?? 'Tarefa'
+    const link = `/dashboard/documentos/notas`
     await notifyUser(memberId, {
       type: 'task_graded',
       title: `Sua tarefa foi corrigida`,
       body: `"${taskTitle}" recebeu nota ${grade}/10.`,
-      link: `/dashboard/documentos/notas`,
+      link,
     })
+    const contact = await getMemberEmailAndName(memberId)
+    if (contact) rdTaskGraded(contact.email, contact.name, taskTitle, grade, link)
   }
 
   revalidatePath(`/admin/aulas/${lessonId}`)

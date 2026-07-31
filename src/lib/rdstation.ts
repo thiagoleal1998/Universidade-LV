@@ -16,6 +16,8 @@ const RD_EVENTS = {
   perfil_atualizado: 'universidade-lv-perfil-atualizado',
   admin_cadastro_pendente: 'universidade-lv-admin-cadastro-pendente',
   admin_feedback_novo: 'universidade-lv-admin-feedback-novo',
+  tarefa_corrigida: 'universidade-lv-tarefa-corrigida',
+  chamado_resolvido: 'universidade-lv-chamado-resolvido',
 } as const
 
 // Destinatário dos 2 eventos admin-only abaixo — não é um membro, é o
@@ -130,6 +132,41 @@ export async function rdAdminNewFeedback(memberName: string, memberEmail: string
     cf_titulo: `${typeLabel}: ${title || memberName || memberEmail}`,
     cf_corpo: `${memberName} (${memberEmail}): ${excerpt}`,
   })
+}
+
+export async function rdTaskGraded(email: string, name: string, taskTitle: string, grade: number, link: string) {
+  await sendConversion(RD_EVENTS.tarefa_corrigida, email, {
+    name,
+    cf_titulo: taskTitle,
+    cf_corpo: `Sua tarefa "${taskTitle}" foi corrigida e recebeu nota ${grade}/10.`,
+    cf_link: link,
+  })
+}
+
+export async function rdFeedbackResolved(email: string, name: string, title: string, link: string) {
+  await sendConversion(RD_EVENTS.chamado_resolvido, email, {
+    name,
+    cf_titulo: title,
+    cf_corpo: `Seu chamado "${title}" foi finalizado.`,
+    cf_link: link,
+  })
+}
+
+// Busca e-mail + nome de um membro pra alimentar os eventos de e-mail acima —
+// os call sites (gradeTaskResponse, updateFeedbackStatus) só têm o userId.
+export async function getMemberEmailAndName(userId: string): Promise<{ email: string; name: string } | null> {
+  try {
+    const adminClient = createAdminClient()
+    const [{ data: userData }, { data: profile }] = await Promise.all([
+      adminClient.auth.admin.getUserById(userId),
+      adminClient.from('profiles').select('full_name').eq('id', userId).single(),
+    ])
+    const email = userData.user?.email
+    if (!email) return null
+    return { email, name: profile?.full_name ?? '' }
+  } catch {
+    return null
+  }
 }
 
 // Mantém cursos/tags/empresa/cargo do lead sempre atualizados na RD Station

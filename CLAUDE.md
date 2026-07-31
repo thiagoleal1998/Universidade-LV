@@ -232,6 +232,13 @@ Nesta versão do Next.js (16.2.9), quando um client component dispara 2+ Server 
 - **Chamada fire-and-forget seguida de `router.refresh()` é cancelada** antes de o servidor terminar (confirmado empiricamente com `syncMemberRdStation`: sem `await`, o evento simplesmente não chegava). Sempre `await` antes de refreshar.
 - A investigação completa, com as duas hipóteses plausíveis que se provaram erradas, está em [docs/historico-tecnico.md](docs/historico-tecnico.md#bug-promiseall-de-server-actions-a-investigação).
 
+## E-mail de "tarefa corrigida" e "chamado resolvido" (v1.111.0)
+
+- Mais 2 eventos de conversão na RD Station (`src/lib/rdstation.ts`, mesmo mecanismo dos outros 9 já existentes — `sendConversion` + OAuth2 com refresh lazy): `rdTaskGraded` (disparado em `gradeTaskResponse`, `src/app/actions/lesson-tasks.ts`, sempre que uma tarefa é corrigida) e `rdFeedbackResolved` (disparado em `updateFeedbackStatus`, `src/app/actions/feedback.ts`, **só quando o novo status é `resolved`** — mudar pra "Em andamento" não dispara e-mail, só a notificação in-app de sempre).
+- **`getMemberEmailAndName(userId)`** (novo, em `rdstation.ts`) — helper pra buscar e-mail+nome a partir de um `userId`, já que os 2 call sites só tinham o id (não o e-mail) até então. Mesmo padrão de fire-and-forget dos outros eventos (sem `await` bloqueando a action).
+- **Pré-requisito pro usuário**: criar as 2 Automações novas na RD Station (identificadores `universidade-lv-tarefa-corrigida` e `universidade-lv-chamado-resolvido`), mesmo processo já usado pros outros 9 eventos — sem isso, o código roda normal (fire-and-forget, nunca quebra a action) mas nenhum e-mail sai.
+- **WhatsApp foi discutido e descartado por ora** — não existe integração de envio nenhuma no projeto (só links estáticos de convite pra grupo) nem campo de telefone em `profiles`; exigiria conta em provedor de API (Meta Cloud API/Twilio/etc.), coleta de número e aprovação de template — tratado como projeto à parte, não um complemento do e-mail.
+
 ## Notion — documentação viva do projeto (MANTER ATUALIZADO)
 
 O projeto tem uma página no Notion que funciona como documentação central para a equipe (não-devs incluídos). **Sempre que concluir um conjunto de mudanças, atualize o Notion junto** — mesma regra do commit/push, é parte do "terminar a tarefa". Acesso via conector "claude.ai Notion" (ferramentas `mcp__claude_ai_Notion__*`; se não aparecerem, buscar com ToolSearch por "notion"; se o conector aparecer como não autorizado, avisar o usuário — não dá pra autorizar de dentro da sessão).
