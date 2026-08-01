@@ -551,7 +551,7 @@ export function AdminDashboardShell(props: DashboardProps) {
                   <Link
                     key={p.lessonId}
                     href={`/admin/aulas/${p.lessonId}`}
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors group"
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 active:bg-amber-300 dark:active:bg-amber-900/70 transition-colors group"
                   >
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-amber-900 dark:text-amber-200 truncate group-hover:text-amber-700 dark:group-hover:text-amber-100 transition-colors">
