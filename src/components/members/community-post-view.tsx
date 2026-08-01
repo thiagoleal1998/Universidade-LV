@@ -463,7 +463,7 @@ function ReplyItem({
               <Badge variant="outline" className="text-[10px] text-muted-foreground border-muted-foreground/40 py-0">Oculto</Badge>
             )}
           </div>
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+          <div className="flex items-center gap-0.5 shrink-0">
             {canModerate && (
               <button
                 onClick={handleHide}
