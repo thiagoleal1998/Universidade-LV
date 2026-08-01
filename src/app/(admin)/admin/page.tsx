@@ -72,7 +72,12 @@ export default async function AdminDashboard() {
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member'),
     supabase.from('lessons').select('id, title, module_id, modules(id, title)').eq('is_published', true),
     supabase.from('member_progress').select('lesson_id, user_id, completed_at'),
-    supabase.from('profiles').select('id, full_name, created_at').eq('role', 'member').eq('active', true),
+    // Alimenta o filtro "Todos os cursos" da aba Gráficos — precisa incluir
+    // colaborador (também estuda como aluno comum, mesmo critério já usado em
+    // "Progresso por Membro" de Relatórios: todo mundo exceto admin), senão
+    // conclusões/progresso de colaborador ficam de fora do escopo e as
+    // estatísticas somem mesmo havendo dado real (bug real, v1.111.3).
+    supabase.from('profiles').select('id, full_name, created_at').neq('role', 'admin').eq('active', true),
     supabase.from('modules').select('id, title, order_index, course_id').eq('is_published', true).order('order_index'),
     supabase
       .from('member_progress')
