@@ -70,10 +70,16 @@ export default async function RelatoriosPage({
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
-  // Colaborador só vê, na aba Atividades, o que aconteceu em cursos/módulos/
-  // aulas da própria área — as abas Ensino e Ofertas & Marketing continuam
+  // Colaborador só vê, na aba Atividades, o que aconteceu em conteúdo "de
+  // posse" da própria área — as abas Ensino e Ofertas & Marketing continuam
   // sem filtro (não é conteúdo "de posse", é visão geral, decisão do usuário).
-  let scopeToOwnCourses: { courseIds: string[]; moduleIds: string[]; lessonIds: string[] } | null = null
+  // Cobre TODAS as tabelas com owner_area_id (curso, famtour, treinamento,
+  // item de marketing, grupo, condição comercial) — não só curso/módulo/aula.
+  let scopeToOwnCourses: {
+    courseIds: string[]; moduleIds: string[]; lessonIds: string[]
+    famtourIds: string[]; treinamentoIds: string[]; itemMarketingIds: string[]
+    grupoIds: string[]; condicaoComercialIds: string[]
+  } | null = null
   if (ctx.role !== 'admin' && tab === 'atividades') {
     const { data: ownedCourses } = await adminClient.from('courses').select('id').eq('owner_area_id', ctx.areaId)
     const courseIds = (ownedCourses ?? []).map((c) => c.id)
@@ -85,7 +91,23 @@ export default async function RelatoriosPage({
       ? await adminClient.from('lessons').select('id').in('module_id', moduleIds)
       : { data: [] }
     const lessonIds = (ownedLessons ?? []).map((l) => l.id)
-    scopeToOwnCourses = { courseIds, moduleIds, lessonIds }
+
+    const [{ data: ownedFamtours }, { data: ownedTrainings }, { data: ownedMktItems }, { data: ownedGrupos }, { data: ownedCondicoes }] = await Promise.all([
+      adminClient.from('famtours').select('id').eq('owner_area_id', ctx.areaId),
+      adminClient.from('training_items').select('id').eq('owner_area_id', ctx.areaId),
+      adminClient.from('marketing_items').select('id').eq('owner_area_id', ctx.areaId),
+      adminClient.from('grupos').select('id').eq('owner_area_id', ctx.areaId),
+      adminClient.from('commercial_conditions').select('id').eq('owner_area_id', ctx.areaId),
+    ])
+
+    scopeToOwnCourses = {
+      courseIds, moduleIds, lessonIds,
+      famtourIds: (ownedFamtours ?? []).map((f) => f.id),
+      treinamentoIds: (ownedTrainings ?? []).map((t) => t.id),
+      itemMarketingIds: (ownedMktItems ?? []).map((i) => i.id),
+      grupoIds: (ownedGrupos ?? []).map((g) => g.id),
+      condicaoComercialIds: (ownedCondicoes ?? []).map((c) => c.id),
+    }
   }
 
   // Always fetch learning data (lightweight)

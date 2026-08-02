@@ -42,7 +42,19 @@ function buildHref(filters: AtividadesFilters, overrides: Partial<AtividadesFilt
   return `/admin/relatorios?${params.toString()}`
 }
 
-export type AtividadesScope = { courseIds: string[]; moduleIds: string[]; lessonIds: string[] } | null
+export type AtividadesScope = {
+  courseIds: string[]; moduleIds: string[]; lessonIds: string[]
+  famtourIds: string[]; treinamentoIds: string[]; itemMarketingIds: string[]
+  grupoIds: string[]; condicaoComercialIds: string[]
+} | null
+
+// Tipos de conteúdo que um colaborador pode ver/filtrar em Atividades — só os
+// que têm dono por área (owner_area_id numa tabela própria). Os demais
+// (comunicado, tag, membro, feedback, etc.) são globais ou de escopo diferente
+// — de propósito fora daqui, mesma decisão de v1.70.0.
+const SCOPED_ENTITY_TYPES: ActivityEntityType[] = [
+  'curso', 'modulo', 'aula', 'famtour', 'treinamento', 'item_marketing', 'grupo', 'condicao_comercial',
+]
 
 export async function AtividadesTab({ filters, scope = null }: { filters: AtividadesFilters; scope?: AtividadesScope }) {
   const adminClient = createAdminClient()
@@ -55,15 +67,20 @@ export async function AtividadesTab({ filters, scope = null }: { filters: Ativid
     .order('created_at', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  // Colaborador só vê atividades de cursos/módulos/aulas da própria área.
+  // Colaborador só vê atividades de conteúdo "de posse" da própria área.
   if (scope) {
     const parts: string[] = []
     if (scope.courseIds.length) parts.push(`and(entity_type.eq.curso,entity_id.in.(${scope.courseIds.join(',')}))`)
     if (scope.moduleIds.length) parts.push(`and(entity_type.eq.modulo,entity_id.in.(${scope.moduleIds.join(',')}))`)
     if (scope.lessonIds.length) parts.push(`and(entity_type.eq.aula,entity_id.in.(${scope.lessonIds.join(',')}))`)
+    if (scope.famtourIds.length) parts.push(`and(entity_type.eq.famtour,entity_id.in.(${scope.famtourIds.join(',')}))`)
+    if (scope.treinamentoIds.length) parts.push(`and(entity_type.eq.treinamento,entity_id.in.(${scope.treinamentoIds.join(',')}))`)
+    if (scope.itemMarketingIds.length) parts.push(`and(entity_type.eq.item_marketing,entity_id.in.(${scope.itemMarketingIds.join(',')}))`)
+    if (scope.grupoIds.length) parts.push(`and(entity_type.eq.grupo,entity_id.in.(${scope.grupoIds.join(',')}))`)
+    if (scope.condicaoComercialIds.length) parts.push(`and(entity_type.eq.condicao_comercial,entity_id.in.(${scope.condicaoComercialIds.join(',')}))`)
     query = parts.length > 0
       ? query.or(parts.join(','))
-      : query.eq('id', '00000000-0000-0000-0000-000000000000') // não é dono de curso nenhum ainda → lista vazia
+      : query.eq('id', '00000000-0000-0000-0000-000000000000') // não é dono de nenhum conteúdo ainda → lista vazia
   }
 
   if (filters.ator) query = query.eq('actor_name', filters.ator)
@@ -84,7 +101,7 @@ export async function AtividadesTab({ filters, scope = null }: { filters: Ativid
 
   // Colaborador só pode filtrar por tipos de conteúdo que podem aparecer pra ele.
   const entityOptions = (Object.entries(ACTIVITY_ENTITY_LABELS) as [ActivityEntityType, string][])
-    .filter(([key]) => !scope || ['curso', 'modulo', 'aula'].includes(key))
+    .filter(([key]) => !scope || SCOPED_ENTITY_TYPES.includes(key))
   const actionOptions = Object.entries(ACTIVITY_ACTION_LABELS) as [ActivityAction, string][]
 
   const hasFilters = !!(filters.ator || filters.entidade || filters.acao || filters.de || filters.ate)
