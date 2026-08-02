@@ -181,10 +181,15 @@ export default async function RelatoriosPage({
           </div>
         </div>
         {tab === 'ensino' && (
-          <Link href="/api/relatorios/export" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2')}>
+          // <a> comum, não <Link> — é uma rota de API que devolve um arquivo
+          // (Content-Disposition: attachment), não uma página. O <Link> do
+          // Next intercepta o clique pra navegação client-side, que não sabe
+          // lidar com uma rota sem componente de página — o download nunca
+          // disparava, principalmente no mobile (bug real, chamado CLV-0028).
+          <a href="/api/relatorios/export" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2')}>
             <Download className="w-4 h-4" />
             Exportar CSV
-          </Link>
+          </a>
         )}
       </div>
 
