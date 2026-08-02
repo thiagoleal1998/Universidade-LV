@@ -213,7 +213,12 @@ export function AdminDashboardShell(props: DashboardProps) {
                 <span className="font-semibold">
                   {props.pendingLessons.reduce((s, l) => s + l.count, 0)} tarefa{props.pendingLessons.reduce((s, l) => s + l.count, 0) !== 1 ? 's' : ''} aguardando correção
                 </span>
-                {' '}— veja no painel ao lado para corrigir.
+                {' '}—{' '}
+                {/* Painel lateral só fica "ao lado" a partir do breakpoint xl
+                    (grid-cols-1 xl:grid-cols-[1fr_272px] logo acima); abaixo
+                    disso — inclusive todo mobile — ele empilha embaixo. */}
+                <span className="hidden xl:inline">veja no painel ao lado para corrigir.</span>
+                <span className="xl:hidden">veja logo abaixo para corrigir.</span>
               </p>
             </div>
           )}
