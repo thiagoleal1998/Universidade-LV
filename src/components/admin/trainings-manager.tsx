@@ -189,28 +189,45 @@ function PreviewModal({ item, onClose }: { item: TrainingItem; onClose: () => vo
               </div>
             )}
 
-            {/* CTA */}
-            <div className={cn('flex items-center gap-1.5 text-xs font-semibold mt-1',
-              item.type === 'live' && isLivePast ? 'text-muted-foreground' : 'text-primary'
-            )}>
-              {item.type === 'live'
-                ? isLiveFuture ? <><Radio className="w-3.5 h-3.5" /> Participar ao vivo</> : <><X className="w-3.5 h-3.5" /> Sessão encerrada</>
-                : item.type === 'replay'
-                  ? <><Play className="w-3.5 h-3.5" /> Assistir replay</>
-                  : <><ExternalLink className="w-3.5 h-3.5" /> Acessar treinamento</>
-              }
-            </div>
+            {/* CTA — link real pro mesmo item.url que a linha da lista já abre,
+                pra prévia servir também pra testar se o link funciona. */}
+            {item.type === 'live' && isLivePast ? (
+              <div className="flex items-center gap-1.5 text-xs font-semibold mt-1 text-muted-foreground">
+                <X className="w-3.5 h-3.5" /> Sessão encerrada
+              </div>
+            ) : (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 text-xs font-semibold mt-1 text-primary hover:underline w-fit"
+              >
+                {item.type === 'live'
+                  ? <><Radio className="w-3.5 h-3.5" /> Participar ao vivo</>
+                  : item.type === 'replay'
+                    ? <><Play className="w-3.5 h-3.5" /> Assistir replay</>
+                    : <><ExternalLink className="w-3.5 h-3.5" /> Acessar treinamento</>
+                }
+              </a>
+            )}
           </div>
 
-          {/* Materials */}
+          {/* Materials — links reais, iguais ao que o aluno vê (MaterialsPanel
+              em dashboard/treinamentos/page.tsx), pra prévia testar de verdade. */}
           {materials.length > 0 && (
             <div className="border-t border-border px-4 py-3 space-y-1.5">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Materiais de apoio</p>
               {materials.map(mat => (
-                <div key={mat.id} className="flex items-center gap-1.5 text-xs text-foreground py-0.5">
+                <a
+                  key={mat.id}
+                  href={mat.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-foreground hover:text-primary transition-colors py-0.5"
+                >
                   <MaterialTypeIcon type={mat.type} />
                   <span className="truncate">{mat.title}</span>
-                </div>
+                </a>
               ))}
             </div>
           )}
