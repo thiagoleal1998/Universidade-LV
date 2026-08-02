@@ -100,14 +100,27 @@ export function FeedbackTicketForm() {
     e.target.value = ''
     if (files.length === 0) return
     setIsUploadingAttachment(true)
-    for (const file of files) {
-      const r = await uploadFeedbackAttachment(file)
-      if (r?.error) toast.error(r.error)
-      else if (r.url && r.path) {
-        setAttachments((prev) => [...prev, { path: r.path!, mimeType: r.mimeType!, sizeBytes: r.sizeBytes!, url: r.url!, fileName: r.fileName! }])
+    try {
+      for (const file of files) {
+        // Um vídeo real facilmente passa de 10MB — o limite de body de Server
+        // Action do Next (next.config.ts) derrubava a página antes mesmo do
+        // arquivo chegar na validação de tipo do servidor. Mesmo fix já
+        // aplicado em corrida-vendas-manager.tsx/famtours-manager.tsx.
+        if (file.size > 8 * 1024 * 1024) {
+          toast.error(`"${file.name}" é grande demais (máx. 8MB). Vídeos não são aceitos aqui — envie imagem, PDF, Word, Excel ou texto.`)
+          continue
+        }
+        const r = await uploadFeedbackAttachment(file)
+        if (r?.error) toast.error(r.error)
+        else if (r.url && r.path) {
+          setAttachments((prev) => [...prev, { path: r.path!, mimeType: r.mimeType!, sizeBytes: r.sizeBytes!, url: r.url!, fileName: r.fileName! }])
+        }
       }
+    } catch {
+      toast.error('Não foi possível enviar o anexo. Tente novamente com um arquivo menor.')
+    } finally {
+      setIsUploadingAttachment(false)
     }
-    setIsUploadingAttachment(false)
   }
 
   function removeAttachment(path: string) {
