@@ -763,22 +763,26 @@ function LinkRow({ item, cat, products, tags = [], canEdit = true }: { item: Mar
         {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
         {item.url && <p className="text-xs text-primary/80 truncate">{item.url}</p>}
       </div>
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="ghost" size="icon" title="Copiar link"
-          onClick={() => { navigator.clipboard.writeText(item.url); toast.success('Link copiado!') }}
-        >
-          <Copy className="w-4 h-4" />
-        </Button>
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Abrir"
-          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
-        >
-          <ExternalLink className="w-4 h-4" />
-        </a>
+      <div className="flex items-center gap-0.5 shrink-0">
+        {item.url && (
+          <>
+            <Button
+              variant="ghost" size="icon" title="Copiar link"
+              onClick={() => { navigator.clipboard.writeText(item.url); toast.success('Link copiado!') }}
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abrir"
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </>
+        )}
         {canEdit && (
           <>
             <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={isPending}>

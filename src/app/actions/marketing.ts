@@ -10,6 +10,22 @@ import { extractYouTubeId } from '@/lib/youtube'
 
 export type MarketingCategory = string
 
+// Categoria 'link' (Links Úteis) é uma linha de lista cuja ÚNICA ação é abrir
+// a URL — sem ela o item é inútil. Bug real corrigido (v1.111.5): itens eram
+// criados com url vazia ou sem protocolo (ex.: "www.drive.com.br"), e o botão
+// "Abrir" (`<a href={url} target="_blank">`, sem checar vazio) resolvia como
+// link relativo à própria página admin — url vazia reabre a página atual
+// (reset do state de aba pra "Materiais Visuais"), url sem protocolo vira uma
+// rota interna inexistente (404). Mesmo padrão de validação de `submitFeedback`
+// (feedback.ts): exige URL completa com protocolo antes de salvar.
+function validateItemUrl(category: MarketingCategory, url: string): { error: string } | null {
+  if (category === 'link' && !url) return { error: 'Informe a URL do link.' }
+  if (url) {
+    try { new URL(url) } catch { return { error: 'Link inválido. Cole uma URL completa (ex.: https://...).' } }
+  }
+  return null
+}
+
 export type MarketingProduct = {
   id: string
   name: string
@@ -120,6 +136,8 @@ export async function createMarketingItem(data: {
 
   const adminClient = createAdminClient()
   if (!data.title.trim()) return { error: 'Título obrigatório' }
+  const urlError = validateItemUrl(data.category, data.url.trim())
+  if (urlError) return { error: urlError.error }
 
   const { data: existing } = await adminClient
     .from('marketing_items')
@@ -193,9 +211,12 @@ export async function updateMarketingItem(
 
   const { data: prev } = await adminClient
     .from('marketing_items')
-    .select('title, description, content, url, status, publish_at, expires_at')
+    .select('category, title, description, content, url, status, publish_at, expires_at')
     .eq('id', id)
     .single()
+
+  const urlError = prev ? validateItemUrl(prev.category, data.url.trim()) : null
+  if (urlError) return { error: urlError.error }
 
   const after = {
     title: data.title.trim(),
