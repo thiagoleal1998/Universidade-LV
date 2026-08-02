@@ -31,12 +31,14 @@ type Period = 'all' | 'month' | 'year'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function matchPeriod(item: RawItem, period: Period, selectedDate: string): boolean {
+function matchPeriod(item: RawItem, period: Period, customFrom: string, customTo: string): boolean {
   if (!item.created_at) return true
-  // data específica tem prioridade sobre period
-  if (selectedDate) {
-    const itemDate = new Date(item.created_at).toISOString().split('T')[0]
-    return itemDate === selectedDate
+  // período customizado (de/até) tem prioridade sobre os presets
+  if (customFrom && customTo) {
+    const t = new Date(item.created_at).getTime()
+    const from = new Date(`${customFrom}T00:00:00`).getTime()
+    const to = new Date(`${customTo}T23:59:59`).getTime()
+    return t >= from && t <= to
   }
   if (period === 'all') return true
   const d = new Date(item.created_at)
@@ -201,7 +203,8 @@ const PERIOD_LABELS: Record<Period, string> = {
 
 export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props) {
   const [period, setPeriod] = useState<Period>('all')
-  const [selectedDate, setSelectedDate] = useState<string>('')
+  const [customFrom, setCustomFrom] = useState<string>('')
+  const [customTo, setCustomTo] = useState<string>('')
   const [productId, setProductId] = useState<string>('all')
 
   const productMap = useMemo(
@@ -215,16 +218,16 @@ export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props)
   )
 
   const ofertas = useMemo(() => {
-    let items = ofertasRaw.filter((i) => matchPeriod(i, period, selectedDate))
+    let items = ofertasRaw.filter((i) => matchPeriod(i, period, customFrom, customTo))
     if (productId !== 'all') items = items.filter((i) => i.product_id === productId)
     return items
-  }, [ofertasRaw, period, selectedDate, productId])
+  }, [ofertasRaw, period, customFrom, customTo, productId])
 
   const laminas = useMemo(() => {
-    let items = laminasRaw.filter((i) => matchPeriod(i, period, selectedDate))
+    let items = laminasRaw.filter((i) => matchPeriod(i, period, customFrom, customTo))
     if (productId !== 'all') items = items.filter((i) => i.product_id === productId)
     return items
-  }, [laminasRaw, period, selectedDate, productId])
+  }, [laminasRaw, period, customFrom, customTo, productId])
 
   const ofertasPorHotel = useMemo(() => groupByName(ofertas, productMap), [ofertas, productMap])
   const laminasPorHotel = useMemo(() => groupByName(laminas, productMap), [laminas, productMap])
@@ -254,10 +257,10 @@ export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props)
             <button
               key={p}
               type="button"
-              onClick={() => { setPeriod(p); setSelectedDate('') }}
+              onClick={() => { setPeriod(p); setCustomFrom(''); setCustomTo('') }}
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                period === p && !selectedDate
+                period === p && !customFrom && !customTo
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:text-foreground',
               )}
@@ -267,28 +270,33 @@ export function RelatoriosMarketing({ ofertasRaw, laminasRaw, products }: Props)
           ))}
         </div>
 
-        {/* Dia específico — date picker nativo */}
-        <div className="flex items-center gap-1">
+        {/* Período customizado — de/até */}
+        <div className="flex items-center gap-1.5">
           <input
             type="date"
-            value={selectedDate}
-            onChange={(e) => {
-              setSelectedDate(e.target.value)
-              if (e.target.value) setPeriod('all')
-            }}
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
             className={cn(
-              'text-xs border rounded-lg px-3 py-1.5 bg-card focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors',
-              selectedDate
-                ? 'border-primary text-primary font-medium'
-                : 'border-border text-muted-foreground',
+              'text-xs border rounded-lg px-2 py-1.5 bg-card focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors',
+              customFrom ? 'border-primary text-primary font-medium' : 'border-border text-muted-foreground',
             )}
           />
-          {selectedDate && (
+          <span className="text-xs text-muted-foreground">até</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className={cn(
+              'text-xs border rounded-lg px-2 py-1.5 bg-card focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors',
+              customTo ? 'border-primary text-primary font-medium' : 'border-border text-muted-foreground',
+            )}
+          />
+          {(customFrom || customTo) && (
             <button
               type="button"
-              onClick={() => setSelectedDate('')}
+              onClick={() => { setCustomFrom(''); setCustomTo('') }}
               className="text-xs text-muted-foreground hover:text-foreground px-1.5"
-              title="Limpar data"
+              title="Limpar período"
             >
               ✕
             </button>
