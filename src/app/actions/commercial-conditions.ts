@@ -13,6 +13,7 @@ export type CommercialCondition = {
   cover_url: string
   url: string
   is_active: boolean
+  expires_at: string | null
   owner_area_id: string | null
   created_at: string
 }
@@ -39,6 +40,7 @@ export async function createCommercialCondition(formData: FormData) {
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
+    expires_at: (formData.get('expires_at') as string) || null,
     owner_area_id: ctx.areaId,
   }).select('id').single()
   if (error) return { error: error.message }
@@ -60,7 +62,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('commercial_conditions')
-    .select('title, description, cover_url, url, is_active')
+    .select('title, description, cover_url, url, is_active, expires_at')
     .eq('id', id)
     .single()
 
@@ -70,12 +72,13 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
+    expires_at: (formData.get('expires_at') as string) || null,
   }
   const { error } = await adminClient.from('commercial_conditions').update(after).eq('id', id)
   if (error) return { error: error.message }
 
   const changed = diffFields(prev ?? {}, after, {
-    title: 'título', description: 'descrição', cover_url: 'capa', url: 'link', is_active: 'ativação',
+    title: 'título', description: 'descrição', cover_url: 'capa', url: 'link', is_active: 'ativação', expires_at: 'validade',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'condicao_comercial', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })

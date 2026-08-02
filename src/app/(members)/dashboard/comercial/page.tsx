@@ -424,13 +424,16 @@ export default async function ComercialPage({
   const [{ data: conditionsData }, settings] = await Promise.all([
     adminClient
       .from('commercial_conditions')
-      .select('id, title, description, cover_url, url')
+      .select('id, title, description, cover_url, url, expires_at')
       .eq('is_active', true)
       .order('created_at', { ascending: false }),
     getSettings(),
   ])
 
-  const commercialConditions = conditionsData ?? []
+  // "Válido até" é inclusivo (o próprio dia ainda mostra) — some só a
+  // partir do dia seguinte, mesmo critério já usado pra famtour encerrado.
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const commercialConditions = (conditionsData ?? []).filter((c) => !c.expires_at || c.expires_at >= todayStr)
   const allCorridas = parseList(settings.corrida_vendas)
 
   const subtabData = SUBTABS.find((s) => s.key === activeSubtab)!

@@ -21,6 +21,10 @@ import { cn } from '@/lib/utils'
 
 type CommercialConditionWithEdit = CommercialCondition & { canEdit?: boolean }
 
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export function CommercialConditionsManager({ items, canCreate = true }: { items: CommercialConditionWithEdit[]; canCreate?: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState<CommercialCondition | null>(null)
@@ -126,6 +130,14 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
               <Input id="cc-url" name="url" type="url" defaultValue={editing?.url} placeholder="https://..." className="mt-1.5" />
             </div>
 
+            <div>
+              <Label htmlFor="cc-expires-at">Válido até</Label>
+              <Input id="cc-expires-at" name="expires_at" type="date" defaultValue={editing?.expires_at ?? ''} className="mt-1.5" />
+              <p className="text-xs text-muted-foreground mt-1">
+                Deixe em branco pra não expirar. A partir do dia seguinte, some da tela dos membros — mas continua aqui pra você renovar.
+              </p>
+            </div>
+
             {/* Cover */}
             <div className="md:col-span-2">
               <Label>Imagem de capa</Label>
@@ -223,9 +235,21 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
               <div className="p-4 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-semibold text-foreground leading-snug">{item.title}</p>
-                  {!item.is_active && <span className="text-[10px] uppercase font-semibold text-amber-500 bg-amber-500/10 rounded px-1.5 py-0.5 shrink-0">Rascunho</span>}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {item.expires_at && item.expires_at < todayIsoDate() && (
+                      <span className="text-[10px] uppercase font-semibold text-red-500 bg-red-500/10 rounded px-1.5 py-0.5" title={`Expirou em ${new Date(item.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')} — edite pra renovar`}>
+                        Expirado
+                      </span>
+                    )}
+                    {!item.is_active && <span className="text-[10px] uppercase font-semibold text-amber-500 bg-amber-500/10 rounded px-1.5 py-0.5">Rascunho</span>}
+                  </div>
                 </div>
                 {item.description && <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>}
+                {item.expires_at && (
+                  <p className={cn('text-xs', item.expires_at < todayIsoDate() ? 'text-red-500' : 'text-muted-foreground')}>
+                    Válido até {new Date(item.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </p>
+                )}
                 {item.url && (
                   <a href={item.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
                     <ExternalLink className="w-3 h-3" /> {item.url}
