@@ -154,6 +154,13 @@ function parseLiveAt(raw: string | null): string | null {
   return new Date(raw + ':00.000-03:00').toISOString()
 }
 
+// Bug real relatado (chamado CLV-0027): treinamento "ao vivo" aceitava
+// qualquer data, inclusive no passado. Só valida pro tipo 'live' — replay/
+// link não usam esse campo pra "quando vai acontecer".
+function isPastLiveAt(iso: string): boolean {
+  return new Date(iso).getTime() < Date.now()
+}
+
 export async function createTrainingItem(formData: FormData) {
   const ctx = await requireCapability('trainings')
   if ('error' in ctx) return { error: ctx.error }
@@ -161,6 +168,9 @@ export async function createTrainingItem(formData: FormData) {
   const isActive = formData.get('is_active') === 'true'
   const type = (formData.get('type') as string) || 'link'
   const liveAt = parseLiveAt(formData.get('live_at') as string | null)
+  if (type === 'live' && liveAt && isPastLiveAt(liveAt)) {
+    return { error: 'A data do treinamento ao vivo não pode ser uma data que já passou.' }
+  }
 
   const adminClient = createAdminClient()
   const title = (formData.get('title') as string).trim()
@@ -217,6 +227,12 @@ export async function updateTrainingItem(id: string, formData: FormData) {
     is_active: newActive,
     type: newType,
     live_at: parseLiveAt(formData.get('live_at') as string | null),
+  }
+  // Só rejeita quando a data está sendo MUDADA pra uma data passada — uma
+  // live que já aconteceu naturalmente fica no passado, e isso não pode
+  // impedir salvar outros campos dela (ex.: virar replay).
+  if (newType === 'live' && after.live_at && after.live_at !== prev?.live_at && isPastLiveAt(after.live_at)) {
+    return { error: 'A data do treinamento ao vivo não pode ser uma data que já passou.' }
   }
   const { error } = await adminClient.from('training_items').update(after).eq('id', id)
 
@@ -294,15 +310,31 @@ export async function deleteTrainingItem(id: string) {
   return { success: true }
 }
 
+// Bug real relatado (chamado CLV-0027): capa de treinamento aceitava
+// qualquer tipo de arquivo — mesmo fix já aplicado em uploadFamtourCover
+// (v1.106.0) e uploadMarketingFile (v1.105.2), replicado aqui.
+const TRAINING_COVER_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+
 export async function uploadTrainingCover(file: File) {
   const ctx = await requireCapability('trainings')
   if ('error' in ctx) return { error: ctx.error }
 
-  const adminClient = createAdminClient()
-  const webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
-  const path = `training-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (!TRAINING_COVER_EXTS.includes(ext)) {
+    return { error: 'Apenas imagens são aceitas (JPG, PNG, WEBP ou GIF).' }
+  }
 
-  const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: 'image/webp' })
+  const adminClient = createAdminClient()
+  let webpFile: File
+  try {
+    webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar esta imagem — ela pode estar corrompida ou num formato inesperado.' }
+  }
+  const isConverted = webpFile.type === 'image/webp'
+  const path = `training-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${isConverted ? 'webp' : ext}`
+
+  const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: webpFile.type })
   if (error) return { error: error.message }
 
   const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)

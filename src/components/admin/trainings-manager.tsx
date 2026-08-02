@@ -397,6 +397,16 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                     name="live_at"
                     required
                     defaultValue={toLiveDateInput(editing?.live_at ?? null)}
+                    // Não trava em "agora" fixo quando o próprio valor já
+                    // salvo está no passado (live que já aconteceu) — senão
+                    // o campo pré-preenchido fica inválido e trava o salvamento
+                    // de qualquer outro campo desse treinamento (mesmo motivo
+                    // do `min` dinâmico do Famtour).
+                    min={
+                      editing?.live_at && new Date(editing.live_at) < new Date()
+                        ? toLiveDateInput(editing.live_at)
+                        : toLiveDateInput(new Date().toISOString())
+                    }
                     className="mt-1.5"
                     placeholder="Selecionar data e hora do ao vivo"
                   />
