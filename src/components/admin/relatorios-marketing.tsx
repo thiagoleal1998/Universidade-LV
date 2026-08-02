@@ -117,7 +117,7 @@ function HorizontalBarChart({ data, fill, label }: { data: { name: string; total
     return <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">Nenhum item no período selecionado.</div>
   }
   return (
-    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 42)}>
+    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 42)} className="select-none">
       <BarChart layout="vertical" data={data} margin={{ top: 0, right: 24, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
         <XAxis type="number" tick={{ fontSize: 11, fill: '#6b7280' }} allowDecimals={false} />
@@ -140,7 +140,7 @@ function ColoredHorizontalChart({ data }: { data: { name: string; total: number;
     return <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">Sem dados de escopo.</div>
   }
   return (
-    <ResponsiveContainer width="100%" height={Math.max(100, data.length * 48)}>
+    <ResponsiveContainer width="100%" height={Math.max(100, data.length * 48)} className="select-none">
       <BarChart layout="vertical" data={data} margin={{ top: 0, right: 24, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
         <XAxis type="number" tick={{ fontSize: 11, fill: '#6b7280' }} allowDecimals={false} />
@@ -167,7 +167,7 @@ function DonutAudiencia({ data, label }: { data: { name: string; value: number; 
   }
   return (
     <>
-      <ResponsiveContainer width="100%" height={150}>
+      <ResponsiveContainer width="100%" height={150} className="select-none">
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={66} paddingAngle={3} label={false}>
             {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}

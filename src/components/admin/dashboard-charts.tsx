@@ -109,7 +109,7 @@ function EmptyState({ text }: { text: string }) {
 function CompletionsAreaChart({ data }: { data: { label: string; value: number }[] }) {
   if (data.every((d) => d.value === 0)) return <EmptyState text="Nenhuma conclusão no período selecionado." />
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={220} className="select-none">
       <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
         <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} />
@@ -124,7 +124,7 @@ function CompletionsAreaChart({ data }: { data: { label: string; value: number }
 function NewMembersLineChart({ data }: { data: { label: string; value: number }[] }) {
   if (data.every((d) => d.value === 0)) return <EmptyState text="Nenhum cadastro novo no período selecionado." />
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={220} className="select-none">
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
         <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} />
@@ -139,7 +139,7 @@ function NewMembersLineChart({ data }: { data: { label: string; value: number }[
 function HorizontalBarChart({ data, fill, label, emptyText }: { data: { name: string; total: number }[]; fill: string; label: string; emptyText: string }) {
   if (data.length === 0) return <EmptyState text={emptyText} />
   return (
-    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 40)}>
+    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 40)} className="select-none">
       <BarChart layout="vertical" data={data} margin={{ top: 0, right: 24, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
         <XAxis type="number" tick={{ fontSize: 11, fill: '#6b7280' }} allowDecimals={false} />
@@ -159,7 +159,7 @@ function EngagementDonut({ data }: { data: { name: string; value: number; color:
   if (total === 0) return <EmptyState text="Nenhum aluno considerado nesse filtro." />
   return (
     <>
-      <ResponsiveContainer width="100%" height={180}>
+      <ResponsiveContainer width="100%" height={180} className="select-none">
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={3} label={false}>
             {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
