@@ -20,6 +20,7 @@ const RD_EVENTS = {
   chamado_aberto: 'universidade-lv-chamado-aberto',
   chamado_andamento: 'universidade-lv-chamado-andamento',
   chamado_resolvido: 'universidade-lv-chamado-resolvido',
+  redefinicao_senha: 'universidade-lv-redefinicao-senha',
 } as const
 
 // Destinatário dos 2 eventos admin-only abaixo — não é um membro, é o
@@ -168,6 +169,18 @@ export async function rdFeedbackResolved(email: string, name: string, title: str
     name,
     cf_titulo: title,
     cf_corpo: `Seu chamado "${title}" foi finalizado.`,
+    cf_link: link,
+  })
+}
+
+// Link de recuperação gerado via adminClient.auth.admin.generateLink (não
+// envia e-mail nenhum sozinho, só devolve o link) — substitui o e-mail nativo
+// do Supabase (auth.resetPasswordForEmail), que ia direto pelo SMTP deles.
+export async function rdPasswordReset(email: string, name: string, link: string) {
+  await sendConversion(RD_EVENTS.redefinicao_senha, email, {
+    name,
+    cf_titulo: 'Redefinição de senha',
+    cf_corpo: 'Recebemos um pedido para redefinir a senha da sua conta na Universidade LV. Se foi você, clique no link abaixo para criar uma nova senha.',
     cf_link: link,
   })
 }

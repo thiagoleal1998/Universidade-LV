@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { rdWelcomeOnRegister, rdAdminNewMemberPending } from '@/lib/rdstation'
+import { rdWelcomeOnRegister, rdAdminNewMemberPending, rdPasswordReset } from '@/lib/rdstation'
 import { notifyAllAdmins } from '@/app/actions/notifications'
 
 export async function login(_state: unknown, formData: FormData) {
@@ -48,19 +48,31 @@ export async function logout() {
 }
 
 export async function forgotPassword(_state: unknown, formData: FormData) {
-  const supabase = await createClient()
-  const email = formData.get('email') as string
+  const email = (formData.get('email') as string)?.trim()
 
   const headersList = await headers()
   const host = headersList.get('host') ?? 'localhost:3000'
   const protocol = host.includes('localhost') ? 'http' : 'https'
   const origin = `${protocol}://${host}`
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/reset-password`,
+  // generateLink (service role) NÃO envia e-mail nenhum sozinho — só devolve
+  // o link. É o que substitui o auth.resetPasswordForEmail (que ia direto
+  // pelo SMTP do Supabase); o e-mail de verdade agora sai pela RD Station.
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+    options: { redirectTo: `${origin}/auth/callback?next=/reset-password` },
   })
 
-  if (error) return { error: 'Não foi possível enviar o email. Verifique o endereço informado.' }
+  // Nunca revela se o e-mail existe ou não — resposta é sempre a mesma pro
+  // cliente (mesma garantia que o resetPasswordForEmail original já dava);
+  // o evento só dispara de fato quando o e-mail corresponde a uma conta.
+  if (!error && data.properties?.action_link) {
+    const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', data.user.id).single()
+    rdPasswordReset(email, profile?.full_name ?? '', data.properties.action_link)
+  }
+
   return { success: true }
 }
 
