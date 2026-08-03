@@ -62,7 +62,11 @@ export async function proxy(request: NextRequest) {
     // Callback OAuth2 da RD Station: recebido pelo navegador do admin logo após
     // autorizar o app na própria RD Station — não pode depender de sessão do
     // nosso app (a checagem de quem pode iniciar o fluxo já é manual/pontual).
-    pathname.startsWith('/api/rdstation/')
+    pathname.startsWith('/api/rdstation/') ||
+    // Encurtador de link genérico (hoje só usado no e-mail de redefinição de
+    // senha) — quem clica ainda não tem sessão nenhuma, é exatamente o caso de
+    // uso que precisa ser público.
+    pathname.startsWith('/r/')
 
   if (isPublic) {
     // Se já autenticado e tentar acessar login, redireciona para o painel.

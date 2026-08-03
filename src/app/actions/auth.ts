@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import { rdWelcomeOnRegister, rdAdminNewMemberPending, rdPasswordReset } from '@/lib/rdstation'
 import { notifyAllAdmins } from '@/app/actions/notifications'
 
@@ -50,10 +49,11 @@ export async function logout() {
 export async function forgotPassword(_state: unknown, formData: FormData) {
   const email = (formData.get('email') as string)?.trim()
 
-  const headersList = await headers()
-  const host = headersList.get('host') ?? 'localhost:3000'
-  const protocol = host.includes('localhost') ? 'http' : 'https'
-  const origin = `${protocol}://${host}`
+  // Nunca usar o origin da própria requisição aqui (`headers().get('host')`
+  // ou `new URL(request.url)`) — atrás do proxy reverso da VPS isso pode
+  // refletir o endereço INTERNO em vez do domínio público (mesmo gotcha real
+  // já corrigido em src/app/auth/callback/route.ts).
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://universidadelv.com.br'
 
   // generateLink (service role) NÃO envia e-mail nenhum sozinho — só devolve
   // o link. É o que substitui o auth.resetPasswordForEmail (que ia direto
@@ -62,7 +62,7 @@ export async function forgotPassword(_state: unknown, formData: FormData) {
   const { data, error } = await adminClient.auth.admin.generateLink({
     type: 'recovery',
     email,
-    options: { redirectTo: `${origin}/auth/callback?next=/reset-password` },
+    options: { redirectTo: `${siteUrl}/auth/callback?next=/reset-password` },
   })
 
   // Nunca revela se o e-mail existe ou não — resposta é sempre a mesma pro
@@ -70,7 +70,17 @@ export async function forgotPassword(_state: unknown, formData: FormData) {
   // o evento só dispara de fato quando o e-mail corresponde a uma conta.
   if (!error && data.properties?.action_link) {
     const { data: profile } = await adminClient.from('profiles').select('full_name').eq('id', data.user.id).single()
-    rdPasswordReset(email, profile?.full_name ?? '', data.properties.action_link)
+
+    // A URL de recuperação do Supabase é enorme — a RD Station não aceita
+    // variável no destino de um link (só texto simples concatenado no corpo),
+    // então o link apareceria por inteiro, gigante, no corpo do e-mail. Em vez
+    // disso, gera um código curto (`short_links`) que redireciona (src/app/r/
+    // [code]/route.ts) pro link real do Supabase — é isso que vai no e-mail.
+    const code = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    await adminClient.from('short_links').insert({ code, target_url: data.properties.action_link, expires_at: expiresAt })
+
+    rdPasswordReset(email, profile?.full_name ?? '', `${siteUrl}/r/${code}`)
   }
 
   return { success: true }
