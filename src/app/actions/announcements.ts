@@ -18,10 +18,16 @@ function stripHtml(html: string): string {
 // E-mail + notificação in-app pra todos os membros ativos — disparado tanto
 // quando o admin publica via toggle quanto quando o colaborador cria já
 // publicado (createAnnouncement). Fire-and-forget, igual já era.
+//
+// Bug real corrigido (v1.113.4): o e-mail via RD Station filtrava só
+// `role = 'member'`, excluindo colaborador — que também estuda como aluno e
+// já recebia a notificação in-app (notifyAllMembers, logo abaixo, já incluía
+// os dois papéis). Mesmo critério documentado no CLAUDE.md pra qualquer query
+// que trate "aluno": `role !== 'admin'`, nunca `role = 'member'` isolado.
 async function notifyNewAnnouncement(ann: { title: string; body: string }) {
   const adminClient = createAdminClient()
   const [{ data: profiles }, { data: usersData }] = await Promise.all([
-    adminClient.from('profiles').select('id').eq('role', 'member').eq('active', true),
+    adminClient.from('profiles').select('id').neq('role', 'admin').eq('active', true),
     adminClient.auth.admin.listUsers(),
   ])
   const activeIds = new Set((profiles ?? []).map((p) => p.id))
