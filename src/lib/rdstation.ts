@@ -65,7 +65,17 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
-async function sendConversion(conversionIdentifier: string, email: string, extra: Record<string, string> = {}) {
+type LegalBasis = { category: string; type: string; status: string }
+
+// Consentimento de comunicação (LGPD) — enviado junto do cadastro pra que
+// automações de e-mail que a RD Station trata como "marketing" (ex.: o
+// comunicado geral) não fiquem bloqueadas por falta de base legal. Descoberto
+// investigando um fluxo cujo bloco "Enviar Email" ficava em 0 entregues mesmo
+// disparando corretamente, enquanto e-mails transacionais (redefinir senha,
+// aprovação, etc.) sempre funcionaram sem isso.
+const MARKETING_CONSENT: LegalBasis[] = [{ category: 'communications', type: 'consent', status: 'granted' }]
+
+async function sendConversion(conversionIdentifier: string, email: string, extra: Record<string, string> = {}, legalBases?: LegalBasis[]) {
   if (!email) return
   try {
     const token = await getAccessToken()
@@ -76,7 +86,12 @@ async function sendConversion(conversionIdentifier: string, email: string, extra
       body: JSON.stringify({
         event_type: 'CONVERSION',
         event_family: 'CDP',
-        payload: { conversion_identifier: conversionIdentifier, email, ...extra },
+        payload: {
+          conversion_identifier: conversionIdentifier,
+          email,
+          ...extra,
+          ...(legalBases ? { legal_bases: legalBases } : {}),
+        },
       }),
     })
   } catch {
@@ -85,7 +100,7 @@ async function sendConversion(conversionIdentifier: string, email: string, extra
 }
 
 export async function rdWelcomeOnRegister(email: string, name: string) {
-  await sendConversion(RD_EVENTS.cadastro, email, { name })
+  await sendConversion(RD_EVENTS.cadastro, email, { name }, MARKETING_CONSENT)
 }
 
 export async function rdMemberApproved(email: string, name: string) {
