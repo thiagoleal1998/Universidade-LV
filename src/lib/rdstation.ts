@@ -21,6 +21,7 @@ const RD_EVENTS = {
   chamado_andamento: 'universidade-lv-chamado-andamento',
   chamado_resolvido: 'universidade-lv-chamado-resolvido',
   redefinicao_senha: 'universidade-lv-redefinicao-senha',
+  consentimento_inicial: 'universidade-lv-consentimento-inicial',
 } as const
 
 // Destinatário dos 2 eventos admin-only abaixo — não é um membro, é o
@@ -101,6 +102,14 @@ async function sendConversion(conversionIdentifier: string, email: string, extra
 
 export async function rdWelcomeOnRegister(email: string, name: string) {
   await sendConversion(RD_EVENTS.cadastro, email, { name }, MARKETING_CONSENT)
+}
+
+// Concede consentimento sem disparar nenhum e-mail — identificador dedicado,
+// sem Automação vinculada a ele, só serve pra carregar o legal_bases. Usado
+// nos caminhos de criação de conta que não passam por rdWelcomeOnRegister
+// (ex.: admin criando membro direto, sem o fluxo de cadastro auto-serviço).
+export async function rdGrantMarketingConsent(email: string) {
+  await sendConversion(RD_EVENTS.consentimento_inicial, email, {}, MARKETING_CONSENT)
 }
 
 export async function rdMemberApproved(email: string, name: string) {
@@ -242,13 +251,17 @@ export async function syncLeadProfile(userId: string) {
       .filter(Boolean)
       .join(', ')
 
+    // legalBases aqui de propósito: syncLeadProfile roda sempre que um admin
+    // edita um membro, inclusive quando o e-mail muda — sem isso, o e-mail
+    // NOVO nunca teria consentimento registrado (a RD Station trata como um
+    // lead novo), mesmo o antigo já tendo.
     await sendConversion(RD_EVENTS.perfil_atualizado, email, {
       name: profile?.full_name ?? '',
       cf_empresa_lv: profile?.company ?? '',
       cf_cargo_lv: profile?.job_title ?? '',
       cf_tags_lv: tags,
       cf_cursos: cursos,
-    })
+    }, MARKETING_CONSENT)
   } catch {
     console.error('[rdstation] falhou ao sincronizar perfil do lead:', userId)
   }

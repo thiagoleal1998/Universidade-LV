@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { rdMemberApproved, rdMemberRejected, syncLeadProfile } from '@/lib/rdstation'
+import { rdMemberApproved, rdMemberRejected, syncLeadProfile, rdGrantMarketingConsent } from '@/lib/rdstation'
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 import { assignMemberTags } from '@/app/actions/tags'
@@ -41,6 +41,10 @@ export async function createMember(formData: FormData) {
       .from('profiles')
       .update({ full_name: fullName })
       .eq('id', data.user.id)
+    // Esse caminho (admin cria a conta direto) não passa por register()/
+    // rdWelcomeOnRegister — sem isso, um membro criado por aqui nunca teria
+    // consentimento de comunicação registrado na RD Station.
+    rdGrantMarketingConsent(email)
   }
 
   logActivity(authz, { action: 'create', entityType: 'membro', entityId: data.user?.id, entityLabel: fullName || email })
