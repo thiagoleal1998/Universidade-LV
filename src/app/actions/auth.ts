@@ -5,13 +5,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { rdWelcomeOnRegister, rdAdminNewMemberPending, rdPasswordReset } from '@/lib/rdstation'
 import { notifyAllAdmins } from '@/app/actions/notifications'
-import { verifyRecaptcha } from '@/lib/recaptcha'
+import { verifyTurnstile } from '@/lib/turnstile'
 
-const RECAPTCHA_ERROR = 'Não foi possível verificar que você não é um robô. Recarregue a página e tente novamente.'
+const CAPTCHA_ERROR = 'Não foi possível verificar que você não é um robô. Recarregue a página e tente novamente.'
 
 export async function login(_state: unknown, formData: FormData) {
-  const recaptchaOk = await verifyRecaptcha(formData.get('recaptcha_token') as string | null, 'login')
-  if (!recaptchaOk) return { error: RECAPTCHA_ERROR }
+  const captchaOk = await verifyTurnstile(formData.get('captcha_token') as string | null, 'login')
+  if (!captchaOk) return { error: CAPTCHA_ERROR }
 
   // allowSessionClear: o login desloga de propósito quando a conta ainda não
   // foi aprovada (signOut logo abaixo) — ver server.ts.
@@ -53,8 +53,8 @@ export async function logout() {
 }
 
 export async function forgotPassword(_state: unknown, formData: FormData) {
-  const recaptchaOk = await verifyRecaptcha(formData.get('recaptcha_token') as string | null, 'forgot_password')
-  if (!recaptchaOk) return { error: RECAPTCHA_ERROR }
+  const captchaOk = await verifyTurnstile(formData.get('captcha_token') as string | null, 'forgot_password')
+  if (!captchaOk) return { error: CAPTCHA_ERROR }
 
   const email = (formData.get('email') as string)?.trim()
 
@@ -106,8 +106,8 @@ export async function resetPassword(_state: unknown, formData: FormData) {
 }
 
 export async function register(_state: unknown, formData: FormData) {
-  const recaptchaOk = await verifyRecaptcha(formData.get('recaptcha_token') as string | null, 'register')
-  if (!recaptchaOk) return { error: RECAPTCHA_ERROR }
+  const captchaOk = await verifyTurnstile(formData.get('captcha_token') as string | null, 'register')
+  if (!captchaOk) return { error: CAPTCHA_ERROR }
 
   const full_name = (formData.get('full_name') as string).trim()
   const email = (formData.get('email') as string).trim()

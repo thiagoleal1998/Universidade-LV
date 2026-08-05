@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { Eye, EyeOff } from 'lucide-react'
-import { getRecaptchaToken } from '@/lib/recaptcha-client'
+import { getTurnstileToken } from '@/lib/turnstile-client'
 
 type LoginState = { error?: string; info?: string; redirectTo?: string } | undefined
 
@@ -22,8 +22,8 @@ export function LoginForm({ settings, messages, reason }: { settings: Settings; 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const token = await getRecaptchaToken('login')
-    formData.set('recaptcha_token', token ?? '')
+    const token = await getTurnstileToken('login')
+    formData.set('captcha_token', token ?? '')
     startTransition(() => { action(formData) })
   }
 

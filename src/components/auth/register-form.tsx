@@ -10,7 +10,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
-import { getRecaptchaToken } from '@/lib/recaptcha-client'
+import { getTurnstileToken } from '@/lib/turnstile-client'
 
 type State = { error?: string; success?: boolean } | undefined
 
@@ -20,8 +20,8 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const token = await getRecaptchaToken('register')
-    formData.set('recaptcha_token', token ?? '')
+    const token = await getTurnstileToken('register')
+    formData.set('captcha_token', token ?? '')
     startTransition(() => { action(formData) })
   }
 

@@ -1,11 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { verifyRecaptcha } from '@/lib/recaptcha'
+import { verifyTurnstile } from '@/lib/turnstile'
 
 export async function submitLead(formData: FormData): Promise<{ success?: boolean; error?: string }> {
-  const recaptchaOk = await verifyRecaptcha(formData.get('recaptcha_token') as string | null, 'lead_landing')
-  if (!recaptchaOk) return { error: 'Não foi possível verificar que você não é um robô. Recarregue a página e tente novamente.' }
+  const captchaOk = await verifyTurnstile(formData.get('captcha_token') as string | null, 'lead_landing')
+  if (!captchaOk) return { error: 'Não foi possível verificar que você não é um robô. Recarregue a página e tente novamente.' }
 
   const name = (formData.get('name') as string | null)?.trim() ?? ''
   const email = (formData.get('email') as string | null)?.trim() ?? ''
