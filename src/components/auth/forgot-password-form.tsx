@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, startTransition } from 'react'
 import Link from 'next/link'
 import { forgotPassword } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -10,11 +10,20 @@ import { CheckCircle2 } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
+import { getRecaptchaToken } from '@/lib/recaptcha-client'
 
 type State = { error?: string; success?: boolean } | undefined
 
 export function ForgotPasswordForm({ settings, messages }: { settings: Settings; messages: string[] }) {
   const [state, action, pending] = useActionState<State, FormData>(forgotPassword, undefined)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const token = await getRecaptchaToken('forgot_password')
+    formData.set('recaptcha_token', token ?? '')
+    startTransition(() => { action(formData) })
+  }
 
   return (
     <AuthShell settings={settings} messages={messages}>
@@ -40,7 +49,7 @@ export function ForgotPasswordForm({ settings, messages }: { settings: Settings;
             </Link>
           </div>
         ) : (
-          <form action={action} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" placeholder="seu@email.com" required autoComplete="email" />

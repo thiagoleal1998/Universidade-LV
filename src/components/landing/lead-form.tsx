@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { submitLead } from '@/app/actions/leads'
+import { getRecaptchaToken } from '@/lib/recaptcha-client'
 
 export function LeadForm({
   title,
@@ -22,6 +23,8 @@ export function LeadForm({
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
+      const token = await getRecaptchaToken('lead_landing')
+      formData.set('recaptcha_token', token ?? '')
       const result = await submitLead(formData)
       setState(result)
     })

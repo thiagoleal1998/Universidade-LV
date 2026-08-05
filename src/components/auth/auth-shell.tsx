@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useTheme } from 'next-themes'
-import { GraduationCap } from 'lucide-react'
+import { GraduationCap, ArrowLeft } from 'lucide-react'
 import type { Settings } from '@/lib/settings'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { APP_VERSION } from '@/lib/version'
@@ -133,6 +134,14 @@ export function AuthShell({
 
       {/* Right panel */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-14 bg-background relative">
+        <Link
+          href="/"
+          className="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">Voltar ao site</span>
+        </Link>
+
         <div className="absolute top-4 right-4">
           <ThemeToggle />
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useState, startTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { login } from '@/app/actions/auth'
@@ -11,12 +11,21 @@ import { Spinner } from '@/components/ui/spinner'
 import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { Eye, EyeOff } from 'lucide-react'
+import { getRecaptchaToken } from '@/lib/recaptcha-client'
 
 type LoginState = { error?: string; info?: string; redirectTo?: string } | undefined
 
 export function LoginForm({ settings, messages, reason }: { settings: Settings; messages: string[]; reason?: string }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(login, undefined)
   const [showPassword, setShowPassword] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const token = await getRecaptchaToken('login')
+    formData.set('recaptcha_token', token ?? '')
+    startTransition(() => { action(formData) })
+  }
 
   useEffect(() => {
     if (state?.redirectTo) window.location.href = state.redirectTo
@@ -41,7 +50,7 @@ export function LoginForm({ settings, messages, reason }: { settings: Settings; 
           )}
         </div>
 
-        <form action={action} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" placeholder="seu@email.com" required autoComplete="email" />
@@ -79,8 +88,14 @@ export function LoginForm({ settings, messages, reason }: { settings: Settings; 
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={pending || !!state?.redirectTo}>
-            {(pending || state?.redirectTo) ? <Spinner className="w-5 h-5" /> : 'Entrar'}
+          <Button type="submit" className="w-full gap-2" disabled={pending || !!state?.redirectTo}>
+            {state?.redirectTo ? (
+              <><Spinner className="w-4 h-4" /> Redirecionando para o ambiente de estudos...</>
+            ) : pending ? (
+              <><Spinner className="w-4 h-4" /> Entrando...</>
+            ) : (
+              'Entrar'
+            )}
           </Button>
         </form>
 

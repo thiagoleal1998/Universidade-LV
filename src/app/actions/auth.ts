@@ -5,8 +5,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { rdWelcomeOnRegister, rdAdminNewMemberPending, rdPasswordReset } from '@/lib/rdstation'
 import { notifyAllAdmins } from '@/app/actions/notifications'
+import { verifyRecaptcha } from '@/lib/recaptcha'
+
+const RECAPTCHA_ERROR = 'Não foi possível verificar que você não é um robô. Recarregue a página e tente novamente.'
 
 export async function login(_state: unknown, formData: FormData) {
+  const recaptchaOk = await verifyRecaptcha(formData.get('recaptcha_token') as string | null, 'login')
+  if (!recaptchaOk) return { error: RECAPTCHA_ERROR }
+
   // allowSessionClear: o login desloga de propósito quando a conta ainda não
   // foi aprovada (signOut logo abaixo) — ver server.ts.
   const supabase = await createClient({ allowSessionClear: true })
@@ -47,6 +53,9 @@ export async function logout() {
 }
 
 export async function forgotPassword(_state: unknown, formData: FormData) {
+  const recaptchaOk = await verifyRecaptcha(formData.get('recaptcha_token') as string | null, 'forgot_password')
+  if (!recaptchaOk) return { error: RECAPTCHA_ERROR }
+
   const email = (formData.get('email') as string)?.trim()
 
   // Nunca usar o origin da própria requisição aqui (`headers().get('host')`
@@ -97,6 +106,9 @@ export async function resetPassword(_state: unknown, formData: FormData) {
 }
 
 export async function register(_state: unknown, formData: FormData) {
+  const recaptchaOk = await verifyRecaptcha(formData.get('recaptcha_token') as string | null, 'register')
+  if (!recaptchaOk) return { error: RECAPTCHA_ERROR }
+
   const full_name = (formData.get('full_name') as string).trim()
   const email = (formData.get('email') as string).trim()
   const password = formData.get('password') as string

@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, startTransition } from 'react'
 import Link from 'next/link'
 import { register } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -10,11 +10,20 @@ import { CheckCircle2 } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
+import { getRecaptchaToken } from '@/lib/recaptcha-client'
 
 type State = { error?: string; success?: boolean } | undefined
 
 export function RegisterForm({ settings, messages }: { settings: Settings; messages: string[] }) {
   const [state, action, pending] = useActionState<State, FormData>(register, undefined)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const token = await getRecaptchaToken('register')
+    formData.set('recaptcha_token', token ?? '')
+    startTransition(() => { action(formData) })
+  }
 
   return (
     <AuthShell settings={settings} messages={messages}>
@@ -40,7 +49,7 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
             </Link>
           </div>
         ) : (
-          <form action={action} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <Label htmlFor="full_name">Nome completo</Label>
               <Input id="full_name" name="full_name" type="text" placeholder="Seu nome completo" required />
