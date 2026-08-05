@@ -558,6 +558,18 @@ export default async function LandingPage() {
             Acessar plataforma →
           </Link>
         </div>
+        <p className="max-w-6xl mx-auto text-center text-[11px] text-muted-foreground/70 mt-3">
+          Este site utiliza o Cloudflare Turnstile para proteção contra spam e robôs.{' '}
+          <a
+            href="https://www.cloudflare.com/turnstile-privacy-policy/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-foreground transition-colors"
+          >
+            Saiba mais sobre a política de privacidade do Turnstile
+          </a>
+          .
+        </p>
       </footer>
     </div>
   )
