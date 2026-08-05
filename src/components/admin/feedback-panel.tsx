@@ -163,6 +163,9 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
   const [view, setView] = useState<ViewMode>('kanban')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
   const [search, setSearch] = useState('')
+  const [userFilter, setUserFilter] = useState<string>('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('lastAction')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
@@ -205,30 +208,48 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
     else { setSortKey(key); setSortDir(key === 'number' ? 'desc' : 'desc') }
   }
 
-  // Mantém o card aberto visível mesmo se o status mudar para fora do filtro
-  // atual — senão o chamado some da tela no meio da edição do admin.
-  const statusFiltered = reports.filter((r) => statusFilter === 'all' || r.status === statusFilter || r.id === openId)
   const openCount = reports.filter((r) => r.status === 'open').length
 
-  const visibleReports = useMemo(() => {
+  // Lista de usuários que já abriram chamado, pro filtro — sempre a partir de
+  // TODOS os reports (não dos já filtrados), senão a opção escolhida some do
+  // seletor assim que ela mesma filtra a lista.
+  const memberOptions = useMemo(() => {
+    const names = new Set(reports.map((r) => r.member_name).filter(Boolean))
+    return [...names].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+  }, [reports])
+
+  // Pesquisa + usuário + período — comum às duas visões (Kanban e Lista).
+  // Mantém o card aberto visível mesmo se ele deixar de bater com o filtro
+  // atual — senão o chamado some da tela no meio da edição do admin.
+  const baseFiltered = useMemo(() => {
     const term = search.trim().toLowerCase()
-    const searched = term
-      ? statusFiltered.filter((r) => {
-          const ticketStr = formatTicketNumber(r.ticket_number).toLowerCase()
-          return (
-            ticketStr.includes(term) ||
-            (r.title || '').toLowerCase().includes(term) ||
-            (r.member_name || '').toLowerCase().includes(term)
-          )
-        })
-      : statusFiltered
-    return [...searched].sort((a, b) => {
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null
+    const to = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null
+    return reports.filter((r) => {
+      if (r.id === openId) return true
+      if (term) {
+        const ticketStr = formatTicketNumber(r.ticket_number).toLowerCase()
+        const matches = ticketStr.includes(term) || (r.title || '').toLowerCase().includes(term) || (r.member_name || '').toLowerCase().includes(term)
+        if (!matches) return false
+      }
+      if (userFilter !== 'all' && r.member_name !== userFilter) return false
+      const createdAt = new Date(r.created_at).getTime()
+      if (from !== null && createdAt < from) return false
+      if (to !== null && createdAt > to) return false
+      return true
+    })
+  }, [reports, search, userFilter, dateFrom, dateTo, openId])
+
+  // Status (só existe na Lista — no Kanban as 3 colunas já particionam) + ordenação.
+  const visibleReports = useMemo(() => {
+    const statusFiltered = baseFiltered.filter((r) => statusFilter === 'all' || r.status === statusFilter || r.id === openId)
+    return [...statusFiltered].sort((a, b) => {
       const cmp = sortKey === 'number'
         ? a.ticket_number - b.ticket_number
         : new Date(lastActionAt(a)).getTime() - new Date(lastActionAt(b)).getTime()
       return sortDir === 'asc' ? cmp : -cmp
     })
-  }, [statusFiltered, search, sortKey, sortDir])
+  }, [baseFiltered, statusFilter, sortKey, sortDir])
 
   function handleStatusChange(id: string, status: FeedbackStatus) {
     startSave(async () => {
@@ -425,17 +446,62 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
           </button>
         </div>
 
-        {view === 'lista' && (
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Pesquisar chamado..."
-              className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-        )}
+      </div>
+
+      {/* Pesquisa + usuário + período — vale pras duas visões (Kanban e Lista) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Pesquisar chamado..."
+            className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        <select
+          value={userFilter}
+          onChange={(e) => setUserFilter(e.target.value)}
+          className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="all">Todos os usuários</option>
+          {memberOptions.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className={cn(
+              'h-9 text-sm border rounded-lg px-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30',
+              dateFrom ? 'border-primary text-primary font-medium' : 'border-border text-muted-foreground',
+            )}
+          />
+          <span className="text-xs text-muted-foreground">até</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className={cn(
+              'h-9 text-sm border rounded-lg px-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30',
+              dateTo ? 'border-primary text-primary font-medium' : 'border-border text-muted-foreground',
+            )}
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              className="text-xs text-muted-foreground hover:text-foreground px-1"
+              title="Limpar período"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {view === 'lista' && (
@@ -462,7 +528,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
       )}
 
       {view === 'kanban' ? (
-        <FeedbackKanban reports={reports} onCardClick={setOpenId} />
+        <FeedbackKanban reports={baseFiltered} onCardClick={setOpenId} />
       ) : visibleReports.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground">
           Nenhum feedback encontrado.
