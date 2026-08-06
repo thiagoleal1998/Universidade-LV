@@ -5,10 +5,18 @@
 // isso — login e RLS são testados direto pela API do Supabase, o mesmo
 // mecanismo que a UI usa por baixo.
 //
-//   node scripts/health-check.mjs             (roda tudo, alerta se falhar)
-//   node scripts/health-check.mjs --dry-run    (roda tudo, não envia alerta)
+//   npm run health-check                       (roda tudo, alerta se falhar)
+//   npm run health-check -- --dry-run           (roda tudo, não envia alerta)
 //
 // Sai com código 1 se qualquer verificação falhar (fica no log do cron).
+//
+// Precisa da flag --experimental-websocket em Node < 22 (por isso o script
+// "health-check" do package.json já inclui): @supabase/supabase-js cria um
+// RealtimeClient na hora do createClient(), mesmo sem usar realtime nenhuma
+// vez — e esse construtor lança exceção síncrona se não achar um WebSocket
+// nativo no ambiente. O app Next.js nunca esbarra nisso (o bundler injeta
+// um polyfill), mas um script node puro sim. Confirmado: sem a flag, a VPS
+// (Node 20) quebra em createClient() antes de qualquer verificação rodar.
 import { createClient } from '@supabase/supabase-js'
 import { Client as NotionClient } from '@notionhq/client'
 import { createRequire } from 'module'

@@ -10,7 +10,7 @@
     "lint": "eslint",
     "deploy": "node scripts/deploy-vps.cjs",
     "e2e": "node scripts/e2e.mjs",
-    "health-check": "node scripts/health-check.mjs"
+    "health-check": "node --experimental-websocket scripts/health-check.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
