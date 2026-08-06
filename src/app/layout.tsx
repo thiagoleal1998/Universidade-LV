@@ -3,6 +3,7 @@ import { Montserrat, Geist_Mono } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SettingsProvider } from '@/components/providers/settings-provider'
+import { NavigationProgress } from '@/components/navigation-progress'
 import { getSettings, getColorStyleTag } from '@/lib/settings'
 import './globals.css'
 
@@ -93,6 +94,7 @@ export default async function RootLayout({
       <body className="min-h-full antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <SettingsProvider settings={settings}>
+            <NavigationProgress />
             {children}
             <Toaster richColors position="top-right" />
           </SettingsProvider>
