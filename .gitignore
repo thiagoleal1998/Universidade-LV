@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# log local do health-check (scripts/health-check.mjs) — cada máquina/VPS
+# acumula o próprio
+/logs/
+
 # production
 /build
 
