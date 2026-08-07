@@ -76,7 +76,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   if (task) {
     const { data: responsesRaw } = await adminClient
       .from('lesson_task_responses')
-      .select('id, user_id, submitted_at, grade, feedback, graded_at, answers:lesson_task_answers(question_id, text_answer, option_indices, grade)')
+      .select('id, user_id, submitted_at, grade, feedback, graded_at, attempt_number, answers:lesson_task_answers(question_id, text_answer, option_indices, grade)')
       .eq('task_id', task.id)
       .order('submitted_at', { ascending: false })
 

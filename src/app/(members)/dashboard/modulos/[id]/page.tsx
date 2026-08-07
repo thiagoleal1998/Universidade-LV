@@ -228,7 +228,7 @@ export default async function ModulePreviewPage({
       const taskIds = [...tasksByLesson.values()].map((t) => t.id)
       const { data: responsesData } = await supabase
         .from('lesson_task_responses')
-        .select('id, task_id, submitted_at, answers:lesson_task_answers(question_id, text_answer, option_indices)')
+        .select('id, task_id, submitted_at, attempt_number, answers:lesson_task_answers(question_id, text_answer, option_indices)')
         .eq('user_id', user.id)
         .in('task_id', taskIds)
       myResponsesByTask = new Map(((responsesData ?? []) as (TaskResponse & { task_id: string })[]).map((r) => [r.task_id, r]))

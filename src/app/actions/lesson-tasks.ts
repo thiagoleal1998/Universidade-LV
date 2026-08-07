@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { notifyCourseOwners, notifyUser } from '@/app/actions/notifications'
 import { toOne } from '@/lib/supabase/relations'
 import { rdTaskGraded, getMemberEmailAndName } from '@/lib/rdstation'
+import { MAX_TASK_ATTEMPTS } from '@/lib/lesson-tasks'
 
 export type QuestionType = 'short_text' | 'long_text' | 'multiple_choice' | 'checkboxes' | 'file_upload'
 
@@ -46,6 +47,7 @@ export type TaskResponse = {
   grade: number | null
   feedback: string | null
   graded_at: string | null
+  attempt_number: number
 }
 
 // ── Admin actions ────────────────────────────────────────────────────────────
@@ -187,15 +189,49 @@ export async function submitTaskResponse(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const { data: response, error: resError } = await supabase
+  // Reaproveita a mesma linha em vez de inserir outra — cobre tanto a
+  // primeira submissão quanto "Refazer teste" (CLV-0044), sem quebrar as
+  // outras telas que assumem uma resposta por aluno por tarefa.
+  const { data: existing } = await supabase
     .from('lesson_task_responses')
-    .insert({ task_id: taskId, user_id: user.id })
-    .select()
-    .single()
-  if (resError) return { error: resError.message }
+    .select('id, attempt_number')
+    .eq('task_id', taskId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (existing && existing.attempt_number >= MAX_TASK_ATTEMPTS) {
+    return { error: `Você já usou as ${MAX_TASK_ATTEMPTS} tentativas permitidas para esta tarefa.` }
+  }
+
+  let responseId: string
+  if (existing) {
+    const { error: updError } = await supabase
+      .from('lesson_task_responses')
+      .update({
+        attempt_number: existing.attempt_number + 1,
+        submitted_at: new Date().toISOString(),
+        grade: null,
+        feedback: null,
+        graded_at: null,
+        graded_by: null,
+      })
+      .eq('id', existing.id)
+    if (updError) return { error: updError.message }
+    responseId = existing.id
+    // Limpa as respostas da tentativa anterior antes de gravar as novas.
+    await supabase.from('lesson_task_answers').delete().eq('response_id', responseId)
+  } else {
+    const { data: response, error: resError } = await supabase
+      .from('lesson_task_responses')
+      .insert({ task_id: taskId, user_id: user.id })
+      .select()
+      .single()
+    if (resError) return { error: resError.message }
+    responseId = response.id
+  }
 
   const rows = answers.map((a) => ({
-    response_id: response.id,
+    response_id: responseId,
     question_id: a.questionId,
     text_answer:    a.textAnswer    ?? null,
     option_indices: a.optionIndices ?? null,

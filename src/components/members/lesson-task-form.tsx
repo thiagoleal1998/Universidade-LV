@@ -3,11 +3,12 @@
 import { useState, useTransition, useRef } from 'react'
 import { submitTaskResponse, uploadTaskFile } from '@/app/actions/lesson-tasks'
 import type { LessonTask, TaskQuestion, TaskResponse } from '@/app/actions/lesson-tasks'
+import { MAX_TASK_ATTEMPTS } from '@/lib/lesson-tasks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
-import { ClipboardList, CheckCircle2, XCircle, Minus, Eye, CalendarClock, CalendarCheck2, CalendarX2, Clock, Paperclip, Upload, X, FileText, Loader2 } from 'lucide-react'
+import { ClipboardList, CheckCircle2, XCircle, Minus, Eye, CalendarClock, CalendarCheck2, CalendarX2, Clock, Paperclip, Upload, X, FileText, Loader2, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -96,7 +97,7 @@ function TaskDateBanner({
 
 // ── Submitted (read-only) view ────────────────────────────────────────────────
 
-function SubmittedView({ task, response }: { task: LessonTask; response: TaskResponse }) {
+function SubmittedView({ task, response, onRetake }: { task: LessonTask; response: TaskResponse; onRetake: () => void }) {
   const sorted = [...task.questions].sort((a, b) => a.order_index - b.order_index)
 
   function getTextAnswer(q: TaskQuestion) {
@@ -129,6 +130,10 @@ function SubmittedView({ task, response }: { task: LessonTask; response: TaskRes
           {new Date(response.submitted_at).toLocaleDateString('pt-BR')}
         </span>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        Tentativa {response.attempt_number} de {MAX_TASK_ATTEMPTS}
+      </p>
 
       {sorted.map((q, i) => {
         const isFile = q.type === 'file_upload'
@@ -219,6 +224,22 @@ function SubmittedView({ task, response }: { task: LessonTask; response: TaskRes
           </div>
         )
       })}
+
+      {response.attempt_number < MAX_TASK_ATTEMPTS ? (
+        <div className="pt-2 space-y-1.5">
+          <Button type="button" variant="outline" size="sm" onClick={onRetake} className="gap-2">
+            <RotateCcw className="w-3.5 h-3.5" />
+            Refazer teste
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Sua resposta atual será substituída — restam {MAX_TASK_ATTEMPTS - response.attempt_number} tentativa{MAX_TASK_ATTEMPTS - response.attempt_number !== 1 ? 's' : ''}.
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground pt-2">
+          Você já usou todas as {MAX_TASK_ATTEMPTS} tentativas para esta tarefa.
+        </p>
+      )}
     </div>
   )
 }
@@ -242,6 +263,9 @@ export function LessonTaskForm({
 }) {
   const [submitted, setSubmitted] = useState(!!initialResponse)
   const [response, setResponse] = useState<TaskResponse | null>(initialResponse)
+  // Sobrevive ao "Refazer teste" (que zera `response` pra mostrar o formulário
+  // vazio de novo) — é o que permite numerar a próxima tentativa certo.
+  const [attemptsUsed, setAttemptsUsed] = useState(initialResponse?.attempt_number ?? 0)
   const [isPending, startTransition] = useTransition()
 
   // State: text answers and checkbox/radio answers keyed by question ID
@@ -332,24 +356,38 @@ export function LessonTaskForm({
       if (r?.error) {
         toast.error(r.error)
       } else {
-        toast.success('Tarefa enviada!')
+        toast.success(attemptsUsed > 0 ? 'Nova tentativa enviada!' : 'Tarefa enviada!')
         // Build local response for immediate display
         const now = new Date().toISOString()
+        const nextAttempt = attemptsUsed + 1
         setResponse({
           id: 'local',
           submitted_at: now,
           grade: null,
           feedback: null,
           graded_at: null,
+          attempt_number: nextAttempt,
           answers: answers.map((a) => ({
             question_id: a.questionId,
             text_answer: a.textAnswer ?? null,
             option_indices: a.optionIndices ?? null,
           })),
         })
+        setAttemptsUsed(nextAttempt)
         setSubmitted(true)
       }
     })
+  }
+
+  // "Refazer teste" (CLV-0044): volta pro formulário vazio pra uma nova
+  // tentativa — `attemptsUsed` não zera, só o que está na tela.
+  function handleRetake() {
+    setSubmitted(false)
+    setResponse(null)
+    setTextAnswers({})
+    setChoiceAnswers({})
+    setFileUrls({})
+    setFileNames({})
   }
 
   if (isAdminPreview && task.questions.length === 0) {
@@ -387,7 +425,7 @@ export function LessonTaskForm({
         <TaskDateBanner startDate={taskStartDate} endDate={taskEndDate} />
 
         {submitted && response ? (
-          <SubmittedView task={task} response={response} />
+          <SubmittedView task={task} response={response} onRetake={handleRetake} />
         ) : (
           <>
             {sorted.map((q, i) => (

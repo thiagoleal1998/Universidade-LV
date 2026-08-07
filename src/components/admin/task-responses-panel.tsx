@@ -36,6 +36,7 @@ type Response = {
   graded_at: string | null
   member_name: string
   answers: Answer[]
+  attempt_number: number
 }
 
 export function TaskResponsesPanel({
@@ -145,6 +146,7 @@ export function TaskResponsesPanel({
                   <p className="text-sm font-medium text-foreground truncate">{resp.member_name}</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(resp.submitted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {resp.attempt_number > 1 && ` · tentativa ${resp.attempt_number}`}
                   </p>
                 </div>
               </div>

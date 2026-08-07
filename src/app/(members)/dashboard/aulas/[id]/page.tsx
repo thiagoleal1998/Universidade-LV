@@ -161,7 +161,7 @@ export default async function LessonPage({
   if (task && !isAdmin) {
     const { data: resData } = await supabase
       .from('lesson_task_responses')
-      .select('id, submitted_at, answers:lesson_task_answers(question_id, text_answer, option_indices)')
+      .select('id, submitted_at, attempt_number, answers:lesson_task_answers(question_id, text_answer, option_indices)')
       .eq('task_id', task.id)
       .eq('user_id', user.id)
       .maybeSingle()
