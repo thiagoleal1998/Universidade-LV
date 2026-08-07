@@ -5,9 +5,12 @@
 // isso — login e RLS são testados direto pela API do Supabase, o mesmo
 // mecanismo que a UI usa por baixo.
 //
-//   npm run health-check                       (roda tudo, alerta se falhar)
-//   npm run health-check -- --dry-run           (roda tudo, não envia alerta)
+//   npm run health-check                       (roda tudo, sempre manda e-mail)
+//   npm run health-check -- --dry-run           (roda tudo, só imprime o e-mail)
 //
+// Manda e-mail TODO dia via RD Station: resumo "tudo ok" se nada falhou,
+// ou o alerta de sempre se algo falhou — assim dá pra distinguir "está tudo
+// bem" de "o cron parou de rodar" (o segundo caso não manda e-mail nenhum).
 // Sai com código 1 se qualquer verificação falhar (fica no log do cron).
 //
 // Precisa da flag --experimental-websocket em Node < 22 (por isso o script
@@ -201,15 +204,27 @@ async function checkHostgatorStatusPage() {
   }
 }
 
-// ── Alerta via RD Station ────────────────────────────────────────────────
-async function sendAlert(failures) {
-  const body = failures.map((f) => `• ${f.name}: ${f.detail || 'falhou, sem detalhe'}`).join('\n')
+// ── Relatório via RD Station (sempre envia, falha ou não) ───────────────
+// Antes só mandava e-mail em falha — o usuário relatou "não recebi nada
+// hoje" num dia em que estava tudo ok e não tinha como saber se era "sem
+// problema" ou "o cron nem rodou" (o próprio alerta silencioso não avisa
+// de si mesmo quebrado). Agora manda um e-mail TODO dia: resumo "tudo ok"
+// quando não há falha, e o mesmo alerta de sempre quando há.
+async function sendReport(results, failures) {
+  const ok = failures.length === 0
+  const title = ok
+    ? '✓ Verificação diária: tudo certo'
+    : `⚠ Verificação diária: ${failures.length} problema(s) encontrado(s)`
+  const body = ok
+    ? results.map((r) => `✓ ${r.name}`).join('\n')
+    : failures.map((f) => `• ${f.name}: ${f.detail || 'falhou, sem detalhe'}`).join('\n')
+
   if (dryRun) {
-    console.log('\n[--dry-run] alerta que seria enviado:\n' + body)
+    console.log(`\n[--dry-run] e-mail que seria enviado:\n${title}\n${body}`)
     return
   }
-  if (!ADMIN_EMAIL) {
-    console.error('✗ ADMIN_EMAIL não configurado — não foi possível alertar por e-mail.')
+  if (!env.ADMIN_EMAIL) {
+    console.error('✗ ADMIN_EMAIL não configurado — não foi possível enviar o e-mail.')
     return
   }
   try {
@@ -223,20 +238,20 @@ async function sendAlert(failures) {
         event_family: 'CDP',
         payload: {
           conversion_identifier: 'universidade-lv-alerta-sistema',
-          email: ADMIN_EMAIL,
+          email: env.ADMIN_EMAIL,
           cf_tags_lv: 'Admin',
-          cf_titulo: `Verificação diária: ${failures.length} problema(s) encontrado(s)`,
+          cf_titulo: title,
           cf_corpo: body,
         },
       }),
     })
-    console.log('✓ alerta enviado via RD Station')
+    console.log('✓ e-mail enviado via RD Station')
   } catch (err) {
-    // Se o próprio RD Station é o que está fora do ar, o alerta por e-mail
-    // não sai — ponto único de falha aceito deliberadamente (decisão do
-    // usuário: reaproveitar a infra existente em vez de um segundo canal).
-    // O log em disco abaixo é a rede de segurança nesse cenário.
-    console.error(`✗ falhou ao enviar alerta via RD Station: ${err.message}`)
+    // Se o próprio RD Station é o que está fora do ar, o e-mail não sai —
+    // ponto único de falha aceito deliberadamente (decisão do usuário:
+    // reaproveitar a infra existente em vez de um segundo canal). O log em
+    // disco abaixo é a rede de segurança nesse cenário.
+    console.error(`✗ falhou ao enviar e-mail via RD Station: ${err.message}`)
   }
 }
 
@@ -272,8 +287,10 @@ const logLine = `${startedAt} | ${failures.length === 0 ? 'OK' : `${failures.len
 fs.appendFileSync(path.join(logDir, 'health-check.log'), logLine)
 
 if (failures.length > 0) {
-  await sendAlert(failures)
+  console.error(`\n✗ ${failures.length} falha(s)`)
   process.exitCode = 1
 } else {
   console.log('\n✓ tudo ok')
 }
+
+await sendReport(results, failures)
