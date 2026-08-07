@@ -191,7 +191,7 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null, initialOp
   // nele — `isPending` sozinho não diferencia (é compartilhado por status,
   // responsável, notificar e responder), então mudar o status também
   // "acendia" a aparência de carregando no botão de notificar, por exemplo.
-  const [activeAction, setActiveAction] = useState<{ id: string; kind: 'status' | 'assign' } | null>(null)
+  const [activeAction, setActiveAction] = useState<{ id: string; kind: 'status' | 'assign' | 'note' } | null>(null)
 
   // Recupera rascunhos de resposta da sessão do navegador — só uma vez, pra
   // não sobrescrever o que o admin já está digitando se `reports` mudar
@@ -300,17 +300,21 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null, initialOp
   function handleSaveNote(id: string) {
     const note = notes[id] ?? ''
     const attachments = (noteAttachments[id] ?? []).map((a) => ({ path: a.path, mimeType: a.mimeType, sizeBytes: a.sizeBytes, fileName: a.fileName }))
+    setActiveAction({ id, kind: 'note' })
     startSave(async () => {
       const r = await addFeedbackNote(id, note, attachments)
-      if (r?.error) toast.error(r.error)
-      else {
-        toast.success('Resposta enviada! O membro foi notificado.')
-        clearDraft(draftKey(id))
-        setNotes((p) => ({ ...p, [id]: '' }))
-        setNoteAttachments((p) => ({ ...p, [id]: [] }))
-        setNoteResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
-        router.refresh()
-      }
+      if (r?.error) { toast.error(r.error); setActiveAction(null); return }
+      toast.success('Resposta enviada! O membro foi notificado.')
+      clearDraft(draftKey(id))
+      setNotes((p) => ({ ...p, [id]: '' }))
+      setNoteAttachments((p) => ({ ...p, [id]: [] }))
+      setNoteResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
+      // `router.refresh()` chamado dentro do `startTransition` mantém `isPending`
+      // (e portanto o spinner do botão) verdadeiro até a timeline atualizada
+      // chegar — sem isso o botão volta ao normal na hora, mas a resposta some
+      // da tela por alguns segundos, parecendo que não funcionou.
+      router.refresh()
+      setActiveAction(null)
     })
   }
 
@@ -445,8 +449,16 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null, initialOp
           size="sm"
           disabled={isPending || isNoteEmpty(notes[report.id] ?? '')}
           onClick={() => handleSaveNote(report.id)}
+          className="gap-1.5"
         >
-          Enviar resposta
+          {activeAction?.id === report.id && activeAction.kind === 'note' ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Enviando...
+            </>
+          ) : (
+            'Enviar resposta'
+          )}
         </Button>
       </div>
     )

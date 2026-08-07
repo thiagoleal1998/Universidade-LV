@@ -14,7 +14,7 @@ import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
-import { Bug, Lightbulb, ChevronRight, Link2, ExternalLink, Sparkles, Search } from 'lucide-react'
+import { Bug, Lightbulb, ChevronRight, Link2, ExternalLink, Sparkles, Search, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
@@ -132,6 +132,9 @@ export function MyFeedbackList({ reports, initialOpenId = null, initialOpenNonce
         setReplies((p) => ({ ...p, [id]: '' }))
         setReplyAttachments((p) => ({ ...p, [id]: [] }))
         setReplyResetKey((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
+        // Chamado dentro do `startTransition` — mantém `isSending` (e o
+        // spinner do botão) verdadeiro até a timeline atualizada chegar de
+        // verdade, não só até a Server Action responder.
         router.refresh()
       }
     })
@@ -193,8 +196,10 @@ export function MyFeedbackList({ reports, initialOpenId = null, initialOpenNonce
           size="sm"
           disabled={isSending || isNoteEmpty(replies[report.id] ?? '')}
           onClick={() => handleSendReply(report.id)}
+          className="gap-1.5"
         >
-          Enviar resposta
+          {isSending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          {isSending ? 'Enviando...' : 'Enviar resposta'}
         </Button>
       </div>
     )
