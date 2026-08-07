@@ -85,6 +85,13 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   const hasLiveUtteranceRef = useRef(false)
   const generationRef = useRef(0)
 
+  // Debounce de seek/volume (CLV-0048, ver `handleSeek`/`applyVolume` abaixo)
+  // + flag que impede o timer de extrapolação de sobrescrever a posição
+  // enquanto um seek está "em voo" aguardando o debounce.
+  const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const volumeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isSeekingRef = useRef(false)
+
   // Velocidade de leitura OBSERVADA (chars/seg a 1x), corrigida em tempo real
   // a partir do próprio evento `boundary` — bug real corrigido (CLV-0047,
   // relatado pelo Cesar): a duração total mostrada usava só a constante fixa
@@ -104,7 +111,11 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   }, [html])
 
   useEffect(() => {
-    return () => { window.speechSynthesis?.cancel() }
+    return () => {
+      window.speechSynthesis?.cancel()
+      if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current)
+      if (volumeDebounceRef.current) clearTimeout(volumeDebounceRef.current)
+    }
   }, [html])
 
   // Timer que estima o avanço da leitura enquanto toca — é o que faz a
@@ -112,6 +123,9 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   useEffect(() => {
     if (ttsState !== 'playing') return
     const id = setInterval(() => {
+      // Não pisa na posição enquanto um seek está em voo (aguardando o
+      // debounce) — senão a barra arrastada "volta sozinha" por um instante.
+      if (isSeekingRef.current) return
       const elapsedSec = (performance.now() - playStartTimeRef.current) / 1000
       const estimate = playStartCharRef.current + elapsedSec * observedCharsPerSecRef.current * rate
       setPlayedChars(Math.min(estimate, totalChars))
@@ -191,25 +205,47 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     window.speechSynthesis.cancel()
     hasLiveUtteranceRef.current = false
     generationRef.current++
+    // Um seek/volume debounced ainda pendente reviveria a fala depois do
+    // Stop (closure antiga com `ttsState === 'playing'`) se não for cancelado.
+    if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current)
+    if (volumeDebounceRef.current) clearTimeout(volumeDebounceRef.current)
+    isSeekingRef.current = false
     setTtsState('idle')
     setPlayedChars(0)
   }
 
+  // `<input type="range">` dispara `onChange` continuamente durante o
+  // arraste (não só no soltar) — bug real corrigido (CLV-0048, relatado
+  // pelo Cesar): tanto o seek quanto o volume cancelavam e recriavam a
+  // `SpeechSynthesisUtterance` inteira a CADA disparo, e arrastar gera
+  // dezenas deles por segundo. O resultado ("o áudio diminui a velocidade
+  // consideravelmente e não é possível ouvir a narração") é a fala sendo
+  // reiniciada em loop antes de qualquer trecho terminar de tocar. Os dois
+  // agora só aplicam a mudança de verdade (cancel+speak) 200ms depois do
+  // ÚLTIMO disparo — um arraste inteiro vira só uma recriação no final, não
+  // uma por pixel movido.
   function handleSeek(fraction: number) {
     const target = Math.round(fraction * totalChars)
-    if (ttsState === 'playing') {
-      playFrom(target)
-    } else {
-      window.speechSynthesis.cancel()
-      hasLiveUtteranceRef.current = false
-      generationRef.current++
-      setPlayedChars(target)
-    }
+    isSeekingRef.current = true
+    setPlayedChars(target) // feedback visual imediato; o motor de voz só é tocado no debounce abaixo
+    if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current)
+    seekDebounceRef.current = setTimeout(() => {
+      isSeekingRef.current = false
+      if (ttsState === 'playing') {
+        playFrom(target)
+      } else {
+        window.speechSynthesis.cancel()
+        hasLiveUtteranceRef.current = false
+        generationRef.current++
+        setPlayedChars(target)
+      }
+    }, 200)
   }
 
   // Rate/volume não são alteráveis de forma confiável numa fala já em
   // andamento entre navegadores — a correção é recriar a utterance a
-  // partir da posição atual, preservando play/pause.
+  // partir da posição atual, preservando play/pause. Velocidade é só um
+  // clique num preset (sem drag), então não precisa do mesmo debounce.
   function applyRate(next: number) {
     setRate(next)
     setSpeedMenuOpen(false)
@@ -227,18 +263,21 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   }
 
   function applyVolume(next: number) {
-    setVolume(next)
-    if (ttsState === 'idle') return
-    const wasPlaying = ttsState === 'playing'
-    window.speechSynthesis.cancel()
-    const clamped = Math.max(0, Math.min(Math.round(playedChars), totalChars - 1))
-    startCharRef.current = clamped
-    playStartCharRef.current = clamped
-    playStartTimeRef.current = performance.now()
-    hasLiveUtteranceRef.current = true
-    window.speechSynthesis.speak(buildUtterance(clamped, rate, next))
-    if (!wasPlaying) window.speechSynthesis.pause()
-    setTtsState(wasPlaying ? 'playing' : 'paused')
+    setVolume(next) // feedback visual imediato (posição do slider, ícone de mudo)
+    if (volumeDebounceRef.current) clearTimeout(volumeDebounceRef.current)
+    volumeDebounceRef.current = setTimeout(() => {
+      if (ttsState === 'idle') return
+      const wasPlaying = ttsState === 'playing'
+      window.speechSynthesis.cancel()
+      const clamped = Math.max(0, Math.min(Math.round(playedChars), totalChars - 1))
+      startCharRef.current = clamped
+      playStartCharRef.current = clamped
+      playStartTimeRef.current = performance.now()
+      hasLiveUtteranceRef.current = true
+      window.speechSynthesis.speak(buildUtterance(clamped, rate, next))
+      if (!wasPlaying) window.speechSynthesis.pause()
+      setTtsState(wasPlaying ? 'playing' : 'paused')
+    }, 200)
   }
 
   function toggleMute() {
