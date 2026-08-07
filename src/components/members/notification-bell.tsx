@@ -3,11 +3,13 @@
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Bell, ClipboardCheck, Star, Megaphone, Video, BookOpen, Bug, UserPlus, MessageSquare } from 'lucide-react'
+import { Bell, BellPlus, ClipboardCheck, Star, Megaphone, Video, BookOpen, Bug, UserPlus, MessageSquare } from 'lucide-react'
+import { toast } from 'sonner'
 import { getNotifications, markAllNotificationsRead } from '@/app/actions/notifications'
 import type { Notification } from '@/app/actions/notifications'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from '@/lib/time'
+import { isPushSupported, getExistingSubscription, enablePushNotifications } from '@/lib/push-client'
 
 function NotifIcon({ type }: { type: string }) {
   const base = 'w-7 h-7 rounded-lg flex items-center justify-center shrink-0'
@@ -59,6 +61,39 @@ export function NotificationBell({
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({})
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Notificação nativa do navegador/SO (Web Push) — banner de ativação some
+  // sozinho assim que a pessoa aceita (ou se o navegador não suporta / já
+  // negou a permissão antes, caso em que não tem como reoferecer por aqui).
+  const [pushState, setPushState] = useState<'checking' | 'unavailable' | 'offerable' | 'enabled'>('checking')
+  const [enablingPush, setEnablingPush] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function check() {
+      if (!isPushSupported() || typeof Notification === 'undefined' || Notification.permission === 'denied') {
+        if (!cancelled) setPushState('unavailable')
+        return
+      }
+      const sub = await getExistingSubscription()
+      if (!cancelled) setPushState(sub ? 'enabled' : 'offerable')
+    }
+    check()
+    return () => { cancelled = true }
+  }, [])
+
+  async function handleEnablePush() {
+    setEnablingPush(true)
+    const r = await enablePushNotifications()
+    setEnablingPush(false)
+    if (r.error) {
+      toast.error(r.error)
+      setPushState('unavailable')
+    } else {
+      setPushState('enabled')
+      toast.success('Notificações do navegador ativadas!')
+    }
+  }
 
   const updatePosition = useCallback(() => {
     if (!buttonRef.current) return
@@ -143,6 +178,20 @@ export function NotificationBell({
       <div className="px-4 py-3 border-b border-border">
         <p className="text-sm font-semibold text-foreground">Notificações</p>
       </div>
+
+      {pushState === 'offerable' && (
+        <div className="px-4 py-2.5 border-b border-border bg-primary/5 flex items-center gap-2.5">
+          <BellPlus className="w-4 h-4 text-primary shrink-0" />
+          <p className="text-xs text-muted-foreground flex-1">Ative para receber avisos mesmo com a aba fechada.</p>
+          <button
+            onClick={handleEnablePush}
+            disabled={enablingPush}
+            className="text-xs font-medium text-primary hover:underline shrink-0 disabled:opacity-50"
+          >
+            {enablingPush ? 'Ativando...' : 'Ativar'}
+          </button>
+        </div>
+      )}
 
       {isPending ? (
         <p className="px-4 py-8 text-sm text-muted-foreground text-center">Carregando...</p>

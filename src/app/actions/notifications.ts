@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { rdCourseContentPublished } from '@/lib/rdstation'
+import { sendPushToUsers } from '@/lib/webpush'
 
 export type Notification = {
   id: string
@@ -106,6 +107,7 @@ export async function notifyAllMembers(opts: {
   await adminClient.from('notifications').insert(
     members.map((m) => ({ user_id: m.id, ...opts }))
   )
+  sendPushToUsers(members.map((m) => m.id), { title: opts.title, body: opts.body, url: opts.link })
 }
 
 // Notify members with access to a specific course — used by lessons
@@ -126,6 +128,7 @@ export async function notifyCourseMembers(
   await adminClient.from('notifications').insert(
     memberships.map((m) => ({ user_id: m.member_id, ...opts }))
   )
+  sendPushToUsers(memberships.map((m) => m.member_id), { title: opts.title, body: opts.body, url: opts.link })
 
   const memberIds = new Set(memberships.map((m) => m.member_id))
   const { data: usersData } = await adminClient.auth.admin.listUsers()
@@ -142,6 +145,7 @@ export async function notifyUser(
 ) {
   const adminClient = createAdminClient()
   await adminClient.from('notifications').insert({ user_id: userId, ...opts })
+  sendPushToUsers([userId], { title: opts.title, body: opts.body, url: opts.link })
 }
 
 // Notify all admins except the actor — used by community events
@@ -162,6 +166,7 @@ export async function notifyAllAdmins(
   await adminClient.from('notifications').insert(
     admins.map((a) => ({ user_id: a.id, ...opts }))
   )
+  sendPushToUsers(admins.map((a) => a.id), { title: opts.title, body: opts.body, url: opts.link })
 }
 
 // Notify collaborators who own a course (capacidade 'courses' + área dona do
@@ -195,6 +200,7 @@ export async function notifyCourseOwners(
           .neq('id', actorId)
         if (owners?.length) {
           await adminClient.from('notifications').insert(owners.map((o) => ({ user_id: o.id, ...opts })))
+          sendPushToUsers(owners.map((o) => o.id), { title: opts.title, body: opts.body, url: opts.link })
         }
       }
     }
@@ -211,6 +217,7 @@ export async function notifyCourseOwners(
   await adminClient.from('notifications').insert(
     admins.map((a) => ({ user_id: a.id, ...opts, area_tag: ownerAreaName }))
   )
+  sendPushToUsers(admins.map((a) => a.id), { title: opts.title, body: opts.body, url: opts.link })
 }
 
 // IDs de chamados de feedback com notificação `feedback_update` não lida —
