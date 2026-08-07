@@ -15,7 +15,7 @@ import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
 import { toast } from 'sonner'
-import { Bug, Lightbulb, ChevronRight, Link2, ExternalLink, BellRing, LayoutGrid, List as ListIcon, Search, ArrowUp, ArrowDown } from 'lucide-react'
+import { Bug, Lightbulb, ChevronRight, Link2, ExternalLink, BellRing, LayoutGrid, List as ListIcon, Search, ArrowUp, ArrowDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
 import { isRichTextEmpty } from '@/lib/rich-text-content'
@@ -174,6 +174,11 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
   const [noteResetKey, setNoteResetKey] = useState<Record<string, number>>({})
   const [isPending, startSave] = useTransition()
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
+  // Rastreia qual campo específico está salvando, pra mostrar o spinner só
+  // nele — `isPending` sozinho não diferencia (é compartilhado por status,
+  // responsável, notificar e responder), então mudar o status também
+  // "acendia" a aparência de carregando no botão de notificar, por exemplo.
+  const [activeAction, setActiveAction] = useState<{ id: string; kind: 'status' | 'assign' } | null>(null)
 
   // Recupera rascunhos de resposta da sessão do navegador — só uma vez, pra
   // não sobrescrever o que o admin já está digitando se `reports` mudar
@@ -252,16 +257,20 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
   }, [baseFiltered, statusFilter, sortKey, sortDir])
 
   function handleStatusChange(id: string, status: FeedbackStatus) {
+    setActiveAction({ id, kind: 'status' })
     startSave(async () => {
       const r = await updateFeedbackStatus(id, status)
+      setActiveAction(null)
       if (r?.error) toast.error(r.error)
       else { toast.success(`Status alterado para "${STATUS_LABEL[status]}".`); router.refresh() }
     })
   }
 
   function handleAssign(id: string, assignedTo: string) {
+    setActiveAction({ id, kind: 'assign' })
     startSave(async () => {
       const r = await assignFeedback(id, assignedTo === UNASSIGNED ? null : assignedTo)
+      setActiveAction(null)
       if (r?.error) toast.error(r.error)
       else { toast.success('Responsável atualizado!'); router.refresh() }
     })
@@ -342,14 +351,21 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
             <Select
               value={report.status}
               onValueChange={(v) => handleStatusChange(report.id, v as FeedbackStatus)}
+              disabled={isPending}
             >
               <SelectTrigger className="h-8 text-sm">
-                <SelectValue>{(v: FeedbackStatus) => STATUS_LABEL[v]}</SelectValue>
+                {activeAction?.id === report.id && activeAction.kind === 'status' ? (
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...
+                  </span>
+                ) : (
+                  <SelectValue>{(v: FeedbackStatus) => STATUS_LABEL[v]}</SelectValue>
+                )}
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="open">Aberto</SelectItem>
-                <SelectItem value="in_progress">Em andamento</SelectItem>
-                <SelectItem value="resolved">Finalizado</SelectItem>
+                <SelectItem value="in_progress" disabled={!report.assigned_to}>Em andamento</SelectItem>
+                <SelectItem value="resolved" disabled={!report.assigned_to}>Finalizado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -359,14 +375,21 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
             <Select
               value={report.assigned_to ?? UNASSIGNED}
               onValueChange={(v) => handleAssign(report.id, v as string)}
+              disabled={isPending}
             >
               <SelectTrigger className="h-8 text-sm">
-                <SelectValue>
-                  {(v: string) => v === UNASSIGNED ? 'Ninguém' : (admins.find((a) => a.id === v)?.full_name ?? '')}
-                </SelectValue>
+                {activeAction?.id === report.id && activeAction.kind === 'assign' ? (
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...
+                  </span>
+                ) : (
+                  <SelectValue>
+                    {(v: string) => v === UNASSIGNED ? 'Ninguém' : (admins.find((a) => a.id === v)?.full_name ?? '')}
+                  </SelectValue>
+                )}
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={UNASSIGNED}>Ninguém</SelectItem>
+                <SelectItem value={UNASSIGNED} disabled={report.status !== 'open'}>Ninguém</SelectItem>
                 {admins.map((a) => (
                   <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
                 ))}

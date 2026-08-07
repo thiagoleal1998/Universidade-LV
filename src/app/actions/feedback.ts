@@ -445,8 +445,17 @@ export async function assignFeedback(id: string, assignedTo: string | null) {
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
-  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, notion_page_id').eq('id', id).single()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, status, notion_page_id').eq('id', id).single()
   if (!report) return { error: 'Chamado não encontrado.' }
+
+  // Um chamado "Em andamento"/"Finalizado" sempre precisa de um responsável —
+  // remover a atribuição desses estados deixaria o card numa coluna que
+  // pressupõe alguém trabalhando nele, mas sem ninguém de fato responsável.
+  // Precisa voltar pra "Aberto" primeiro (updateFeedbackStatus, ver guard
+  // simétrico lá).
+  if (assignedTo === null && report.status !== 'open') {
+    return { error: 'Não é possível remover o responsável com o chamado em andamento ou finalizado. Mude o status para "Aberto" primeiro.' }
+  }
 
   const assignedName = assignedTo
     ? (await adminClient.from('profiles').select('full_name').eq('id', assignedTo).single()).data?.full_name ?? ''
@@ -478,6 +487,16 @@ export async function assignFeedback(id: string, assignedTo: string | null) {
     link: `/dashboard/feedback?tab=minhas&report=${id}`,
   })
 
+  // Atribuir alguém a um chamado "Aberto" já significa que o trabalho
+  // começou — move para "Em andamento" sozinho, em vez de depender de uma
+  // segunda ação manual do admin (motivo do guard simétrico logo abaixo,
+  // em updateFeedbackStatus: sem isso, dava pra mover o card pra "Em
+  // andamento" sem ninguém responsável, ou atribuir alguém e o card ficar
+  // "esquecido" em Aberto).
+  if (assignedTo && report.status === 'open') {
+    await updateFeedbackStatus(id, 'in_progress')
+  }
+
   revalidatePath('/admin/feedback')
   revalidatePath('/dashboard/feedback')
   return { success: true }
@@ -490,9 +509,16 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus) {
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
-  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, status, notion_page_id').eq('id', id).single()
+  const { data: report } = await adminClient.from('feedback_reports').select('user_id, title, status, assigned_to, notion_page_id').eq('id', id).single()
   if (!report) return { error: 'Chamado não encontrado.' }
   if (report.status === status) return { success: true }
+
+  // Não deixa mover pra "Em andamento"/"Finalizado" sem um responsável —
+  // senão o card fica numa coluna que pressupõe alguém trabalhando nele,
+  // mas sem ninguém de fato responsável (o problema original relatado).
+  if (status !== 'open' && !report.assigned_to) {
+    return { error: 'Atribua um responsável antes de mover para "Em andamento" ou "Finalizado".' }
+  }
 
   const { error } = await supabase.from('feedback_reports').update({
     status,
