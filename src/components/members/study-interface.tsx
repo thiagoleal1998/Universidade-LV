@@ -85,6 +85,24 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   const hasLiveUtteranceRef = useRef(false)
   const generationRef = useRef(0)
 
+  // Velocidade de leitura OBSERVADA (chars/seg a 1x), corrigida em tempo real
+  // a partir do próprio evento `boundary` — bug real corrigido (CLV-0047,
+  // relatado pelo Cesar): a duração total mostrada usava só a constante fixa
+  // acima, então ficava errada o tempo todo (ex. "0:38" pra uma narração
+  // real de 46s, quando a voz do navegador lê mais devagar que a média
+  // assumida). Como o evento já entrega char lido + tempo decorrido de
+  // verdade, dá pra recalcular a velocidade real e convergir a duração
+  // mostrada pro valor certo conforme a fala avança, em vez de usar um
+  // número fixo a leitura inteira. Começa na constante (melhor estimativa
+  // possível antes do primeiro boundary) e só é ajustada com dado
+  // suficiente (guard de tempo/chars abaixo) pra não oscilar com ruído dos
+  // primeiros eventos.
+  const observedCharsPerSecRef = useRef(CHARS_PER_SECOND_AT_1X)
+
+  useEffect(() => {
+    observedCharsPerSecRef.current = CHARS_PER_SECOND_AT_1X
+  }, [html])
+
   useEffect(() => {
     return () => { window.speechSynthesis?.cancel() }
   }, [html])
@@ -95,7 +113,7 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     if (ttsState !== 'playing') return
     const id = setInterval(() => {
       const elapsedSec = (performance.now() - playStartTimeRef.current) / 1000
-      const estimate = playStartCharRef.current + elapsedSec * CHARS_PER_SECOND_AT_1X * rate
+      const estimate = playStartCharRef.current + elapsedSec * observedCharsPerSecRef.current * rate
       setPlayedChars(Math.min(estimate, totalChars))
     }, 200)
     return () => clearInterval(id)
@@ -110,12 +128,22 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     utterance.volume = atVolume
     const voice = pickBestVoice()
     if (voice) utterance.voice = voice
+    const utteranceStartTime = performance.now()
     utterance.onboundary = (e) => {
       if (gen !== generationRef.current) return
       const abs = fromChar + e.charIndex
       playStartCharRef.current = abs
       playStartTimeRef.current = performance.now()
       setPlayedChars(abs)
+
+      const elapsedSec = (performance.now() - utteranceStartTime) / 1000
+      if (elapsedSec > 1 && e.charIndex > 30) {
+        const observed = (e.charIndex / elapsedSec) / atRate
+        // Clamp: protege contra evento isolado com timing esquisito (troca de
+        // aba, engine pausando/retomando) puxando a estimativa pra um
+        // extremo absurdo.
+        observedCharsPerSecRef.current = Math.max(5, Math.min(30, observed))
+      }
     }
     utterance.onend = () => {
       if (gen !== generationRef.current) return
@@ -224,8 +252,8 @@ function TextToSpeechPlayer({ html }: { html: string }) {
 
   if (!text) return null
 
-  const duration = totalChars / (CHARS_PER_SECOND_AT_1X * rate)
-  const current = Math.min(playedChars, totalChars) / (CHARS_PER_SECOND_AT_1X * rate)
+  const duration = totalChars / (observedCharsPerSecRef.current * rate)
+  const current = Math.min(playedChars, totalChars) / (observedCharsPerSecRef.current * rate)
   const fraction = totalChars > 0 ? Math.min(playedChars / totalChars, 1) : 0
   const iconBtn = 'w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground hover:text-foreground shrink-0'
 
