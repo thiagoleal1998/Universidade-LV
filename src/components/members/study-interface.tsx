@@ -23,8 +23,20 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+// Sugestão real do Cesar (CLV-0050): links não precisam de áudio — o caso
+// comum é uma URL colada direto no texto (o `autolink` do RichTextEditor
+// já vira `<a>`, com o texto visível sendo a própria URL crua), e o TTS
+// tentava "pronunciar" isso letra por letra/barra por barra, o que soa
+// péssimo e não ajuda quem está ouvindo. Remove o link inteiro (tag +
+// conteúdo), não só a tag — sem isso, o texto de dentro do `<a>` (a URL, ou
+// um rótulo tipo "clique aqui") continuaria sendo lido normalmente.
 function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+  return html
+    .replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 type TtsState = 'idle' | 'playing' | 'paused'
