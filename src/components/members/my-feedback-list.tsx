@@ -67,9 +67,17 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
     getUnreadFeedbackUpdateReportIds().then((ids) => setUnreadReportIds(new Set(ids)))
   }, [])
 
-  // Vindo de uma notificação (link com ?report=<id>) — o modal já abre
-  // sozinho por reagir a `openReport !== null` (initialOpenId), sem precisar
-  // de scroll manual como antes (o Dialog cobre a tela, não tem pra onde rolar).
+  // Vindo de uma notificação (link com ?report=<id>) — o modal abre sozinho
+  // por reagir a `openReport !== null` (initialOpenId), sem precisar de
+  // scroll manual como antes (o Dialog cobre a tela, não tem pra onde rolar).
+  // Mas `useState(initialOpenId)` só lê a prop na MONTAGEM — clicar numa
+  // notificação nova com esta página já aberta (mesma rota, só troca
+  // `?report=`) não remonta o componente, então sem o useEffect abaixo o
+  // modal nunca abria (bug real, relatado pelo Cesar: clique navegava,
+  // loading aparecia, mas ficava na mesma tela).
+  useEffect(() => {
+    if (initialOpenId) setOpenId(initialOpenId)
+  }, [initialOpenId])
 
   // Recupera rascunhos de resposta da sessão do navegador — só uma vez, pra
   // não sobrescrever o que o membro já está digitando se `reports` mudar.

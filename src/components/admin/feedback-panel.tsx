@@ -169,6 +169,14 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
   const [sortKey, setSortKey] = useState<SortKey>('lastAction')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
+  // `useState(initialOpenId)` só lê a prop na montagem — clicar numa notificação
+  // nova enquanto esta página já está aberta (mesma rota, só troca `?report=`)
+  // não remonta o componente, então sem isso o modal nunca abria (bug real,
+  // relatado pelo Cesar: clique navegava, loading aparecia, mas ficava na
+  // mesma tela).
+  useEffect(() => {
+    if (initialOpenId) setOpenId(initialOpenId)
+  }, [initialOpenId])
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [noteAttachments, setNoteAttachments] = useState<Record<string, PickedAttachment[]>>({})
   const [noteResetKey, setNoteResetKey] = useState<Record<string, number>>({})
