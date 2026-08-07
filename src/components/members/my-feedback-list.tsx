@@ -14,7 +14,7 @@ import { FeedbackTimeline } from '@/components/ui/feedback-timeline'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { AttachmentFileChip } from '@/components/ui/attachment-file-chip'
 import { NoteAttachmentPicker, type PickedAttachment } from '@/components/ui/note-attachment-picker'
-import { Bug, Lightbulb, ChevronRight, Link2, ExternalLink, Sparkles } from 'lucide-react'
+import { Bug, Lightbulb, ChevronRight, Link2, ExternalLink, Sparkles, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { readDraft, writeDraft, clearDraft } from '@/lib/session-draft'
@@ -32,6 +32,8 @@ const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
   in_progress: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   resolved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
 }
+
+type StatusFilter = FeedbackStatus | 'all'
 
 const isNoteEmpty = isRichTextEmpty
 
@@ -54,6 +56,12 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
   const [replyResetKey, setReplyResetKey] = useState<Record<string, number>>({})
   const [isSending, startSend] = useTransition()
   const [unreadReportIds, setUnreadReportIds] = useState<Set<string>>(new Set())
+  // Mesmo filtro do painel admin (busca + status), sem o filtro de usuário —
+  // aqui só existe UM usuário possível: o próprio dono da lista.
+  const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
 
   useEffect(() => {
     getUnreadFeedbackUpdateReportIds().then((ids) => setUnreadReportIds(new Set(ids)))
@@ -187,6 +195,26 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
   }
 
   const openReport = reports.find((r) => r.id === openId) ?? null
+  const openCount = reports.filter((r) => r.status === 'open').length
+
+  // Busca + período, igual ao painel admin — mantém o chamado aberto no modal
+  // sempre visível mesmo se deixar de bater com o filtro atual.
+  const term = search.trim().toLowerCase()
+  const from = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null
+  const to = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null
+  const filteredReports = reports.filter((r) => {
+    if (r.id === openId) return true
+    if (statusFilter !== 'all' && r.status !== statusFilter) return false
+    if (term) {
+      const ticketStr = formatTicketNumber(r.ticket_number).toLowerCase()
+      const matches = ticketStr.includes(term) || (r.title || '').toLowerCase().includes(term)
+      if (!matches) return false
+    }
+    const createdAt = new Date(r.created_at).getTime()
+    if (from !== null && createdAt < from) return false
+    if (to !== null && createdAt > to) return false
+    return true
+  })
 
   function renderCard(report: FeedbackReport) {
     const hasUpdate = unreadReportIds.has(report.id)
@@ -231,25 +259,84 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
     )
   }
 
-  // Separado por status (pedido do usuário), sempre nessa ordem — grupo sem
-  // nenhum chamado simplesmente não aparece, em vez de mostrar um cabeçalho vazio.
-  const groups: { status: FeedbackStatus; items: FeedbackReport[] }[] = (['open', 'in_progress', 'resolved'] as const).map((status) => ({
-    status,
-    items: reports.filter((r) => r.status === status),
-  }))
-
   return (
-    <div className="space-y-6">
-      {groups.map(({ status, items }) => items.length === 0 ? null : (
-        <div key={status} className="space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            {STATUS_LABEL[status]} <span className="text-muted-foreground/60 font-normal normal-case">({items.length})</span>
-          </h3>
-          <div className="space-y-3">
-            {items.map(renderCard)}
-          </div>
+    <div className="space-y-4">
+      {/* Busca + período */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Pesquisar chamado..."
+            className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
         </div>
-      ))}
+
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className={cn(
+              'h-9 text-sm border rounded-lg px-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30',
+              dateFrom ? 'border-primary text-primary font-medium' : 'border-border text-muted-foreground',
+            )}
+          />
+          <span className="text-xs text-muted-foreground">até</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className={cn(
+              'h-9 text-sm border rounded-lg px-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30',
+              dateTo ? 'border-primary text-primary font-medium' : 'border-border text-muted-foreground',
+            )}
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              className="text-xs text-muted-foreground hover:text-foreground px-1"
+              title="Limpar período"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filtro por status */}
+      <div className="flex flex-wrap gap-2">
+        {([
+          { key: 'open', label: `Abertos (${openCount})` },
+          { key: 'in_progress', label: 'Em andamento' },
+          { key: 'resolved', label: 'Finalizados' },
+          { key: 'all', label: 'Todos' },
+        ] as const).map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStatusFilter(key)}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+              statusFilter === key ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:bg-muted'
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {filteredReports.length === 0 ? (
+        <div className="text-center py-10 text-sm text-muted-foreground bg-card border rounded-2xl">
+          Nenhum chamado encontrado.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredReports.map(renderCard)}
+        </div>
+      )}
 
       <Dialog open={openReport !== null} onOpenChange={(v) => { if (!v) setOpenId(null) }}>
         <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-3xl">
