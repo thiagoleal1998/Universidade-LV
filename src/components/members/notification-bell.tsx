@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Bell, BellPlus, ClipboardCheck, Star, Megaphone, Video, BookOpen, Bug, UserPlus, MessageSquare } from 'lucide-react'
+import { Bell, BellPlus, BellOff, ClipboardCheck, Star, Megaphone, Video, BookOpen, Bug, UserPlus, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { getNotifications, markAllNotificationsRead } from '@/app/actions/notifications'
 import type { Notification } from '@/app/actions/notifications'
@@ -62,23 +62,32 @@ export function NotificationBell({
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Notificação nativa do navegador/SO (Web Push) — banner de ativação some
-  // sozinho assim que a pessoa aceita (ou se o navegador não suporta / já
-  // negou a permissão antes, caso em que não tem como reoferecer por aqui).
-  const [pushState, setPushState] = useState<'checking' | 'unavailable' | 'offerable' | 'enabled'>('checking')
+  // Notificação nativa do navegador/SO (Web Push). "denied" é o ÚNICO caso
+  // sem retry possível por aqui (o navegador bloqueia reabrir o prompt
+  // programaticamente) — qualquer outro erro (rede, servidor, etc.) volta
+  // pra "offerable" e deixa clicar em Ativar de novo. Bug real corrigido
+  // (v1.120.1): antes QUALQUER erro travava em "unavailable" pra sempre,
+  // escondendo o botão sem dar nenhum jeito de tentar de novo — relatado
+  // pelo Cesar, que teve um erro ao ativar e ficou sem opção nenhuma depois.
+  const [pushState, setPushState] = useState<'checking' | 'unsupported' | 'denied' | 'offerable' | 'enabled'>('checking')
   const [enablingPush, setEnablingPush] = useState(false)
+
+  async function checkPushState(guard?: () => boolean) {
+    if (!isPushSupported() || typeof Notification === 'undefined') {
+      if (!guard || guard()) setPushState('unsupported')
+      return
+    }
+    if (Notification.permission === 'denied') {
+      if (!guard || guard()) setPushState('denied')
+      return
+    }
+    const sub = await getExistingSubscription()
+    if (!guard || guard()) setPushState(sub ? 'enabled' : 'offerable')
+  }
 
   useEffect(() => {
     let cancelled = false
-    async function check() {
-      if (!isPushSupported() || typeof Notification === 'undefined' || Notification.permission === 'denied') {
-        if (!cancelled) setPushState('unavailable')
-        return
-      }
-      const sub = await getExistingSubscription()
-      if (!cancelled) setPushState(sub ? 'enabled' : 'offerable')
-    }
-    check()
+    checkPushState(() => !cancelled)
     return () => { cancelled = true }
   }, [])
 
@@ -88,10 +97,22 @@ export function NotificationBell({
     setEnablingPush(false)
     if (r.error) {
       toast.error(r.error)
-      setPushState('unavailable')
+      // Só trava em "denied" se a permissão foi mesmo negada — qualquer
+      // outro erro deixa tentar de novo, em vez de esconder o botão.
+      setPushState(typeof Notification !== 'undefined' && Notification.permission === 'denied' ? 'denied' : 'offerable')
     } else {
       setPushState('enabled')
       toast.success('Notificações do navegador ativadas!')
+    }
+  }
+
+  // Pra quando a pessoa foi nas configurações do navegador liberar
+  // manualmente e volta pra tentar de novo sem recarregar a página.
+  function handleRecheckPermission() {
+    if (typeof Notification !== 'undefined' && Notification.permission !== 'denied') {
+      checkPushState()
+    } else {
+      toast.error('Ainda bloqueado. Confira as configurações de notificação do site no navegador.')
     }
   }
 
@@ -189,6 +210,24 @@ export function NotificationBell({
             className="text-xs font-medium text-primary hover:underline shrink-0 disabled:opacity-50"
           >
             {enablingPush ? 'Ativando...' : 'Ativar'}
+          </button>
+        </div>
+      )}
+
+      {pushState === 'denied' && (
+        <div className="px-4 py-2.5 border-b border-border bg-amber-50 dark:bg-amber-950/30 space-y-1.5">
+          <div className="flex items-center gap-2.5">
+            <BellOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <p className="text-xs text-amber-800 dark:text-amber-300 flex-1">Notificações bloqueadas neste navegador.</p>
+          </div>
+          <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 leading-snug">
+            Clique no ícone de cadeado/informações ao lado do endereço do site, permita notificações e depois clique abaixo.
+          </p>
+          <button
+            onClick={handleRecheckPermission}
+            className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline"
+          >
+            Já ativei, tentar de novo
           </button>
         </div>
       )}
