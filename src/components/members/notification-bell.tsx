@@ -68,10 +68,18 @@ export function NotificationBell({
     const panelW = Math.min(320, window.innerWidth - 16)
 
     if (placement === 'sidebar') {
-      // Abre para cima e para a direita do botão
+      // Abre para cima e para a direita do botão — mas nunca deixa passar da
+      // borda direita da viewport. No desktop a sidebar é estreita e a tela é
+      // larga, então isso nunca entrava em jogo; a sidebar mobile (drawer)
+      // reaproveita esse mesmo placement, e em retrato o botão fica perto da
+      // borda esquerda de uma tela estreita — sem esse teto, o painel abria
+      // parcialmente fora da tela, cortado (chamado CLV-0018; em paisagem a
+      // tela é larga o bastante pra caber mesmo sem o limite, por isso só
+      // reproduzia em retrato).
+      const left = Math.min(rect.right + 8, window.innerWidth - panelW - 8)
       setPanelStyle({
         position: 'fixed',
-        left: rect.right + 8,
+        left,
         bottom: window.innerHeight - rect.bottom,
         width: panelW,
         zIndex: 9999,
