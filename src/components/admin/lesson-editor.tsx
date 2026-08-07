@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Trash2, Upload, Video, Image as ImageIcon, Paperclip, FileText, FileSpreadsheet, FileImage, File, Clock, X, Table2 } from 'lucide-react'
+import { Trash2, Upload, Video, Image as ImageIcon, Paperclip, FileText, FileSpreadsheet, FileImage, File, Clock, X, Table2, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -324,6 +324,12 @@ export function LessonEditor({
         {/* Editor de texto rico */}
         <div className="space-y-2">
           <Label>Conteúdo (texto)</Label>
+          <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+            <Volume2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            Este texto também é lido em voz alta pelo recurso &quot;Ouvir esta aula&quot;. Escreva com pontuação
+            completa (ponto final, vírgulas) e evite abreviações — frases sem pontuação ou truncadas soam
+            estranhas na narração.
+          </p>
           <RichTextEditor
             content={contentText}
             onChange={setContentText}
