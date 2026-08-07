@@ -7,7 +7,7 @@ import { LessonComments } from '@/components/members/lesson-comments'
 import { StudyVideoPlayer } from '@/components/members/study-video-player'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Circle, MessageCircle, Table2 } from 'lucide-react'
+import { CheckCircle2, Circle, MessageCircle, Table2, Maximize2, Minimize2, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { manualSectionId } from '@/lib/manual'
@@ -28,6 +28,15 @@ function getSheetEmbedUrl(url: string): string | null {
   if (url.includes('sharepoint.com') || url.includes('office.com') || url.includes('onedrive.live.com')) {
     return url.includes('action=embedview') ? url : `${url}&action=embedview`
   }
+  return null
+}
+
+// Idem, também duplicado de study-interface.tsx (chamado CLV-0045).
+function getSheetDownloadUrl(url: string): string | null {
+  if (!url?.trim()) return null
+  const gsMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)
+  if (gsMatch) return `https://docs.google.com/spreadsheets/d/${gsMatch[1]}/export?format=xlsx`
+  if (url.includes('sharepoint.com') || url.includes('office.com') || url.includes('onedrive.live.com')) return url
   return null
 }
 
@@ -82,6 +91,7 @@ export function ManualSection({
 }) {
   const [isPending, startTransition] = useTransition()
   const [commentsOpen, setCommentsOpen] = useState(false)
+  const [sheetExpanded, setSheetExpanded] = useState(false)
 
   function handleToggle() {
     const next = !isCompleted
@@ -169,14 +179,42 @@ export function ManualSection({
         </div>
       )}
 
-      {section.sheetUrl && (
+      {section.sheetUrl && getSheetEmbedUrl(section.sheetUrl) && (
         <div className="mt-4">
-          <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-sm">
-            <Table2 className="w-4 h-4 text-green-600" />
-            Planilha
-          </h3>
-          <div className="rounded-xl overflow-hidden border border-border w-full" style={{ height: 420 }}>
-            <iframe src={section.sheetUrl} title={`Planilha — ${section.title}`} className="w-full h-full" />
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h3 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+              <Table2 className="w-4 h-4 text-green-600" />
+              Planilha
+            </h3>
+            <div className="flex items-center gap-1.5">
+              {getSheetDownloadUrl(section.sheetUrl) && (
+                <a
+                  href={getSheetDownloadUrl(section.sheetUrl)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors"
+                  title="Baixar planilha"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Baixar</span>
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => setSheetExpanded((v) => !v)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors"
+                title={sheetExpanded ? 'Recolher' : 'Expandir'}
+              >
+                {sheetExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{sheetExpanded ? 'Recolher' : 'Expandir'}</span>
+              </button>
+            </div>
+          </div>
+          <div
+            className="rounded-xl overflow-hidden border border-border w-full transition-[height] duration-200"
+            style={{ height: sheetExpanded ? '80vh' : 420 }}
+          >
+            <iframe src={getSheetEmbedUrl(section.sheetUrl)!} title={`Planilha — ${section.title}`} className="w-full h-full" />
           </div>
         </div>
       )}

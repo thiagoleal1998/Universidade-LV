@@ -19,6 +19,7 @@ import {
   ArrowLeft, ArrowRight, CheckCircle2, Circle,
   PanelRight, PanelRightClose, GraduationCap, X, Table2,
   Volume2, VolumeX, Play, Pause, StopCircle, Gauge,
+  Maximize2, Minimize2, Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -327,6 +328,18 @@ function getSheetEmbedUrl(url: string): string | null {
   return null
 }
 
+// Chamado CLV-0045: link de download da planilha, ao lado do embed. Google
+// Sheets tem endpoint de export direto; SharePoint/OneDrive não tem um
+// padrão público equivalente sem autenticação da API deles, então cai no
+// link original (a pessoa baixa por lá, com a UI nativa do provedor).
+function getSheetDownloadUrl(url: string): string | null {
+  if (!url?.trim()) return null
+  const gsMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)
+  if (gsMatch) return `https://docs.google.com/spreadsheets/d/${gsMatch[1]}/export?format=xlsx`
+  if (url.includes('sharepoint.com') || url.includes('office.com') || url.includes('onedrive.live.com')) return url
+  return null
+}
+
 type Comment = {
   id: string
   body: string
@@ -419,6 +432,9 @@ export function StudyInterface({
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showNextBanner, setShowNextBanner] = useState(false)
   const [countdown, setCountdown] = useState(5)
+  // Chamado CLV-0045: caixa da planilha embutida começa compacta (420px) e
+  // pode "esticar" pra ver mais linhas/colunas de uma vez sem rolar tanto.
+  const [sheetExpanded, setSheetExpanded] = useState(false)
 
   const pct = totalLessons > 0 ? Math.round((totalDone / totalLessons) * 100) : 0
 
@@ -639,11 +655,39 @@ export function StudyInterface({
 
                 {sheetUrl && getSheetEmbedUrl(sheetUrl) && (
                   <div>
-                    <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Table2 className="w-4 h-4 text-green-600" />
-                      Planilha
-                    </h3>
-                    <div className="rounded-xl overflow-hidden border border-border w-full" style={{ height: 420 }}>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <h3 className="font-semibold text-foreground flex items-center gap-2">
+                        <Table2 className="w-4 h-4 text-green-600" />
+                        Planilha
+                      </h3>
+                      <div className="flex items-center gap-1.5">
+                        {getSheetDownloadUrl(sheetUrl) && (
+                          <a
+                            href={getSheetDownloadUrl(sheetUrl)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors"
+                            title="Baixar planilha"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Baixar</span>
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSheetExpanded((v) => !v)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors"
+                          title={sheetExpanded ? 'Recolher' : 'Expandir'}
+                        >
+                          {sheetExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                          <span className="hidden sm:inline">{sheetExpanded ? 'Recolher' : 'Expandir'}</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-xl overflow-hidden border border-border w-full transition-[height] duration-200"
+                      style={{ height: sheetExpanded ? '80vh' : 420 }}
+                    >
                       <iframe
                         src={getSheetEmbedUrl(sheetUrl)!}
                         title="Planilha da aula"
