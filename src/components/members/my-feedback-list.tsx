@@ -188,50 +188,68 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
 
   const openReport = reports.find((r) => r.id === openId) ?? null
 
+  function renderCard(report: FeedbackReport) {
+    const hasUpdate = unreadReportIds.has(report.id)
+    return (
+      <button
+        key={report.id}
+        type="button"
+        onClick={() => openReportDialog(report.id)}
+        className={cn(
+          'w-full flex items-center justify-between gap-3 px-4 py-3 bg-card border rounded-xl hover:bg-muted/40 transition-colors text-left',
+          hasUpdate && 'border-primary/40'
+        )}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn(
+            'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
+            report.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+          )}>
+            {report.type === 'bug' ? <Bug className="w-3.5 h-3.5" /> : <Lightbulb className="w-3.5 h-3.5" />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+              <span className="text-muted-foreground font-normal tabular-nums shrink-0">{formatTicketNumber(report.ticket_number)}</span>
+              <span className="truncate">· {report.title || 'Sem título'}</span>
+              {hasUpdate && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-1.5 py-0.5 shrink-0">
+                  <Sparkles className="w-2.5 h-2.5" /> Nova atualização
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(report.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </button>
+    )
+  }
+
+  // Separado por status (pedido do usuário), sempre nessa ordem — grupo sem
+  // nenhum chamado simplesmente não aparece, em vez de mostrar um cabeçalho vazio.
+  const groups: { status: FeedbackStatus; items: FeedbackReport[] }[] = (['open', 'in_progress', 'resolved'] as const).map((status) => ({
+    status,
+    items: reports.filter((r) => r.status === status),
+  }))
+
   return (
-    <div className="space-y-3">
-      {reports.map((report) => {
-        const hasUpdate = unreadReportIds.has(report.id)
-        return (
-          <button
-            key={report.id}
-            type="button"
-            onClick={() => openReportDialog(report.id)}
-            className={cn(
-              'w-full flex items-center justify-between gap-3 px-4 py-3 bg-card border rounded-xl hover:bg-muted/40 transition-colors text-left',
-              hasUpdate && 'border-primary/40'
-            )}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={cn(
-                'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-                report.type === 'bug' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
-              )}>
-                {report.type === 'bug' ? <Bug className="w-3.5 h-3.5" /> : <Lightbulb className="w-3.5 h-3.5" />}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
-                  <span className="text-muted-foreground font-normal tabular-nums shrink-0">{formatTicketNumber(report.ticket_number)}</span>
-                  <span className="truncate">· {report.title || 'Sem título'}</span>
-                  {hasUpdate && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-1.5 py-0.5 shrink-0">
-                      <Sparkles className="w-2.5 h-2.5" /> Nova atualização
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(report.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  {report.assigned_name && ` · Responsável: ${report.assigned_name}`}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge className={STATUS_BADGE_CLASS[report.status]}>{STATUS_LABEL[report.status]}</Badge>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </div>
-          </button>
-        )
-      })}
+    <div className="space-y-6">
+      {groups.map(({ status, items }) => items.length === 0 ? null : (
+        <div key={status} className="space-y-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            {STATUS_LABEL[status]} <span className="text-muted-foreground/60 font-normal normal-case">({items.length})</span>
+          </h3>
+          <div className="space-y-3">
+            {items.map(renderCard)}
+          </div>
+        </div>
+      ))}
 
       <Dialog open={openReport !== null} onOpenChange={(v) => { if (!v) setOpenId(null) }}>
         <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-3xl">
