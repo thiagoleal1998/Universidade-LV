@@ -47,7 +47,7 @@ async function handleEditorImageUpload(file: File): Promise<string | null> {
   return r.url ?? null
 }
 
-export function MyFeedbackList({ reports, initialOpenId = null }: { reports: FeedbackReport[]; initialOpenId?: string | null }) {
+export function MyFeedbackList({ reports, initialOpenId = null, initialOpenNonce = null }: { reports: FeedbackReport[]; initialOpenId?: string | null; initialOpenNonce?: string | null }) {
   const router = useRouter()
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [lightbox, setLightbox] = useState<{ reportId: string; index: number } | null>(null)
@@ -74,10 +74,16 @@ export function MyFeedbackList({ reports, initialOpenId = null }: { reports: Fee
   // notificação nova com esta página já aberta (mesma rota, só troca
   // `?report=`) não remonta o componente, então sem o useEffect abaixo o
   // modal nunca abria (bug real, relatado pelo Cesar: clique navegava,
-  // loading aparecia, mas ficava na mesma tela).
+  // loading aparecia, mas ficava na mesma tela). `initialOpenNonce` (o `n=`
+  // que a notificação carrega, ver notification-bell.tsx) entra na
+  // dependência só pra FORÇAR o efeito a rodar de novo mesmo quando o
+  // chamado é o mesmo de antes (duas respostas diferentes do mesmo chamado):
+  // sem ele, clicar na 2ª notificação não muda `initialOpenId` (é o mesmo
+  // id), e o efeito nunca reexecuta — segundo bug real, "funcionou uma vez,
+  // depois parou de abrir".
   useEffect(() => {
     if (initialOpenId) setOpenId(initialOpenId)
-  }, [initialOpenId])
+  }, [initialOpenId, initialOpenNonce])
 
   // Recupera rascunhos de resposta da sessão do navegador — só uma vez, pra
   // não sobrescrever o que o membro já está digitando se `reports` mudar.

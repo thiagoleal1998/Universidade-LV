@@ -329,6 +329,12 @@ function NotificationItem({
     let href = n.link
     if (isAdmin) href = href.replace('/dashboard/comunidade/', '/admin/comunidade/')
     if (redirectFeedbackToAdmin) href = href.replace('/dashboard/feedback', '/admin/feedback')
+    // `n=<timestamp>` força toda navegação a ser "nova" aos olhos do Next —
+    // sem isso, clicar em duas notificações seguidas sobre o MESMO chamado
+    // (ex.: duas respostas diferentes) faz a segunda virar um no-op: a URL de
+    // destino já é idêntica à atual (mesmo ?report=), então nada navega e o
+    // modal não reabre (bug real: "funcionou uma vez, depois para de abrir").
+    href += (href.includes('?') ? '&' : '?') + 'n=' + Date.now()
     return (
       <Link href={href} onClick={onClose} className="block">
         {inner}

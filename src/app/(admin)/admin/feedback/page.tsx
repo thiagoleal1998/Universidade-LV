@@ -17,10 +17,10 @@ const TESTER_TAG_NAME = 'Beta'
 export default async function AdminFeedbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; report?: string }>
+  searchParams: Promise<{ tab?: string; report?: string; n?: string }>
 }) {
   const ctx = await requireContentPage()
-  const { tab, report } = await searchParams
+  const { tab, report, n } = await searchParams
 
   if (ctx.role !== 'admin') {
     // Colaborador vê a mesma experiência do membro (abrir chamado / minhas
@@ -37,7 +37,7 @@ export default async function AdminFeedbackPage({
 
     const activeTab = tab === 'minhas' ? 'minhas' : 'abrir'
     const reports = await getMyFeedbackReports()
-    return <FeedbackPageContent activeTab={activeTab} reports={reports} initialOpenId={report ?? null} />
+    return <FeedbackPageContent activeTab={activeTab} reports={reports} initialOpenId={report ?? null} initialOpenNonce={n ?? null} />
   }
 
   // Admin abrindo o próprio chamado (via "Abrir meu chamado" abaixo, ou vindo
@@ -52,7 +52,7 @@ export default async function AdminFeedbackPage({
           <ArrowLeft className="w-4 h-4" />
           Voltar para a fila de chamados
         </Link>
-        <FeedbackPageContent activeTab={tab} reports={reports} initialOpenId={report ?? null} />
+        <FeedbackPageContent activeTab={tab} reports={reports} initialOpenId={report ?? null} initialOpenNonce={n ?? null} />
       </div>
     )
   }
@@ -71,7 +71,7 @@ export default async function AdminFeedbackPage({
           Abrir meu chamado
         </Link>
       </div>
-      <FeedbackPanel reports={reports} admins={admins} initialOpenId={report ?? null} />
+      <FeedbackPanel reports={reports} admins={admins} initialOpenId={report ?? null} initialOpenNonce={n ?? null} />
     </div>
   )
 }

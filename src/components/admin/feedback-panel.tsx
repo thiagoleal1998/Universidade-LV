@@ -158,7 +158,7 @@ function FeedbackKanban({ reports, onCardClick }: { reports: FeedbackReport[]; o
   )
 }
 
-export function FeedbackPanel({ reports, admins, initialOpenId = null }: { reports: FeedbackReport[]; admins: AdminOption[]; initialOpenId?: string | null }) {
+export function FeedbackPanel({ reports, admins, initialOpenId = null, initialOpenNonce = null }: { reports: FeedbackReport[]; admins: AdminOption[]; initialOpenId?: string | null; initialOpenNonce?: string | null }) {
   const router = useRouter()
   const [view, setView] = useState<ViewMode>('kanban')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
@@ -173,10 +173,15 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null }: { repor
   // nova enquanto esta página já está aberta (mesma rota, só troca `?report=`)
   // não remonta o componente, então sem isso o modal nunca abria (bug real,
   // relatado pelo Cesar: clique navegava, loading aparecia, mas ficava na
-  // mesma tela).
+  // mesma tela). `initialOpenNonce` entra na dependência só pra forçar o
+  // efeito a rodar de novo mesmo quando o chamado é o mesmo de antes (duas
+  // respostas diferentes do mesmo chamado, cada uma com seu próprio `n=` —
+  // ver notification-bell.tsx) — sem ele, a 2ª notificação não muda
+  // `initialOpenId` e o efeito nunca reexecuta (segundo bug real: "funcionou
+  // uma vez, depois parou de abrir").
   useEffect(() => {
     if (initialOpenId) setOpenId(initialOpenId)
-  }, [initialOpenId])
+  }, [initialOpenId, initialOpenNonce])
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [noteAttachments, setNoteAttachments] = useState<Record<string, PickedAttachment[]>>({})
   const [noteResetKey, setNoteResetKey] = useState<Record<string, number>>({})
