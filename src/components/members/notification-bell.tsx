@@ -251,7 +251,14 @@ export function NotificationBell({
   ) : null
 
   return (
-    <div className="relative">
+    // z-[9999] (mesmo valor do painel logo abaixo, via createPortal) — sem
+    // isso, o sino fica sob o overlay de qualquer Dialog aberto (z-50,
+    // src/components/ui/dialog.tsx) e um clique nele é absorvido pelo
+    // overlay (fecha o modal em vez de abrir as notificações), em vez de
+    // chegar ao botão. Bug real (relatado pelo Cesar): abrir um chamado no
+    // modal de Feedback e clicar no sino pra ver uma notificação nova não
+    // abria nada — o clique só fechava o chamado que já estava aberto.
+    <div className="relative z-[9999]">
       <button
         ref={buttonRef}
         onClick={handleToggle}
