@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, Circle, ChevronDown, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ export type CurriculumModule = {
 }
 
 type Props = {
+  courseId: string
   modules: CurriculumModule[]
   currentLessonId: string
   isOpen: boolean
@@ -48,14 +49,69 @@ function defaultExpanded(modules: CurriculumModule[], currentLessonId: string): 
   return open
 }
 
-export function StudyCurriculum({ modules, currentLessonId, isOpen, onClose }: Props) {
-  const [expanded, setExpanded] = useState<Set<string>>(() => defaultExpanded(modules, currentLessonId))
+// Cada aula é uma URL diferente (`/dashboard/aulas/[id]`), e o App Router do
+// Next remonta o componente inteiro ao trocar de segmento dinâmico — estado
+// em memória (useState) NÃO sobrevive de uma aula pra outra. Sem isso, o
+// módulo que o aluno estava vendo fechava sozinho a cada "Próxima"/clique em
+// aula de outro módulo, porque cada montagem recalculava do zero (bug real,
+// chamado CLV-0043). Persistido em localStorage, por curso, pra sobreviver
+// à remontagem — mesmo padrão simples já usado em `admin_sidebar_collapsed`.
+function storageKey(courseId: string) {
+  return `study-curriculum-expanded-${courseId}`
+}
 
-  // Recalcula ao trocar de aula (inclusive quando a conclusão de uma aula
-  // fecha o módulo e abre o seguinte). Toggle manual do usuário vale até a
-  // próxima navegação.
+function readPersisted(courseId: string): Set<string> | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(storageKey(courseId))
+    if (!raw) return null
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? new Set(arr) : null
+  } catch {
+    return null
+  }
+}
+
+function persist(courseId: string, expanded: Set<string>) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(storageKey(courseId), JSON.stringify([...expanded]))
+  } catch {
+    // localStorage indisponível (modo privado, quota) — degrada pra
+    // comportamento só em memória, sem persistir entre aulas.
+  }
+}
+
+export function StudyCurriculum({ courseId, modules, currentLessonId, isOpen, onClose }: Props) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const persisted = readPersisted(courseId)
+    const base = persisted && persisted.size > 0 ? persisted : defaultExpanded(modules, currentLessonId)
+    // Garante que o módulo da aula atual sempre apareça expandido, mesmo que
+    // o que veio salvo do localStorage não o inclua (primeira vez nele).
+    const currentModule = modules.find((m) => m.lessons.some((l) => l.id === currentLessonId))
+    return currentModule && !base.has(currentModule.id) ? new Set(base).add(currentModule.id) : base
+  })
+
+  // Mantém o localStorage sempre sincronizado com o state — inclusive o
+  // valor inicial calculado no mount. Sem isso, a primeira vez que o aluno
+  // via um módulo (sem nunca clicar em nada manualmente) não gravava nada,
+  // e a PRÓXIMA navegação (que remonta o componente do zero) "esquecia"
+  // dele — exatamente o bug original (CLV-0043): o localStorage só sabia do
+  // módulo mais recente, nunca do anterior.
   useEffect(() => {
-    setExpanded(defaultExpanded(modules, currentLessonId))
+    persist(courseId, expanded)
+  }, [courseId, expanded])
+
+  // Cobre o caso (mais raro) de navegação que NÃO remonta o componente —
+  // aqui também só ADICIONA o módulo da aula atual, nunca fecha outro que o
+  // aluno já tinha aberto.
+  const prevLessonRef = useRef(currentLessonId)
+  useEffect(() => {
+    if (prevLessonRef.current === currentLessonId) return
+    prevLessonRef.current = currentLessonId
+    const currentModule = modules.find((m) => m.lessons.some((l) => l.id === currentLessonId))
+    if (!currentModule) return
+    setExpanded((prev) => (prev.has(currentModule.id) ? prev : new Set(prev).add(currentModule.id)))
   }, [currentLessonId, modules])
 
   function toggle(id: string) {

@@ -719,6 +719,7 @@ export function StudyInterface({
 
         {/* Curriculum sidebar */}
         <StudyCurriculum
+          courseId={courseId}
           modules={curriculum}
           currentLessonId={lessonId}
           isOpen={sidebarOpen}
