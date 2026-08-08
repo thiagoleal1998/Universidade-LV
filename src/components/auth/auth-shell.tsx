@@ -150,7 +150,7 @@ export function AuthShell({
         <div className="flex md:hidden flex-col items-center gap-3 mb-10 w-full max-w-xs">
           {hasLogo ? (
             <div
-              className="w-full rounded-xl overflow-hidden border border-border p-2 bg-muted flex items-center justify-center"
+              className="w-full rounded-xl overflow-hidden bg-primary border border-primary-foreground/20 p-2 flex items-center justify-center"
               style={{ aspectRatio: '12/5' }}
             >
               <BrandingLogo settings={settings} />
