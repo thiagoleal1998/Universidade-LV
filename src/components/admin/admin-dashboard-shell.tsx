@@ -11,7 +11,7 @@ import {
 import { cn } from '@/lib/utils'
 import { DashboardCharts } from '@/components/admin/dashboard-charts'
 
-export type ModuleStat = { id: string; title: string; pct: number; lessonCount: number; completions: number }
+export type ModuleStat = { id: string; title: string; courseName: string; pct: number; lessonCount: number; completions: number }
 export type LessonWithCount = { id: string; title: string; moduleTitle: string; completions: number }
 export type MemberStat = { id: string; name: string; completed: number; pct: number }
 export type PendingLesson = { lessonId: string; lessonTitle: string; taskTitle: string; count: number }
@@ -97,6 +97,19 @@ function HBar({ pct, color = 'bg-primary' }: { pct: number; color?: string }) {
       <div className={cn('h-full rounded-full transition-all duration-500', color)} style={{ width: `${Math.min(pct, 100)}%` }} />
     </div>
   )
+}
+
+// Agrupa em blocos CONSECUTIVOS de mesmo `courseName` — depende de
+// `moduleStats` já vir ordenado por curso (feito no server, admin/page.tsx),
+// senão o mesmo curso apareceria espalhado em vários grupos.
+function groupModulesByCourse(mods: ModuleStat[]): { courseName: string; mods: ModuleStat[] }[] {
+  const groups: { courseName: string; mods: ModuleStat[] }[] = []
+  for (const mod of mods) {
+    const last = groups[groups.length - 1]
+    if (last && last.courseName === mod.courseName) last.mods.push(mod)
+    else groups.push({ courseName: mod.courseName, mods: [mod] })
+  }
+  return groups
 }
 
 const QUICK_LINKS = [
@@ -346,27 +359,45 @@ export function AdminDashboardShell(props: DashboardProps) {
                 {props.moduleStats.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-10">Nenhum módulo publicado ainda.</p>
                 ) : (
-                  <div className="flex items-end gap-3 overflow-x-auto pb-1" style={{ minHeight: 160 }}>
-                    {props.moduleStats.map((mod, i) => {
-                      const barH = Math.max(mod.pct, 5)
-                      const isAccent = i % 2 !== 0
+                  // Agrupado por curso (server já ordena por nome do curso, depois
+                  // por order_index dentro dele) — sem isso, módulos com o mesmo
+                  // nome genérico ("Introdução") em cursos diferentes ficam
+                  // indistinguíveis, já que o rótulo embaixo de cada barra é só o
+                  // título do módulo. Cada grupo ganha um cabeçalho com o nome do
+                  // curso; a cor de destaque alterna por GRUPO (não por módulo),
+                  // reforçando visualmente onde um curso termina e o outro começa.
+                  <div className="flex items-end gap-5 overflow-x-auto pb-1" style={{ minHeight: 176 }}>
+                    {groupModulesByCourse(props.moduleStats).map((group, gi) => {
+                      const isAccent = gi % 2 !== 0
                       return (
-                        <div key={mod.id} className="flex flex-col items-center gap-2 min-w-[52px] flex-1 max-w-[80px]">
-                          <span className="text-xs font-bold text-foreground tabular-nums">{mod.pct}%</span>
-                          <div className="relative w-10 rounded-full overflow-hidden" style={{ height: 120, background: 'hsl(var(--muted))' }}>
-                            <div
-                              className={cn('absolute bottom-0 inset-x-0 rounded-full transition-all duration-700',
-                                isAccent ? 'bg-primary' : 'bg-foreground')}
-                              style={{ height: `${barH}%` }}
-                            />
-                            <div
-                              className="absolute w-5 h-5 rounded-full bg-card border-2 border-border left-1/2 -translate-x-1/2 shadow-sm"
-                              style={{ bottom: `calc(${barH}% - 10px)` }}
-                            />
-                          </div>
-                          <span className="text-[9px] text-muted-foreground text-center w-full truncate leading-tight px-0.5">
-                            {mod.title.split(' ').slice(0, 2).join(' ')}
+                        <div key={group.courseName + gi} className="flex flex-col gap-2 shrink-0">
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide truncate max-w-[220px]" title={group.courseName}>
+                            {group.courseName}
                           </span>
+                          <div className="flex items-end gap-3 border-t border-border pt-2">
+                            {group.mods.map((mod) => {
+                              const barH = Math.max(mod.pct, 5)
+                              return (
+                                <div key={mod.id} className="flex flex-col items-center gap-2 w-[52px]" title={`${group.courseName} — ${mod.title}`}>
+                                  <span className="text-xs font-bold text-foreground tabular-nums">{mod.pct}%</span>
+                                  <div className="relative w-10 rounded-full overflow-hidden" style={{ height: 120, background: 'hsl(var(--muted))' }}>
+                                    <div
+                                      className={cn('absolute bottom-0 inset-x-0 rounded-full transition-all duration-700',
+                                        isAccent ? 'bg-primary' : 'bg-foreground')}
+                                      style={{ height: `${barH}%` }}
+                                    />
+                                    <div
+                                      className="absolute w-5 h-5 rounded-full bg-card border-2 border-border left-1/2 -translate-x-1/2 shadow-sm"
+                                      style={{ bottom: `calc(${barH}% - 10px)` }}
+                                    />
+                                  </div>
+                                  <span className="text-[9px] text-muted-foreground text-center w-full truncate leading-tight px-0.5">
+                                    {mod.title.split(' ').slice(0, 2).join(' ')}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
                       )
                     })}

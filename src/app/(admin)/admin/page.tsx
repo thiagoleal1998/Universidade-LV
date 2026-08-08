@@ -109,7 +109,7 @@ export default async function AdminDashboard() {
   const lessons = (lessonsData as LessonRow[] | null) ?? []
   const progress = (progressData as { lesson_id: string; user_id: string; completed_at: string }[] | null) ?? []
   const members = (membersData as { id: string; full_name: string; created_at: string }[] | null) ?? []
-  const modules = (modulesData as { id: string; title: string; course_id: string | null }[] | null) ?? []
+  const modules = (modulesData as { id: string; title: string; course_id: string | null; order_index: number }[] | null) ?? []
   const recentActivity = (recentData as RecentActivity[] | null) ?? []
   const newSignups = (recentSignups as { id: string; full_name: string; created_at: string }[] | null) ?? []
   const courses = (coursesData as { id: string; name: string }[] | null) ?? []
@@ -130,13 +130,28 @@ export default async function AdminDashboard() {
     byMember.set(p.user_id, (byMember.get(p.user_id) ?? 0) + 1)
   }
 
-  const moduleStats: ModuleStat[] = modules.map((mod) => {
+  // Nome do curso de cada módulo — sem isso, "Progresso por Módulo" mistura
+  // módulos de cursos diferentes com o mesmo nome (ex.: vários "Introdução")
+  // sem nenhuma forma de saber de qual curso é qual (chamado real, CLV-0046-
+  // adjacente). `order_index` de módulo é por-curso (reinicia em 0 a cada
+  // curso), então ordenar só por ele intercala módulos de cursos diferentes
+  // — agrupar por curso primeiro é o que faz os módulos do mesmo curso
+  // ficarem visualmente juntos.
+  const courseNameById = new Map(courses.map((c) => [c.id, c.name]))
+  const sortedModules = [...modules].sort((a, b) => {
+    const courseA = courseNameById.get(a.course_id ?? '') ?? ''
+    const courseB = courseNameById.get(b.course_id ?? '') ?? ''
+    if (courseA !== courseB) return courseA.localeCompare(courseB, 'pt-BR', { sensitivity: 'base' })
+    return a.order_index - b.order_index
+  })
+  const moduleStats: ModuleStat[] = sortedModules.map((mod) => {
     const modLessons = lessons.filter((l) => l.module_id === mod.id)
     const possible = modLessons.length * totalMembersActive
     const completed = modLessons.reduce((s, l) => s + (byLesson.get(l.id) ?? 0), 0)
     return {
       id: mod.id,
       title: mod.title,
+      courseName: courseNameById.get(mod.course_id ?? '') ?? 'Sem curso',
       pct: possible > 0 ? Math.round((completed / possible) * 100) : 0,
       lessonCount: modLessons.length,
       completions: completed,
