@@ -94,6 +94,18 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
+      {/* Volta pra lista de cursos da área do aluno — sempre visível, inclusive
+          pra admin/colaborador navegando aqui (antes só aparecia pra membro
+          comum; admin só via "Voltar ao admin", que sai da área do aluno em
+          vez de voltar pra lista, deixando sem jeito de voltar pra "Meus
+          Cursos" sem usar o menu lateral). */}
+      <div>
+        <Link href="/dashboard/cursos" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
+          <ArrowLeft className="w-4 h-4" />
+          Meus Cursos
+        </Link>
+      </div>
+
       {/* Admin preview banner */}
       {isAdmin && (
         <div className="flex items-center gap-2.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-sm">
@@ -112,16 +124,6 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           >
             <ArrowLeft className="w-3 h-3" />
             Voltar ao admin
-          </Link>
-        </div>
-      )}
-
-      {/* Back link (members only) */}
-      {!isAdmin && (
-        <div>
-          <Link href="/dashboard/cursos" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}>
-            <ArrowLeft className="w-4 h-4" />
-            Meus Cursos
           </Link>
         </div>
       )}
