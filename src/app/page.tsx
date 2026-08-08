@@ -13,7 +13,7 @@ import { TestimonialsCarousel } from '@/components/landing/testimonials-carousel
 import { FaqAccordion } from '@/components/landing/faq-accordion'
 import { LandingHeader } from '@/components/landing/landing-header'
 import { CountdownBar } from '@/components/landing/countdown-bar'
-import { CookieBanner } from '@/components/landing/cookie-banner'
+import { CookieConsent } from '@/components/landing/cookie-consent'
 import { LeadForm } from '@/components/landing/lead-form'
 import { PartnersCarousel } from '@/components/landing/partners-carousel'
 
@@ -540,7 +540,7 @@ export default async function LandingPage() {
       )}
 
       {/* ══ LGPD Cookie Banner ══ */}
-      {lgpdActive && <CookieBanner text={lgpdText} buttonText={lgpdButtonText} linkText={lgpdLinkText} linkUrl={lgpdLinkUrl} />}
+      {lgpdActive && <CookieConsent text={lgpdText} buttonText={lgpdButtonText} linkText={lgpdLinkText} linkUrl={lgpdLinkUrl} />}
 
       {/* ══ Footer ══ */}
       <footer className="border-t border-border py-6 px-4 sm:px-6">

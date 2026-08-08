@@ -2037,8 +2037,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           <section className="rounded-xl border border-border p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Banner de cookies (LGPD)</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Banner fixo no rodapé informando sobre o uso de cookies. Desaparece após o visitante aceitar.</p>
+                <h3 className="text-sm font-semibold text-foreground">Central de preferências de cookies (LGPD)</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Banner inicial + ícone flutuante permanente, com categorias (obrigatórios, estatísticas, marketing) que o visitante escolhe aceitar. As categorias são fixas; aqui você controla só se fica ativo e o texto/link do banner inicial.</p>
               </div>
               <button type="button" onClick={() => setLgpdActive(v => !v)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lgpdActive ? 'bg-primary' : 'bg-muted'}`}>
                 <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lgpdActive ? 'translate-x-4' : 'translate-x-1'}`} />
