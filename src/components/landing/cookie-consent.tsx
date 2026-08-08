@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import { Cookie, X } from 'lucide-react'
 
 const STORAGE_KEY = 'cookie_consent_v2'
+const HINT_DURATION_MS = 3000
 
 type CookiePrefs = { necessary: true; statistics: boolean; marketing: boolean; updatedAt: string }
 // 'loading' = ainda não sabemos (server render / antes do efeito de mount) —
-// não mostra nada, evita um flash do ícone antes de decidir se é visitante
-// novo (teria que mostrar o banner) ou recorrente (só o ícone).
-type ViewState = 'loading' | 'hidden' | 'initial-banner' | 'modal'
+// não mostra nada, evita um flash do ícone antes do primeiro render real.
+type ViewState = 'loading' | 'icon' | 'modal'
 
 function readPrefs(): CookiePrefs | null {
   try {
@@ -71,7 +71,6 @@ function ToggleRow({
 
 export function CookieConsent({
   text,
-  buttonText = 'Aceitar e continuar',
   linkText,
   linkUrl,
 }: {
@@ -81,30 +80,51 @@ export function CookieConsent({
   linkUrl?: string
 }) {
   const [view, setView] = useState<ViewState>('loading')
+  const [hintVisible, setHintVisible] = useState(false)
   const [statistics, setStatistics] = useState(false)
   const [marketing, setMarketing] = useState(false)
 
   // Client-only — evita mismatch de hydration (o server sempre renderiza
   // "nada visível", igual o primeiro render do client antes deste efeito).
+  // Sem banner persistente: só o ícone aparece; se é a primeira visita (sem
+  // preferência salva), uma dica sai do ícone por alguns segundos e some
+  // sozinha — pedido do usuário, réplica do padrão de outro site do grupo.
   useEffect(() => {
-    setView(readPrefs() ? 'hidden' : 'initial-banner')
+    const saved = readPrefs()
+    setView('icon')
+    if (!saved) {
+      setHintVisible(true)
+      const t = setTimeout(() => setHintVisible(false), HINT_DURATION_MS)
+      return () => clearTimeout(t)
+    }
   }, [])
+
+  // Trava o scroll da página (as duas direções) enquanto o modal está
+  // aberto — sem isso, um overlay `fixed` não impede arrastar a página por
+  // baixo dele, e se a página tiver qualquer overflow horizontal (mesmo
+  // pequeno, comum em landing pages com elementos decorativos), o gesto de
+  // arrastar lateralmente "puxa" a tela inteira, incluindo o próprio modal
+  // (que é fixed relativo à viewport, mas a viewport visual em si é
+  // arrastada em mobile). Bug real relatado: dava pra mexer a tela de lado
+  // com o modal aberto, cortando o conteúdo torto.
+  useEffect(() => {
+    if (view !== 'modal') return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [view])
 
   function openSettings() {
     const saved = readPrefs()
     setStatistics(saved?.statistics ?? false)
     setMarketing(saved?.marketing ?? false)
+    setHintVisible(false)
     setView('modal')
-  }
-
-  function acceptAll() {
-    writePrefs(true, true)
-    setView('hidden')
   }
 
   function confirmSettings() {
     writePrefs(statistics, marketing)
-    setView('hidden')
+    setView('icon')
   }
 
   const hasPlaceholder = linkText && linkUrl && text.includes('{link}')
@@ -113,13 +133,10 @@ export function CookieConsent({
 
   return (
     <>
-      {/* Ícone flutuante — só quando nada mais está na tela (banner inicial já
-          decidido, ou modal fechado). O banner inicial ocupa a faixa inferior
-          inteira (mesmo canto, z-index maior) e cobriria o ícone por baixo
-          se os dois aparecessem juntos — por isso não é `view !== 'modal'`,
-          e sim só `'hidden'`. Uma vez visível, permanece pra sempre,
-          permitindo revisar a escolha a qualquer momento. */}
-      {view === 'hidden' && (
+      {/* Ícone flutuante — único elemento persistente. Aparece assim que o
+          efeito de mount roda (visitante novo ou recorrente) e permanece
+          pra sempre, permitindo abrir/revisar as preferências quando quiser. */}
+      {view !== 'loading' && (
         <button
           type="button"
           onClick={openSettings}
@@ -130,53 +147,42 @@ export function CookieConsent({
         </button>
       )}
 
-      {view === 'initial-banner' && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/97 backdrop-blur-md px-4 py-3 shadow-lg">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center gap-3">
-            <p className="flex-1 text-xs text-muted-foreground text-center sm:text-left leading-relaxed">
-              {parts ? (
-                <>
-                  {parts[0]}
-                  <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
-                    {linkText}
-                  </a>
-                  {parts[1]}
-                </>
-              ) : hasAppended ? (
-                <>
-                  {text}{' '}
-                  <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
-                    {linkText}
-                  </a>
-                </>
-              ) : (
-                text
-              )}
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={openSettings}
-                className="text-xs font-semibold text-muted-foreground hover:text-foreground px-3 py-2 rounded-lg border border-border transition-colors"
-              >
-                Configurações
-              </button>
-              <button
-                onClick={acceptAll}
-                className="bg-green-700 hover:bg-green-800 text-white font-semibold text-xs px-5 py-2 rounded-lg transition-colors"
-              >
-                {buttonText}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Dica temporária — só na primeira visita (sem preferência salva),
+          some sozinha após HINT_DURATION_MS, sem precisar de nenhuma ação
+          do visitante. Clicar no ícone durante a dica também a esconde. */}
+      <div
+        className={`fixed bottom-[4.75rem] left-4 z-40 max-w-[240px] rounded-xl rounded-bl-sm bg-background border border-border shadow-lg px-3.5 py-2.5 transition-all duration-300 ${
+          view === 'icon' && hintVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
+        }`}
+      >
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {parts ? (
+            <>
+              {parts[0]}
+              <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                {linkText}
+              </a>
+              {parts[1]}
+            </>
+          ) : hasAppended ? (
+            <>
+              {text}{' '}
+              <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                {linkText}
+              </a>
+            </>
+          ) : (
+            text
+          )}
+        </p>
+      </div>
 
       {view === 'modal' && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4">
-          <div className="w-full sm:max-w-sm bg-background rounded-t-2xl sm:rounded-2xl border border-border shadow-xl p-5 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4 overscroll-none">
+          <div className="w-full sm:max-w-sm bg-background rounded-t-2xl sm:rounded-2xl border border-border shadow-xl p-5 max-h-[85vh] overflow-y-auto overscroll-contain">
             <div className="flex items-start justify-between gap-3 mb-1">
               <h2 className="text-base font-bold text-foreground">Configurações de cookies</h2>
-              <button onClick={() => setView('hidden')} className="text-muted-foreground hover:text-foreground -mt-1 -mr-1 p-1">
+              <button onClick={() => setView('icon')} className="text-muted-foreground hover:text-foreground -mt-1 -mr-1 p-1">
                 <X className="h-4 w-4" />
               </button>
             </div>
