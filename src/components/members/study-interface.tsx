@@ -133,6 +133,14 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const volumeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSeekingRef = useRef(false)
+  // Verdadeiro enquanto o ponteiro (mouse/dedo) está fisicamente pressionado
+  // sobre o slider — enquanto isso, o debounce por TEMPO fica suspenso (só
+  // serve de reserva pra teclado); a confirmação de verdade espera o
+  // `onPointerUp`. Sem isso, um arraste real com uma pausa >200ms no meio
+  // (comum — dedo humano não é perfeitamente contínuo) ainda disparava uma
+  // recriação prematura mesmo com o dedo na tela (CLV-0048 reaberto).
+  const seekPointerDownRef = useRef(false)
+  const volumePointerDownRef = useRef(false)
 
   // Velocidade de leitura OBSERVADA (chars/seg a 1x), corrigida em tempo real
   // a partir do próprio evento `boundary` — bug real corrigido (CLV-0047,
@@ -286,26 +294,45 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   // `SpeechSynthesisUtterance` inteira a CADA disparo, e arrastar gera
   // dezenas deles por segundo. O resultado ("o áudio diminui a velocidade
   // consideravelmente e não é possível ouvir a narração") é a fala sendo
-  // reiniciada em loop antes de qualquer trecho terminar de tocar. Os dois
-  // agora só aplicam a mudança de verdade (cancel+speak) 200ms depois do
-  // ÚLTIMO disparo — um arraste inteiro vira só uma recriação no final, não
-  // uma por pixel movido.
+  // reiniciada em loop antes de qualquer trecho terminar de tocar.
+  //
+  // Segunda rodada (CLV-0048 reaberto): o debounce de 200ms sozinho ainda
+  // "engasgava" — um arraste de dedo de verdade tem micro-pausas naturais, e
+  // se algum intervalo entre eventos passar de 200ms com o dedo AINDA na
+  // tela, o debounce disparava no meio do arraste mesmo assim, cortando o
+  // áudio e "atrasando" a barra (cada disparo prematuro reseta a âncora de
+  // posição). Corrigido confirmando a mudança de verdade no SOLTAR
+  // (`onPointerUp`), não só por tempo — o debounce continua existindo como
+  // rede de segurança pra teclado (setas no input focado não disparam
+  // pointerup), mas na prática nunca dispara durante um arraste de
+  // mouse/toque de verdade, só quando o usuário solta.
+  const lastSeekTargetRef = useRef(0)
+
+  function commitSeek(target: number) {
+    if (seekDebounceRef.current) { clearTimeout(seekDebounceRef.current); seekDebounceRef.current = null }
+    isSeekingRef.current = false
+    if (ttsState === 'playing') {
+      playFrom(target)
+    } else {
+      window.speechSynthesis.cancel()
+      hasLiveUtteranceRef.current = false
+      generationRef.current++
+      setPlayedChars(target)
+    }
+  }
+
   function handleSeek(fraction: number) {
     const target = Math.round(fraction * totalChars)
+    lastSeekTargetRef.current = target
     isSeekingRef.current = true
-    setPlayedChars(target) // feedback visual imediato; o motor de voz só é tocado no debounce abaixo
+    setPlayedChars(target) // feedback visual imediato; o motor de voz só é tocado no soltar (ou no debounce, de reserva)
     if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current)
-    seekDebounceRef.current = setTimeout(() => {
-      isSeekingRef.current = false
-      if (ttsState === 'playing') {
-        playFrom(target)
-      } else {
-        window.speechSynthesis.cancel()
-        hasLiveUtteranceRef.current = false
-        generationRef.current++
-        setPlayedChars(target)
-      }
-    }, 200)
+    // Com o ponteiro pressionado, quem confirma é o `onPointerUp` — o timer
+    // fica de fora, senão uma pausa >200ms no meio do arraste (dedo ainda na
+    // tela) dispararia a mesma recriação prematura que este bug já teve.
+    if (!seekPointerDownRef.current) {
+      seekDebounceRef.current = setTimeout(() => commitSeek(target), 200)
+    }
   }
 
   // Rate/volume não são alteráveis de forma confiável numa fala já em
@@ -328,22 +355,29 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     setTtsState(wasPlaying ? 'playing' : 'paused')
   }
 
+  function commitVolume(next: number) {
+    if (volumeDebounceRef.current) { clearTimeout(volumeDebounceRef.current); volumeDebounceRef.current = null }
+    if (ttsState === 'idle') return
+    const wasPlaying = ttsState === 'playing'
+    window.speechSynthesis.cancel()
+    const clamped = Math.max(0, Math.min(Math.round(playedChars), totalChars - 1))
+    startCharRef.current = clamped
+    playStartCharRef.current = clamped
+    playStartTimeRef.current = performance.now()
+    hasLiveUtteranceRef.current = true
+    window.speechSynthesis.speak(buildUtterance(clamped, rate, next))
+    if (!wasPlaying) window.speechSynthesis.pause()
+    setTtsState(wasPlaying ? 'playing' : 'paused')
+  }
+
   function applyVolume(next: number) {
     setVolume(next) // feedback visual imediato (posição do slider, ícone de mudo)
     if (volumeDebounceRef.current) clearTimeout(volumeDebounceRef.current)
-    volumeDebounceRef.current = setTimeout(() => {
-      if (ttsState === 'idle') return
-      const wasPlaying = ttsState === 'playing'
-      window.speechSynthesis.cancel()
-      const clamped = Math.max(0, Math.min(Math.round(playedChars), totalChars - 1))
-      startCharRef.current = clamped
-      playStartCharRef.current = clamped
-      playStartTimeRef.current = performance.now()
-      hasLiveUtteranceRef.current = true
-      window.speechSynthesis.speak(buildUtterance(clamped, rate, next))
-      if (!wasPlaying) window.speechSynthesis.pause()
-      setTtsState(wasPlaying ? 'playing' : 'paused')
-    }, 200)
+    // Mesmo raciocínio do seek: com o ponteiro pressionado, quem confirma é
+    // o `onPointerUp` — o timer só entra em jogo pra mudança via teclado.
+    if (!volumePointerDownRef.current) {
+      volumeDebounceRef.current = setTimeout(() => commitVolume(next), 200)
+    }
   }
 
   function toggleMute() {
@@ -390,6 +424,8 @@ function TextToSpeechPlayer({ html }: { html: string }) {
           max={1000}
           value={Math.round(fraction * 1000)}
           onChange={(e) => handleSeek(Number(e.target.value) / 1000)}
+          onPointerDown={() => { seekPointerDownRef.current = true }}
+          onPointerUp={() => { seekPointerDownRef.current = false; commitSeek(lastSeekTargetRef.current) }}
           className="flex-1 h-1.5 accent-primary cursor-pointer"
           aria-label="Posição da leitura"
         />
@@ -437,6 +473,8 @@ function TextToSpeechPlayer({ html }: { html: string }) {
             max={100}
             value={Math.round(volume * 100)}
             onChange={(e) => applyVolume(Number(e.target.value) / 100)}
+            onPointerDown={() => { volumePointerDownRef.current = true }}
+            onPointerUp={(e) => { volumePointerDownRef.current = false; commitVolume(Number(e.currentTarget.value) / 100) }}
             className="w-16 h-1.5 accent-primary cursor-pointer"
             aria-label="Volume"
           />
