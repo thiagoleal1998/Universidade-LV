@@ -49,6 +49,36 @@ type TtsState = 'idle' | 'playing' | 'paused'
 // que um evento `boundary` chega (nos navegadores que o disparam).
 const CHARS_PER_SECOND_AT_1X = 15 // ~150-170 palavras/min, média de TTS
 const SPEED_PRESETS = [0.75, 1, 1.25, 1.5, 2] as const
+const OBSERVED_RATE_MIN = 5
+const OBSERVED_RATE_MAX = 30
+
+// Velocidade real aprendida, persistida entre aulas/sessões — bug real
+// reaberto pelo Cesar (CLV-0047, "o erro ainda persiste") depois da correção
+// via evento `boundary`: esse evento tem suporte inconsistente entre
+// navegadores e, em muitos Android/Chrome mobile (o aparelho usado nos
+// prints do Cesar), simplesmente NUNCA dispara — nesse caso a correção
+// anterior nunca tinha dado nenhum sinal pra corrigir, e o bug original
+// (duração fixa errada a leitura inteira) continuava intacto. `onend`, ao
+// contrário do `boundary`, é garantido pela spec e sempre dispara quando a
+// fala termina — então ele serve de calibração terminal: mede a duração
+// REAL da narração completa e grava no localStorage, pra toda narração
+// SEGUINTE (mesma aula ou outra, mesmo depois de recarregar a página) já
+// começar com uma estimativa correta desde o primeiro segundo, sem
+// depender do `boundary` funcionar.
+const OBSERVED_RATE_STORAGE_KEY = 'tts_observed_chars_per_sec'
+
+function readLearnedRate(): number {
+  try {
+    const raw = localStorage.getItem(OBSERVED_RATE_STORAGE_KEY)
+    const n = raw ? Number(raw) : NaN
+    if (Number.isFinite(n) && n >= OBSERVED_RATE_MIN && n <= OBSERVED_RATE_MAX) return n
+  } catch {}
+  return CHARS_PER_SECOND_AT_1X
+}
+
+function saveLearnedRate(rate: number) {
+  try { localStorage.setItem(OBSERVED_RATE_STORAGE_KEY, String(rate)) } catch {}
+}
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -116,10 +146,18 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   // possível antes do primeiro boundary) e só é ajustada com dado
   // suficiente (guard de tempo/chars abaixo) pra não oscilar com ruído dos
   // primeiros eventos.
-  const observedCharsPerSecRef = useRef(CHARS_PER_SECOND_AT_1X)
+  // ESTADO, não ref — bug real encontrado testando: uma ref atualizada dentro
+  // de um efeito não dispara re-render sozinha, então a duração exibida
+  // (calculada no corpo do render) ficava presa no valor antigo até algum
+  // OUTRO estado mudar por acaso (ex.: só depois de dar play). Com estado,
+  // ler a velocidade aprendida na montagem já atualiza a duração exibida
+  // imediatamente, mesmo antes do primeiro play. Inicializa com a constante
+  // (SSR-safe — `localStorage` só existe no client); o efeito abaixo troca
+  // pela velocidade aprendida assim que monta.
+  const [observedCharsPerSec, setObservedCharsPerSec] = useState(CHARS_PER_SECOND_AT_1X)
 
   useEffect(() => {
-    observedCharsPerSecRef.current = CHARS_PER_SECOND_AT_1X
+    setObservedCharsPerSec(readLearnedRate())
   }, [html])
 
   useEffect(() => {
@@ -139,11 +177,11 @@ function TextToSpeechPlayer({ html }: { html: string }) {
       // debounce) — senão a barra arrastada "volta sozinha" por um instante.
       if (isSeekingRef.current) return
       const elapsedSec = (performance.now() - playStartTimeRef.current) / 1000
-      const estimate = playStartCharRef.current + elapsedSec * observedCharsPerSecRef.current * rate
+      const estimate = playStartCharRef.current + elapsedSec * observedCharsPerSec * rate
       setPlayedChars(Math.min(estimate, totalChars))
     }, 200)
     return () => clearInterval(id)
-  }, [ttsState, rate, totalChars])
+  }, [ttsState, rate, totalChars, observedCharsPerSec])
 
   function buildUtterance(fromChar: number, atRate: number, atVolume: number) {
     const gen = ++generationRef.current
@@ -168,7 +206,7 @@ function TextToSpeechPlayer({ html }: { html: string }) {
         // Clamp: protege contra evento isolado com timing esquisito (troca de
         // aba, engine pausando/retomando) puxando a estimativa pra um
         // extremo absurdo.
-        observedCharsPerSecRef.current = Math.max(5, Math.min(30, observed))
+        setObservedCharsPerSec(Math.max(OBSERVED_RATE_MIN, Math.min(OBSERVED_RATE_MAX, observed)))
       }
     }
     utterance.onend = () => {
@@ -176,6 +214,22 @@ function TextToSpeechPlayer({ html }: { html: string }) {
       hasLiveUtteranceRef.current = false
       setTtsState('idle')
       setPlayedChars(0)
+
+      // Calibração terminal — roda mesmo em navegadores onde `onboundary`
+      // nunca disparou (ex.: vários Android/Chrome mobile, confirmado real
+      // pelo Cesar reabrindo o chamado depois da 1ª correção baseada só em
+      // `boundary`). Mede a duração de VERDADE da narração completa que
+      // acabou de tocar e grava, pra próxima narração (mesma aula ou
+      // qualquer outra, mesmo depois de recarregar a página) já começar
+      // certa desde o primeiro segundo.
+      const utteranceChars = text.length - fromChar
+      const totalElapsedSec = (performance.now() - utteranceStartTime) / 1000
+      if (utteranceChars > 50 && totalElapsedSec > 2) {
+        const observed = (utteranceChars / totalElapsedSec) / atRate
+        const clamped = Math.max(OBSERVED_RATE_MIN, Math.min(OBSERVED_RATE_MAX, observed))
+        setObservedCharsPerSec(clamped)
+        saveLearnedRate(clamped)
+      }
     }
     utterance.onerror = () => {
       if (gen !== generationRef.current) return
@@ -303,8 +357,8 @@ function TextToSpeechPlayer({ html }: { html: string }) {
 
   if (!text) return null
 
-  const duration = totalChars / (observedCharsPerSecRef.current * rate)
-  const current = Math.min(playedChars, totalChars) / (observedCharsPerSecRef.current * rate)
+  const duration = totalChars / (observedCharsPerSec * rate)
+  const current = Math.min(playedChars, totalChars) / (observedCharsPerSec * rate)
   const fraction = totalChars > 0 ? Math.min(playedChars / totalChars, 1) : 0
   const iconBtn = 'w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground hover:text-foreground shrink-0'
 
