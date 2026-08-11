@@ -512,16 +512,18 @@ export default async function DashboardPage() {
   const happeningNowTrainings = liveWindowTrainings.filter((i: TrainingItem) => new Date(i.live_at!).getTime() <= now)
   const nextLiveTraining = liveWindowTrainings[0] ?? null
   const fallbackLinkTraining = activeTrainings.find((i: TrainingItem) => i.type === 'link') ?? null
-  // Dois (ou mais) treinamentos "ao vivo" podem estar acontecendo no MESMO
-  // horário (ex.: sessão Nacional e Internacional) — mostra todos nesse
-  // caso, é o mais urgente. Só reduz a um único card "spotlight" quando é o
-  // PRÓXIMO ainda no futuro: não faz sentido lotar o widget compacto da
-  // home com toda sessão futura agendada — a listagem completa mora em
-  // /dashboard/treinamentos (mesmo bug de fundo do `.find()` corrigido lá,
-  // v1.124.8, mas aqui o widget é intencionalmente um teaser, não uma lista).
-  const featuredTrainings: TrainingItem[] = happeningNowTrainings.length > 0
-    ? happeningNowTrainings
-    : nextLiveTraining ? [nextLiveTraining]
+  // v1.124.9 mostrava só o PRÓXIMO ao vivo (único) quando nenhum estava
+  // "acontecendo agora" — mas com dois treinamentos ao vivo agendados em
+  // datas bem diferentes (ex.: um amanhã, outro daqui a 9 dias), o segundo
+  // simplesmente não aparecia em lugar nenhum na home, mesma classe de
+  // reclamação de antes ("não está aparecendo"), só que sem precisar dos
+  // dois caírem no mesmo horário. Corrigido (v1.124.10): mostra TODOS os
+  // treinamentos "ao vivo" dentro da janela relevante (acontecendo agora +
+  // futuros), não só o mais próximo — cada um com seu próprio card
+  // empilhado, igual já era feito só pro caso "acontecendo agora" desde a
+  // v1.124.9.
+  const featuredTrainings: TrainingItem[] = liveWindowTrainings.length > 0
+    ? liveWindowTrainings
     : fallbackLinkTraining ? [fallbackLinkTraining]
     : []
 
