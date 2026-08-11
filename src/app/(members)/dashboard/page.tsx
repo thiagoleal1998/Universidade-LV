@@ -506,12 +506,26 @@ export default async function DashboardPage() {
   // Próximo treinamento para o sidebar
   const now = Date.now()
   const activeTrainings = allTrainings.filter((i: TrainingItem) => i.is_active)
-  const nextLiveTraining = activeTrainings
+  const liveWindowTrainings = activeTrainings
     .filter((i: TrainingItem) => i.type === 'live' && i.live_at && new Date(i.live_at).getTime() > now - TWO_HOURS)
-    .sort((a: TrainingItem, b: TrainingItem) => new Date(a.live_at!).getTime() - new Date(b.live_at!).getTime())[0] ?? null
-  const featuredTraining: TrainingItem | null = nextLiveTraining ?? activeTrainings.find((i: TrainingItem) => i.type === 'link') ?? null
+    .sort((a: TrainingItem, b: TrainingItem) => new Date(a.live_at!).getTime() - new Date(b.live_at!).getTime())
+  const happeningNowTrainings = liveWindowTrainings.filter((i: TrainingItem) => new Date(i.live_at!).getTime() <= now)
+  const nextLiveTraining = liveWindowTrainings[0] ?? null
+  const fallbackLinkTraining = activeTrainings.find((i: TrainingItem) => i.type === 'link') ?? null
+  // Dois (ou mais) treinamentos "ao vivo" podem estar acontecendo no MESMO
+  // horário (ex.: sessão Nacional e Internacional) — mostra todos nesse
+  // caso, é o mais urgente. Só reduz a um único card "spotlight" quando é o
+  // PRÓXIMO ainda no futuro: não faz sentido lotar o widget compacto da
+  // home com toda sessão futura agendada — a listagem completa mora em
+  // /dashboard/treinamentos (mesmo bug de fundo do `.find()` corrigido lá,
+  // v1.124.8, mas aqui o widget é intencionalmente um teaser, não uma lista).
+  const featuredTrainings: TrainingItem[] = happeningNowTrainings.length > 0
+    ? happeningNowTrainings
+    : nextLiveTraining ? [nextLiveTraining]
+    : fallbackLinkTraining ? [fallbackLinkTraining]
+    : []
 
-  const hasSidebar = (sidebarTrainingActive && featuredTraining) || sidebarMagazine || Object.values(sidebarSocials).some(Boolean) || !!podviajar
+  const hasSidebar = (sidebarTrainingActive && featuredTrainings.length > 0) || sidebarMagazine || Object.values(sidebarSocials).some(Boolean) || !!podviajar
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -912,12 +926,14 @@ export default async function DashboardPage() {
         {hasSidebar && (
           <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-20 xl:border-l xl:border-border xl:pl-6">
 
-            {sidebarTrainingActive && featuredTraining && (
+            {sidebarTrainingActive && featuredTrainings.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">
-                  {sidebarTrainingLabel || (nextLiveTraining ? 'Próximo ao vivo' : 'Treinamento em destaque')}
+                  {sidebarTrainingLabel || (happeningNowTrainings.length > 0 ? 'Acontecendo agora' : nextLiveTraining ? 'Próximo ao vivo' : 'Treinamento em destaque')}
                 </p>
-                <SidebarTrainingCard item={featuredTraining} />
+                <div className="space-y-2">
+                  {featuredTrainings.map((item) => <SidebarTrainingCard key={item.id} item={item} />)}
+                </div>
               </div>
             )}
 
