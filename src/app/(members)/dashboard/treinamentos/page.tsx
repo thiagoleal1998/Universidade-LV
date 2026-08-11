@@ -269,11 +269,17 @@ export default async function TreinamentosPage() {
   const allItems = allItemsRaw.filter((i) => i.is_active)
   const now = Date.now()
 
-  const happeningNow = allItems.find(
+  // Array, não item único — dois treinamentos podem estar "ao vivo" na mesma
+  // janela de 2h ao mesmo tempo (ex.: uma sala Nacional e outra
+  // Internacional). Com `.find()` (só o primeiro) o segundo não caía em
+  // nenhuma outra lista da página (não é upcoming, já passou de `live_at`;
+  // não é replay, ainda não passou das 2h) e simplesmente não aparecia em
+  // lugar nenhum — bug real relatado pelo usuário.
+  const happeningNow = allItems.filter(
     (i) => i.type === 'live' && i.live_at &&
       new Date(i.live_at).getTime() <= now &&
       new Date(i.live_at).getTime() > now - TWO_HOURS
-  ) ?? null
+  )
 
   const upcomingLive = allItems
     .filter((i) => i.type === 'live' && i.live_at && new Date(i.live_at).getTime() > now)
@@ -291,7 +297,7 @@ export default async function TreinamentosPage() {
 
   try { await checkAndNotifyExpiredLive(allItems) } catch {}
 
-  const hasContent = happeningNow || nextLive || linkItems.length > 0 || replayItems.length > 0
+  const hasContent = happeningNow.length > 0 || nextLive || linkItems.length > 0 || replayItems.length > 0
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -364,7 +370,7 @@ export default async function TreinamentosPage() {
       ) : (
         <div className="space-y-10">
 
-          {happeningNow && <HappeningNowBanner item={happeningNow} />}
+          {happeningNow.map((item) => <HappeningNowBanner key={item.id} item={item} />)}
 
           {nextLive && <FeaturedLiveCard item={nextLive} />}
 
