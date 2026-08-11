@@ -29,8 +29,21 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
+      // z-[10000] (acima do z-[9999] do sino de notificações,
+      // `notification-bell.tsx`) — de propósito, diferente do `Dialog`
+      // comum (`dialog.tsx`, que fica em z-50, abaixo do sino). Bug real
+      // relatado pelo Cesar: ao abrir uma confirmação de exclusão (ex.:
+      // "Remover item?" no Marketing), o sino continuava aparecendo por
+      // cima do fundo escurecido, "no primeiro plano junto com o que está
+      // em foco" — o AlertDialog é usado especificamente pra ações
+      // destrutivas que devem bloquear TUDO até o usuário responder,
+      // diferente do Dialog comum (ex.: chamado de Feedback), onde faz
+      // sentido continuar checando notificações sem perder o lugar. Como
+      // os dois compartilhavam o mesmo z-50, o sino (z-9999) ficava acima
+      // dos dois por igual; subir só o AlertDialog resolve o caso
+      // destrutivo sem reabrir o bug original do Dialog (CLV-0051).
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-[10000] bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -52,7 +65,7 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-[10000] grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

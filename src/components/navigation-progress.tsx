@@ -156,7 +156,15 @@ function NavigationProgressInner() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-3 bg-background/75 backdrop-blur-[2px]"
+          // z-[10000], acima do z-[9999] do sino de notificações — sem
+          // isso, o sino (mais tarde no DOM que este componente, montado
+          // aqui na raiz antes de {children}) ganhava o empate de z-index
+          // e ficava visível por cima do fundo escurecido, "no primeiro
+          // plano" durante uma navegação lenta — bug real relatado pelo
+          // Cesar, mais perceptível no admin (páginas mais pesadas, esse
+          // overlay aparece com mais frequência) mas presente pros dois
+          // papéis, já que é o mesmo componente global.
+          className="fixed inset-0 z-[10000] flex flex-col items-center justify-center gap-3 bg-background/75 backdrop-blur-[2px]"
         >
           <Spinner className="w-10 h-10" />
           <p className="text-sm font-medium text-muted-foreground">Carregando...</p>
