@@ -64,6 +64,8 @@ export async function updateMember(
     collaborator_area_id?: string | null
     bio?: string
     linkedin_url?: string
+    uf?: string
+    city?: string
   }
 ) {
   const authz = await requireAdmin()
@@ -119,6 +121,8 @@ export async function updateMember(
       collaborator_area_id: data.role === 'collaborator' ? data.collaborator_area_id : null,
       ...(data.bio !== undefined ? { bio: data.bio } : {}),
       ...(data.linkedin_url !== undefined ? { linkedin_url: data.linkedin_url } : {}),
+      ...(data.uf !== undefined ? { uf: data.uf.toUpperCase() } : {}),
+      ...(data.city !== undefined ? { city: data.city } : {}),
     })
     .eq('id', userId)
 
@@ -132,6 +136,8 @@ export async function updateMember(
   if (emailChanged) changed.push('e-mail')
   if (data.bio !== undefined) changed.push('bio')
   if (data.linkedin_url !== undefined) changed.push('linkedin')
+  if (data.uf !== undefined) changed.push('UF')
+  if (data.city !== undefined) changed.push('cidade')
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
   // Sem syncLeadProfile aqui de propósito — updateMember é sempre chamado
   // em sequência com assignMemberTags/assignMemberCourses (EditMemberDialog);
@@ -171,6 +177,8 @@ export async function saveMemberAll(
     collaborator_area_id?: string | null
     bio?: string
     linkedin_url?: string
+    uf?: string
+    city?: string
     tagIds: string[]
     courseIds: string[]
   }
@@ -187,6 +195,8 @@ export async function saveMemberAll(
     collaborator_area_id: data.collaborator_area_id,
     bio: data.bio,
     linkedin_url: data.linkedin_url,
+    uf: data.uf,
+    city: data.city,
   })
   if (memberResult?.error) return { error: memberResult.error }
 

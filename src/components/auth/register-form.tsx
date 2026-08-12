@@ -11,6 +11,9 @@ import { Spinner } from '@/components/ui/spinner'
 import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { getTurnstileToken } from '@/lib/turnstile-client'
+import { UF_NAMES } from '@/lib/estado-flag'
+
+const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
 type State = { error?: string; success?: boolean } | undefined
 
@@ -58,6 +61,29 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" placeholder="seu@email.com" required autoComplete="email" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="uf">Estado (UF)</Label>
+                <select
+                  id="uf"
+                  name="uf"
+                  required
+                  defaultValue=""
+                  className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="" disabled>Selecione</option>
+                  {UF_OPTIONS.map(([sigla, nome]) => (
+                    <option key={sigla} value={sigla}>{nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="city">Cidade</Label>
+                <Input id="city" name="city" type="text" placeholder="Sua cidade" required />
+              </div>
             </div>
 
             <div className="space-y-1.5">

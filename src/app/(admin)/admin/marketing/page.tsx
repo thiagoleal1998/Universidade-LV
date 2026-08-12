@@ -6,6 +6,8 @@ import { MarketingTabs } from '@/components/admin/marketing-tabs'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import { getTrainingItems } from '@/app/actions/training'
 import { getMarketingProducts, getMarketingPeriods } from '@/app/actions/marketing'
+import { toOne } from '@/lib/supabase/relations'
+import type { PendingAccessRequest } from '@/components/admin/trainings-manager'
 
 const REMOVED_KEYS = ['email', 'script']
 
@@ -31,6 +33,7 @@ export default async function MarketingPage() {
   const [
     { data }, settings, { data: trainingData }, products, periods, { data: tagsData },
     { data: famtoursData }, { data: gruposData }, { data: commercialConditionsData },
+    { data: accessRequestsData },
   ] = await Promise.all([
     db.from('marketing_items').select('*').order('order_index'),
     getSettings(),
@@ -41,7 +44,33 @@ export default async function MarketingPage() {
     db.from('famtours').select('*').order('start_date', { ascending: true, nullsFirst: false }),
     db.from('grupos').select('*').order('start_date', { ascending: true, nullsFirst: false }),
     db.from('commercial_conditions').select('*').order('created_at', { ascending: false }),
+    // training_access_requests tem DUAS FKs pra profiles (member_id e
+    // resolved_by) — sem qualificar qual delas, o PostgREST recusa o embed
+    // com erro de ambiguidade (PGRST201), retornando null em silêncio pro
+    // client (nenhuma exception visível, só accessRequestsData chegando
+    // vazio). Precisa do nome da constraint explícito.
+    db.from('training_access_requests')
+      .select('id, training_id, member_id, requested_at, profiles!training_access_requests_member_id_fkey(full_name, company, uf)')
+      .eq('status', 'pending')
+      .order('requested_at'),
   ])
+
+  // Agrupa por treinamento — vira o contador "solicitações pendentes" na
+  // lista do admin. toOne() porque profiles() é N→1 (embed do PostgREST
+  // volta objeto em runtime, o client sem tipos gerados infere array).
+  const pendingAccessByTraining = new Map<string, PendingAccessRequest[]>()
+  for (const r of accessRequestsData ?? []) {
+    const profile = toOne(r.profiles as unknown as { full_name: string; company: string; uf: string }[] | { full_name: string; company: string; uf: string })
+    const list = pendingAccessByTraining.get(r.training_id) ?? []
+    list.push({
+      id: r.id,
+      memberName: profile?.full_name || 'Agência sem nome',
+      company: profile?.company || '',
+      uf: profile?.uf || '',
+      requestedAt: r.requested_at,
+    })
+    pendingAccessByTraining.set(r.training_id, list)
+  }
 
   const visibleTrainingItems = (trainingData ?? []) as Awaited<ReturnType<typeof getTrainingItems>>
 
@@ -56,6 +85,7 @@ export default async function MarketingPage() {
   const trainingItemsWithEdit = visibleTrainingItems.map((t) => ({
     ...t,
     canEdit: isAdmin || (canEditTraining && t.owner_area_id === viewCtx.areaId),
+    pendingAccessRequests: pendingAccessByTraining.get(t.id) ?? [],
   }))
   const famtoursWithEdit = (famtoursData ?? []).map((f) => ({
     ...f,

@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getTrainingItems } from '@/app/actions/training'
+import { getMyTrainingAccessContext } from '@/app/actions/training-access'
+import { isTrainingLocked } from '@/lib/training-access'
 import { buttonVariants } from '@/components/ui/button'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import { WinnersCarousel } from '@/components/members/winners-carousel'
@@ -102,7 +104,7 @@ function calcStreak(rows: ProgressRow[]): number {
 
 // ─── Sidebar: próximo treinamento ───────────────────────────────────────────
 
-function SidebarTrainingCard({ item }: { item: TrainingItem }) {
+function SidebarTrainingCard({ item, locked }: { item: TrainingItem; locked: boolean }) {
   const now = Date.now()
   const liveMs = item.live_at ? new Date(item.live_at).getTime() : null
   const isHappeningNow = item.type === 'live' && liveMs !== null && liveMs <= now && liveMs > now - TWO_HOURS
@@ -159,9 +161,15 @@ function SidebarTrainingCard({ item }: { item: TrainingItem }) {
             <Radio className="w-3 h-3 animate-pulse" /> Acontecendo agora
           </div>
         )}
-        <div className="flex items-center gap-1 text-xs font-semibold text-primary pt-0.5">
-          Ver detalhes <ChevronRight className="w-3 h-3" />
-        </div>
+        {locked ? (
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 w-fit">
+            <MapPin className="w-3 h-3 shrink-0" /> Exclusivo — ver detalhes
+          </span>
+        ) : (
+          <div className="flex items-center gap-1 text-xs font-semibold text-primary pt-0.5">
+            Ver detalhes <ChevronRight className="w-3 h-3" />
+          </div>
+        )}
       </div>
     </Link>
   )
@@ -372,6 +380,7 @@ export default async function DashboardPage() {
     { data: progressData },
     settings,
     allTrainings,
+    trainingAccessCtx,
     { data: famtoursData },
   ] = await Promise.all([
     isAdmin || accessibleCourseIds.length > 0
@@ -386,6 +395,7 @@ export default async function DashboardPage() {
     supabase.from('member_progress').select('lesson_id, completed_at').eq('user_id', user!.id),
     getSettings(),
     getTrainingItems(),
+    getMyTrainingAccessContext(),
     adminClient
       .from('famtours')
       .select('id, title, description, cover_url, url, start_date, end_date')
@@ -934,7 +944,13 @@ export default async function DashboardPage() {
                   {sidebarTrainingLabel || (happeningNowTrainings.length > 0 ? 'Acontecendo agora' : nextLiveTraining ? 'Próximo ao vivo' : 'Treinamento em destaque')}
                 </p>
                 <div className="space-y-2">
-                  {featuredTrainings.map((item) => <SidebarTrainingCard key={item.id} item={item} />)}
+                  {featuredTrainings.map((item) => (
+                    <SidebarTrainingCard
+                      key={item.id}
+                      item={item}
+                      locked={isTrainingLocked(item, trainingAccessCtx.uf, trainingAccessCtx.requestsByTrainingId[item.id] ?? 'none')}
+                    />
+                  ))}
                 </div>
               </div>
             )}

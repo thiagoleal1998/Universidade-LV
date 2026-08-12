@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { toast } from 'sonner'
 import { Camera, Loader2, KeyRound } from 'lucide-react'
+import { UF_NAMES } from '@/lib/estado-flag'
+
+const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
 type Props = {
   userId: string
@@ -19,16 +22,20 @@ type Props = {
   company: string
   jobTitle: string
   linkedinUrl: string
+  uf?: string
+  city?: string
   bio?: string
   showBio?: boolean
 }
 
-export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTitle, linkedinUrl, bio = '', showBio = false }: Props) {
+export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTitle, linkedinUrl, uf = '', city = '', bio = '', showBio = false }: Props) {
   const [currentAvatar, setCurrentAvatar] = useState(avatarUrl)
   const [nameValue, setNameValue] = useState(fullName)
   const [companyValue, setCompanyValue] = useState(company)
   const [jobTitleValue, setJobTitleValue] = useState(jobTitle)
   const [linkedinValue, setLinkedinValue] = useState(linkedinUrl)
+  const [ufValue, setUfValue] = useState(uf)
+  const [cityValue, setCityValue] = useState(city)
   const [bioValue, setBioValue] = useState(bio)
   const [isUploading, startUpload] = useTransition()
   const [isSaving, startSave] = useTransition()
@@ -60,6 +67,8 @@ export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTit
     fd.append('company', companyValue)
     fd.append('job_title', jobTitleValue)
     fd.append('linkedin_url', linkedinValue)
+    fd.append('uf', ufValue)
+    fd.append('city', cityValue)
     fd.append('bio', bioValue)
     startSave(async () => {
       const r = await updateProfile(fd)
@@ -147,6 +156,30 @@ export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTit
                   value={jobTitleValue}
                   onChange={(e) => setJobTitleValue(e.target.value)}
                   placeholder="Seu cargo"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="uf" className="text-xs text-muted-foreground">Estado (UF)</Label>
+                <select
+                  id="uf"
+                  value={ufValue}
+                  onChange={(e) => setUfValue(e.target.value)}
+                  className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Não informado</option>
+                  {UF_OPTIONS.map(([sigla, nome]) => (
+                    <option key={sigla} value={sigla}>{nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="city" className="text-xs text-muted-foreground">Cidade</Label>
+                <Input
+                  id="city"
+                  value={cityValue}
+                  onChange={(e) => setCityValue(e.target.value)}
+                  placeholder="Sua cidade"
                   className="mt-1"
                 />
               </div>

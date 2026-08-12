@@ -3,6 +3,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainingItem } from '@/app/actions/training'
 import type { TrainingMaterial } from '@/app/actions/training'
+import { getMyTrainingAccessContext } from '@/app/actions/training-access'
+import { isTrainingLocked } from '@/lib/training-access'
+import { RequestTrainingAccessButton } from '@/components/members/request-training-access-button'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import { StudyVideoPlayer } from '@/components/members/study-video-player'
 import { extractYouTubeId } from '@/lib/youtube'
@@ -37,6 +40,10 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
   const item = await getTrainingItem(id)
   if (!item || !item.is_active) notFound()
 
+  const accessCtx = await getMyTrainingAccessContext()
+  const requestStatus = accessCtx.requestsByTrainingId[item.id] ?? 'none'
+  const locked = isTrainingLocked(item, accessCtx.uf, requestStatus)
+
   const now = Date.now()
   const liveMs = item.live_at ? new Date(item.live_at).getTime() : null
   const isHappeningNow = item.type === 'live' && liveMs !== null && liveMs <= now && liveMs > now - TWO_HOURS
@@ -46,7 +53,9 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
 
   // Replay de YouTube toca embutido, no lugar da capa. Qualquer outra origem
   // (Vimeo, Drive, Zoom gravado) continua caindo no link externo de sempre.
-  const replayVideoId = isReplay && item.url ? extractYouTubeId(item.url) : null
+  // Locked nunca calcula o videoId — senão o conteúdo "exclusivo" tocaria
+  // igual pra quem não tem acesso, o bloqueio viraria só decoração.
+  const replayVideoId = !locked && isReplay && item.url ? extractYouTubeId(item.url) : null
 
   const materials = [...(item.materials ?? [])].sort((a, b) => a.order_index - b.order_index)
 
@@ -125,8 +134,17 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
           )}
         </div>
 
+        {/* Treinamento exclusivo, sem acesso liberado — substitui TODOS os
+            CTAs abaixo (nenhum vaza URL/vídeo/link real pra quem não tem
+            acesso, aprovado ou por UF). */}
+        {locked && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
+          </div>
+        )}
+
         {/* Acontecendo agora */}
-        {isHappeningNow && (
+        {!locked && isHappeningNow && (
           <div className="rounded-xl border-2 border-red-500 bg-red-500/5 p-5 space-y-4">
             <div className="flex items-center gap-2 text-red-500 font-semibold">
               <Radio className="w-4 h-4 animate-pulse" />
@@ -148,7 +166,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
         )}
 
         {/* Ao vivo agendado */}
-        {isUpcoming && item.live_at && (
+        {!locked && isUpcoming && item.live_at && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-5 flex flex-col gap-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4 shrink-0 text-red-400" />
@@ -178,7 +196,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
 
         {/* Replay — com o vídeo tocando acima, sobra só a data (quando existe).
             Sem player embutido, cai no cartão com o link externo de sempre. */}
-        {isReplay && (replayVideoId ? (
+        {!locked && isReplay && (replayVideoId ? (
           isExpiredLive && item.live_at && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4 shrink-0 text-blue-400" />
@@ -211,7 +229,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
         ))}
 
         {/* Treinamento (link) */}
-        {item.type === 'link' && item.url && (
+        {!locked && item.type === 'link' && item.url && (
           <div className="rounded-xl border border-border bg-muted/30 p-5">
             <a
               href={item.url}
@@ -226,8 +244,9 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
           </div>
         )}
 
-        {/* Materiais de apoio */}
-        {materials.length > 0 && (
+        {/* Materiais de apoio — também fica atrás do bloqueio: são parte do
+            conteúdo exclusivo, não algo à parte. */}
+        {!locked && materials.length > 0 && (
           <div className="rounded-xl border border-border overflow-hidden">
             <div className="px-5 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
               <div>

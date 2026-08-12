@@ -7,9 +7,13 @@ import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 import { rdNewTraining } from '@/lib/rdstation'
+import { UF_NAMES } from '@/lib/estado-flag'
 
-// Guard de posse: colaborador só mexe em treinamento da própria área
-async function requireTrainingAccess(id: string): Promise<AdminContext | { error: string }> {
+// Guard de posse: colaborador só mexe em treinamento da própria área.
+// Exportado — reaproveitado por resolveTrainingAccessRequest
+// (src/app/actions/training-access.ts) pra aprovar/negar solicitação de
+// acesso, sem duplicar a checagem de posse.
+export async function requireTrainingAccess(id: string): Promise<AdminContext | { error: string }> {
   const adminClient = createAdminClient()
   const { data: item } = await adminClient.from('training_items').select('owner_area_id').eq('id', id).single()
   if (!item) return { error: 'Treinamento não encontrado.' }
@@ -33,14 +37,25 @@ async function notifyMembers(payload: {
   notifType: 'new_training' | 'training_replay'
   notifTitle: string
   body: string
+  exclusiveUfs?: string[]
 }): Promise<NotifyResult> {
   const adminClient = createAdminClient()
 
-  const { data: members, error: membersErr } = await adminClient
+  // Treinamento exclusivo de UF: só notifica quem é da UF certa — membro de
+  // fora não pode acessar direto, notificar mesmo assim soaria confuso
+  // ("por que não abre?"). Colaboradores (staff interno) sempre recebem,
+  // independente de UF — decisão confirmada com o usuário.
+  let query = adminClient
     .from('profiles')
     .select('id')
     .in('role', ['member', 'collaborator'])
     .eq('active', true)
+
+  if (payload.exclusiveUfs && payload.exclusiveUfs.length > 0) {
+    query = query.or(`role.eq.collaborator,uf.in.(${payload.exclusiveUfs.join(',')})`)
+  }
+
+  const { data: members, error: membersErr } = await query
 
   if (membersErr) return { error: membersErr.message, memberCount: 0 }
   if (!members?.length) return { error: 'no_members', memberCount: 0 }
@@ -68,7 +83,7 @@ async function notifyMembers(payload: {
   return { notified: members.length }
 }
 
-async function notifyNewTraining(item: { id: string; title: string; type: string; live_at: string | null }): Promise<NotifyResult> {
+async function notifyNewTraining(item: { id: string; title: string; type: string; live_at: string | null; exclusive_ufs?: string[] }): Promise<NotifyResult> {
   const isLive = item.type === 'live'
   const date = isLive ? formatLiveAt(item.live_at) : null
   return notifyMembers({
@@ -77,16 +92,18 @@ async function notifyNewTraining(item: { id: string; title: string; type: string
     notifType: 'new_training',
     notifTitle: isLive ? 'Novo treinamento ao vivo agendado' : 'Novo treinamento disponivel',
     body: date ? `${item.title} - ${date}` : item.title,
+    exclusiveUfs: item.exclusive_ufs,
   })
 }
 
-async function notifyTrainingReplay(item: { id: string; title: string }): Promise<NotifyResult> {
+async function notifyTrainingReplay(item: { id: string; title: string; exclusive_ufs?: string[] }): Promise<NotifyResult> {
   return notifyMembers({
     id: item.id,
     title: item.title,
     notifType: 'training_replay',
     notifTitle: 'Treinamento disponivel como replay',
     body: item.title,
+    exclusiveUfs: item.exclusive_ufs,
   })
 }
 
@@ -113,6 +130,25 @@ export type TrainingItem = {
   created_at: string
   owner_area_id?: string | null
   materials?: TrainingMaterial[]
+  // Array vazio = sem restrição (comportamento padrão). Uma ou mais UFs =
+  // só membro dessa(s) UF ou com solicitação aprovada acessa direto.
+  exclusive_ufs: string[]
+}
+
+// Serializado como JSON pelo client (fd.set('exclusive_ufs', JSON.stringify(arr))
+// em trainings-manager.tsx) — valida cada sigla contra UF_NAMES, ignora
+// qualquer coisa que não seja uma UF real em vez de quebrar o save inteiro.
+function parseExclusiveUfs(raw: string | null): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    if (!Array.isArray(arr)) return []
+    return arr
+      .map((v) => String(v).toUpperCase().trim())
+      .filter((v) => UF_NAMES[v])
+  } catch {
+    return []
+  }
 }
 
 export async function getTrainingItem(id: string): Promise<TrainingItem | null> {
@@ -174,6 +210,7 @@ export async function createTrainingItem(formData: FormData) {
 
   const adminClient = createAdminClient()
   const title = (formData.get('title') as string).trim()
+  const exclusiveUfs = parseExclusiveUfs(formData.get('exclusive_ufs') as string | null)
 
   const { data: inserted, error } = await adminClient.from('training_items').insert({
     title,
@@ -185,6 +222,7 @@ export async function createTrainingItem(formData: FormData) {
     type,
     live_at: liveAt,
     owner_area_id: ctx.areaId,
+    exclusive_ufs: exclusiveUfs,
   }).select('id, title, type, live_at').single()
 
   if (error) return { error: error.message }
@@ -193,7 +231,7 @@ export async function createTrainingItem(formData: FormData) {
 
   let notifyResult: NotifyResult | null = null
   if (isActive && inserted) {
-    notifyResult = await notifyNewTraining(inserted)
+    notifyResult = await notifyNewTraining({ ...inserted, exclusive_ufs: exclusiveUfs })
     revalidatePath('/dashboard', 'layout')
   }
 
@@ -210,13 +248,14 @@ export async function updateTrainingItem(id: string, formData: FormData) {
 
   const { data: prev } = await adminClient
     .from('training_items')
-    .select('type, is_active, title, description, url, cover_url, order_index, live_at')
+    .select('type, is_active, title, description, url, cover_url, order_index, live_at, exclusive_ufs')
     .eq('id', id)
     .single()
 
   const newType = (formData.get('type') as string) || 'link'
   const newActive = formData.get('is_active') === 'true'
   const newTitle = (formData.get('title') as string).trim()
+  const newExclusiveUfs = parseExclusiveUfs(formData.get('exclusive_ufs') as string | null)
 
   const after = {
     title: newTitle,
@@ -227,6 +266,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
     is_active: newActive,
     type: newType,
     live_at: parseLiveAt(formData.get('live_at') as string | null),
+    exclusive_ufs: newExclusiveUfs,
   }
   // Só rejeita quando a data está sendo MUDADA pra uma data passada — uma
   // live que já aconteceu naturalmente fica no passado, e isso não pode
@@ -241,6 +281,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
   const changed = diffFields(prev ?? {}, after, {
     title: 'título', description: 'descrição', url: 'link', cover_url: 'capa',
     order_index: 'ordem', is_active: 'ativação', type: 'tipo', live_at: 'data ao vivo',
+    exclusive_ufs: 'UFs exclusivas',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'treinamento', entityId: id, entityLabel: newTitle, detail: `alterou: ${changed.join(', ')}` })
@@ -253,12 +294,12 @@ export async function updateTrainingItem(id: string, formData: FormData) {
 
   if (newActive && becameReplay) {
     const title = (formData.get('title') as string).trim() || prev?.title || ''
-    notifyResult = await notifyTrainingReplay({ id, title })
+    notifyResult = await notifyTrainingReplay({ id, title, exclusive_ufs: newExclusiveUfs })
     revalidatePath('/dashboard', 'layout')
   } else if (becameActive || becameLive) {
     const title = (formData.get('title') as string).trim() || prev?.title || ''
     const liveAt = parseLiveAt(formData.get('live_at') as string | null)
-    notifyResult = await notifyNewTraining({ id, title, type: newType, live_at: liveAt })
+    notifyResult = await notifyNewTraining({ id, title, type: newType, live_at: liveAt, exclusive_ufs: newExclusiveUfs })
     revalidatePath('/dashboard', 'layout')
   }
 
@@ -282,7 +323,7 @@ export async function toggleTrainingActive(id: string, is_active: boolean) {
   if (is_active) {
     const { data } = await adminClient
       .from('training_items')
-      .select('id, title, type, live_at')
+      .select('id, title, type, live_at, exclusive_ufs')
       .eq('id', id)
       .single()
     if (data) {

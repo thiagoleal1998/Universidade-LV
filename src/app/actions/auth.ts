@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { rdWelcomeOnRegister, rdAdminNewMemberPending, rdPasswordReset } from '@/lib/rdstation'
 import { notifyAllAdmins } from '@/app/actions/notifications'
 import { verifyTurnstile } from '@/lib/turnstile'
+import { UF_NAMES } from '@/lib/estado-flag'
 
 const CAPTCHA_ERROR = 'Não foi possível verificar que você não é um robô. Recarregue a página e tente novamente.'
 
@@ -112,6 +113,11 @@ export async function register(_state: unknown, formData: FormData) {
   const full_name = (formData.get('full_name') as string).trim()
   const email = (formData.get('email') as string).trim()
   const password = formData.get('password') as string
+  const uf = ((formData.get('uf') as string) || '').trim().toUpperCase()
+  const city = ((formData.get('city') as string) || '').trim()
+
+  if (!uf || !UF_NAMES[uf]) return { error: 'Selecione um estado (UF) válido.' }
+  if (!city) return { error: 'Informe sua cidade.' }
 
   const adminClient = createAdminClient()
 
@@ -131,7 +137,7 @@ export async function register(_state: unknown, formData: FormData) {
 
   // Deixa conta inativa até o admin aprovar
   if (data.user) {
-    await adminClient.from('profiles').update({ active: false, full_name }).eq('id', data.user.id)
+    await adminClient.from('profiles').update({ active: false, full_name, uf, city }).eq('id', data.user.id)
     rdAdminNewMemberPending(full_name, email)
     rdWelcomeOnRegister(email, full_name)
     await notifyAllAdmins(data.user.id, {

@@ -220,6 +220,54 @@ export async function notifyCourseOwners(
   sendPushToUsers(admins.map((a) => a.id), { title: opts.title, body: opts.body, url: opts.link })
 }
 
+// Notify collaborators who own a training (capacidade 'trainings' + área
+// dona do treinamento) — mesmo molde de notifyCourseOwners. Usado por
+// requestTrainingAccess (src/app/actions/training-access.ts) pra avisar
+// quem pode aprovar/negar uma solicitação de acesso.
+export async function notifyTrainingOwners(
+  trainingId: string,
+  actorId: string,
+  opts: { type: string; title: string; body: string; link: string }
+) {
+  const adminClient = createAdminClient()
+
+  let ownerAreaName: string | null = null
+  const { data: training } = await adminClient.from('training_items').select('owner_area_id').eq('id', trainingId).single()
+  if (training?.owner_area_id) {
+    const { data: area } = await adminClient
+      .from('collaborator_areas')
+      .select('id, name, capabilities')
+      .eq('id', training.owner_area_id)
+      .single()
+    if (area?.capabilities?.includes('trainings')) {
+      ownerAreaName = area.name
+      const { data: owners } = await adminClient
+        .from('profiles')
+        .select('id')
+        .eq('collaborator_area_id', area.id)
+        .eq('active', true)
+        .neq('id', actorId)
+      if (owners?.length) {
+        await adminClient.from('notifications').insert(owners.map((o) => ({ user_id: o.id, ...opts })))
+        sendPushToUsers(owners.map((o) => o.id), { title: opts.title, body: opts.body, url: opts.link })
+      }
+    }
+  }
+
+  const { data: admins } = await adminClient
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .neq('id', actorId)
+
+  if (!admins?.length) return
+
+  await adminClient.from('notifications').insert(
+    admins.map((a) => ({ user_id: a.id, ...opts, area_tag: ownerAreaName }))
+  )
+  sendPushToUsers(admins.map((a) => a.id), { title: opts.title, body: opts.body, url: opts.link })
+}
+
 // IDs de chamados de feedback com notificação `feedback_update` não lida —
 // usado pra desenhar o indicador "nova atualização" no card do chamado
 // (my-feedback-list.tsx). O link já vem como `.../feedback?report=<id>`.

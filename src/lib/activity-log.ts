@@ -23,6 +23,7 @@ export const ACTIVITY_ENTITY_LABELS = {
   pergunta_aula: 'Pergunta de aula',
   treinamento: 'Treinamento',
   material_treinamento: 'Material de treinamento',
+  solicitacao_treinamento: 'Solicitação de acesso a treinamento',
   produto_marketing: 'Produto de marketing',
   periodo_marketing: 'Período de marketing',
   item_marketing: 'Item de marketing',
@@ -86,8 +87,13 @@ export async function logActivity(
 
 // Compara "antes" (linha do banco) com "depois" (payload novo) pelas chaves
 // declaradas em fieldLabels e devolve os rótulos legíveis dos campos que
-// mudaram. Comparação por igualdade estrita — o chamador deve normalizar os
-// dois lados (trim, null vs '', etc.) do mesmo jeito que faz antes de gravar.
+// mudaram. Comparação via JSON.stringify (não `!==` puro) — arrays (ex.:
+// exclusive_ufs) têm identidade de referência sempre diferente entre
+// "antes"/"depois", então `!==` sempre acusaria mudança mesmo sem alteração
+// real; JSON.stringify compara por valor e continua se comportando como
+// `!==` para os campos escalares já existentes (string/number/boolean/null).
+// O chamador deve normalizar os dois lados (trim, null vs '', etc.) do mesmo
+// jeito que faz antes de gravar.
 export function diffFields(
   before: Record<string, unknown>,
   after: Record<string, unknown>,
@@ -95,7 +101,7 @@ export function diffFields(
 ): string[] {
   const changed: string[] = []
   for (const [key, label] of Object.entries(fieldLabels)) {
-    if (before[key] !== after[key]) changed.push(label)
+    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) changed.push(label)
   }
   return changed
 }

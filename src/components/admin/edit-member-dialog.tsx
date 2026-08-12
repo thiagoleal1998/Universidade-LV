@@ -22,6 +22,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Pencil, Trash2, BookOpen, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { UF_NAMES } from '@/lib/estado-flag'
+
+const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
 type Tag = { id: string; name: string; color: string }
 type Course = { id: string; name: string }
@@ -38,6 +41,8 @@ type Member = {
   member_number?: number | null
   bio?: string
   linkedin_url?: string | null
+  uf?: string | null
+  city?: string | null
   tagIds?: string[]
   courseIds?: string[]
 }
@@ -108,6 +113,8 @@ export function EditMemberDialog({
         collaborator_area_id: role === 'collaborator' ? selectedAreaId : null,
         bio: role !== 'member' ? bioValue : undefined,
         linkedin_url: data.get('linkedin_url') as string,
+        uf: data.get('uf') as string,
+        city: data.get('city') as string,
         tagIds: selectedTagIds,
         courseIds: selectedCourseIds,
       })
@@ -164,6 +171,24 @@ export function EditMemberDialog({
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" defaultValue={member.email} placeholder="email@exemplo.com" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="uf">Estado (UF)</Label>
+              <select
+                id="uf"
+                name="uf"
+                defaultValue={member.uf ?? ''}
+                className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Não informado</option>
+                {UF_OPTIONS.map(([sigla, nome]) => (
+                  <option key={sigla} value={sigla}>{nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">Cidade</Label>
+              <Input id="city" name="city" defaultValue={member.city ?? ''} placeholder="Cidade da agência" />
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="linkedin_url">LinkedIn</Label>

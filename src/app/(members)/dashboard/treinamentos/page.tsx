@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainingItems, checkAndNotifyExpiredLive } from '@/app/actions/training'
 import type { TrainingItem, TrainingMaterial } from '@/app/actions/training'
+import { getMyTrainingAccessContext } from '@/app/actions/training-access'
+import { isTrainingLocked, type AccessRequestStatus } from '@/lib/training-access'
+import { RequestTrainingAccessButton } from '@/components/members/request-training-access-button'
 import { getSettings } from '@/lib/settings'
 import {
   GraduationCap, ExternalLink, FileText, Play, File, Link2,
@@ -68,7 +71,7 @@ function MaterialsPanel({ materials }: { materials: TrainingMaterial[] }) {
 
 // ─── "Acontecendo agora" banner ──────────────────────────────────────────────
 
-function HappeningNowBanner({ item }: { item: TrainingItem }) {
+function HappeningNowBanner({ item, locked, requestStatus }: { item: TrainingItem; locked: boolean; requestStatus: AccessRequestStatus }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border-2 border-red-500 bg-red-500/5 mb-8">
       <div className="bg-red-500 px-4 py-2 flex items-center gap-2">
@@ -87,23 +90,27 @@ function HappeningNowBanner({ item }: { item: TrainingItem }) {
             <h2 className="text-xl font-bold text-foreground leading-tight group-hover:text-red-500 transition-colors">{item.title}</h2>
           </Link>
           {item.description && <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>}
-          <div className="flex items-center gap-2 flex-wrap mt-1">
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 self-start bg-red-500 hover:bg-red-600 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors"
-            >
-              <Radio className="w-4 h-4 animate-pulse" />
-              Entrar agora
-            </a>
-            <Link
-              href={`/dashboard/treinamentos/${item.id}`}
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Ver detalhes <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+          {locked ? (
+            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap mt-1">
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 self-start bg-red-500 hover:bg-red-600 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors"
+              >
+                <Radio className="w-4 h-4 animate-pulse" />
+                Entrar agora
+              </a>
+              <Link
+                href={`/dashboard/treinamentos/${item.id}`}
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Ver detalhes <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -112,7 +119,7 @@ function HappeningNowBanner({ item }: { item: TrainingItem }) {
 
 // ─── Próximo ao vivo (featured card) ───────────────────────────────────────
 
-function FeaturedLiveCard({ item }: { item: TrainingItem }) {
+function FeaturedLiveCard({ item, locked, requestStatus }: { item: TrainingItem; locked: boolean; requestStatus: AccessRequestStatus }) {
   return (
     <div className="rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-500/5 via-background to-background mb-8 overflow-hidden">
       <div className="flex items-center gap-2 px-5 pt-5 pb-3">
@@ -146,14 +153,20 @@ function FeaturedLiveCard({ item }: { item: TrainingItem }) {
               <LiveCountdown liveAt={item.live_at} />
             </div>
           )}
-          <Link
-            href={`/dashboard/treinamentos/${item.id}`}
-            className="mt-1 inline-flex items-center gap-2 self-start bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
-          >
-            <Radio className="w-4 h-4" />
-            Ver treinamento
-            <ChevronRight className="w-3.5 h-3.5 opacity-70" />
-          </Link>
+          {locked ? (
+            <div className="mt-1">
+              <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
+            </div>
+          ) : (
+            <Link
+              href={`/dashboard/treinamentos/${item.id}`}
+              className="mt-1 inline-flex items-center gap-2 self-start bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+            >
+              <Radio className="w-4 h-4" />
+              Ver treinamento
+              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+            </Link>
+          )}
         </div>
       </div>
       {item.materials && item.materials.length > 0 && <MaterialsPanel materials={item.materials} />}
@@ -163,7 +176,7 @@ function FeaturedLiveCard({ item }: { item: TrainingItem }) {
 
 // ─── Small upcoming live ─────────────────────────────────────────────────────
 
-function SmallLiveCard({ item }: { item: TrainingItem }) {
+function SmallLiveCard({ item, locked, requestStatus }: { item: TrainingItem; locked: boolean; requestStatus: AccessRequestStatus }) {
   return (
     <Link
       href={`/dashboard/treinamentos/${item.id}`}
@@ -177,17 +190,25 @@ function SmallLiveCard({ item }: { item: TrainingItem }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-foreground truncate group-hover:text-red-500 transition-colors">{item.title}</p>
-        {item.live_at && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-            <CalendarDays className="w-3 h-3" />
-            <span className="capitalize">{formatDate(item.live_at)}</span>
+        {locked ? (
+          <div className="mt-1">
+            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
           </div>
-        )}
-        {item.live_at && (
-          <div className="flex items-center gap-1 text-xs text-red-500 font-medium mt-0.5">
-            <Clock className="w-3 h-3" />
-            <LiveCountdown liveAt={item.live_at} />
-          </div>
+        ) : (
+          <>
+            {item.live_at && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                <CalendarDays className="w-3 h-3" />
+                <span className="capitalize">{formatDate(item.live_at)}</span>
+              </div>
+            )}
+            {item.live_at && (
+              <div className="flex items-center gap-1 text-xs text-red-500 font-medium mt-0.5">
+                <Clock className="w-3 h-3" />
+                <LiveCountdown liveAt={item.live_at} />
+              </div>
+            )}
+          </>
         )}
       </div>
       <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
@@ -197,7 +218,7 @@ function SmallLiveCard({ item }: { item: TrainingItem }) {
 
 // ─── Link training card ──────────────────────────────────────────────────────
 
-function LinkCard({ item }: { item: TrainingItem }) {
+function LinkCard({ item, locked, requestStatus }: { item: TrainingItem; locked: boolean; requestStatus: AccessRequestStatus }) {
   return (
     <div className="flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-md transition-all duration-200 group">
       <Link href={`/dashboard/treinamentos/${item.id}`} className="flex flex-col flex-1">
@@ -211,10 +232,14 @@ function LinkCard({ item }: { item: TrainingItem }) {
         <div className="flex flex-col flex-1 p-4 gap-2">
           <p className="font-semibold text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">{item.title}</p>
           {item.description && <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{item.description}</p>}
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mt-1">
-            <ChevronRight className="w-3.5 h-3.5" />
-            Ver treinamento
-          </div>
+          {locked ? (
+            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mt-1">
+              <ChevronRight className="w-3.5 h-3.5" />
+              Ver treinamento
+            </div>
+          )}
         </div>
       </Link>
       {item.materials && item.materials.length > 0 && <MaterialsPanel materials={item.materials} />}
@@ -224,7 +249,7 @@ function LinkCard({ item }: { item: TrainingItem }) {
 
 // ─── Replay card ────────────────────────────────────────────────────────────
 
-function ReplayCard({ item }: { item: TrainingItem }) {
+function ReplayCard({ item, locked, requestStatus }: { item: TrainingItem; locked: boolean; requestStatus: AccessRequestStatus }) {
   return (
     <div className="flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:border-blue-500/40 hover:shadow-md transition-all duration-200 group">
       <Link href={`/dashboard/treinamentos/${item.id}`} className="flex flex-col flex-1">
@@ -247,10 +272,14 @@ function ReplayCard({ item }: { item: TrainingItem }) {
               <span className="capitalize">{formatDate(item.live_at)}</span>
             </div>
           )}
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 mt-1">
-            <ChevronRight className="w-3.5 h-3.5" />
-            Assistir replay
-          </div>
+          {locked ? (
+            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 mt-1">
+              <ChevronRight className="w-3.5 h-3.5" />
+              Assistir replay
+            </div>
+          )}
         </div>
       </Link>
       {item.materials && item.materials.length > 0 && <MaterialsPanel materials={item.materials} />}
@@ -265,9 +294,14 @@ export default async function TreinamentosPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [allItemsRaw, settings] = await Promise.all([getTrainingItems(), getSettings()])
+  const [allItemsRaw, settings, accessCtx] = await Promise.all([getTrainingItems(), getSettings(), getMyTrainingAccessContext()])
   const allItems = allItemsRaw.filter((i) => i.is_active)
   const now = Date.now()
+
+  function accessFor(item: TrainingItem) {
+    const requestStatus = accessCtx.requestsByTrainingId[item.id] ?? 'none'
+    return { locked: isTrainingLocked(item, accessCtx.uf, requestStatus), requestStatus }
+  }
 
   // Array, não item único — dois treinamentos podem estar "ao vivo" na mesma
   // janela de 2h ao mesmo tempo (ex.: uma sala Nacional e outra
@@ -370,9 +404,9 @@ export default async function TreinamentosPage() {
       ) : (
         <div className="space-y-10">
 
-          {happeningNow.map((item) => <HappeningNowBanner key={item.id} item={item} />)}
+          {happeningNow.map((item) => <HappeningNowBanner key={item.id} item={item} {...accessFor(item)} />)}
 
-          {nextLive && <FeaturedLiveCard item={nextLive} />}
+          {nextLive && <FeaturedLiveCard item={nextLive} {...accessFor(nextLive)} />}
 
           {otherUpcoming.length > 0 && (
             <section>
@@ -381,7 +415,7 @@ export default async function TreinamentosPage() {
                 Próximas sessões ao vivo
               </h2>
               <div className="space-y-2">
-                {otherUpcoming.map((item) => <SmallLiveCard key={item.id} item={item} />)}
+                {otherUpcoming.map((item) => <SmallLiveCard key={item.id} item={item} {...accessFor(item)} />)}
               </div>
             </section>
           )}
@@ -393,7 +427,7 @@ export default async function TreinamentosPage() {
                 Treinamentos
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {linkItems.map((item) => <LinkCard key={item.id} item={item} />)}
+                {linkItems.map((item) => <LinkCard key={item.id} item={item} {...accessFor(item)} />)}
               </div>
             </section>
           )}
@@ -411,7 +445,7 @@ export default async function TreinamentosPage() {
                 <span className="ml-auto text-sm text-muted-foreground">{replayItems.length} disponíve{replayItems.length !== 1 ? 'is' : 'l'}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {replayItems.map((item) => <ReplayCard key={item.id} item={item} />)}
+                {replayItems.map((item) => <ReplayCard key={item.id} item={item} {...accessFor(item)} />)}
               </div>
             </section>
           )}

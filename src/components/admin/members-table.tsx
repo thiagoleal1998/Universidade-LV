@@ -32,6 +32,8 @@ export type MemberWithEmail = {
   collaborator_area_id?: string | null
   bio?: string
   linkedin_url?: string | null
+  uf?: string | null
+  city?: string | null
   tagIds?: string[]
   courseIds?: string[]
   isOnline?: boolean

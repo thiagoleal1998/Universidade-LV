@@ -6,6 +6,7 @@ import {
   createTrainingItem, updateTrainingItem, deleteTrainingItem, uploadTrainingCover,
   createTrainingMaterial, deleteTrainingMaterial, toggleTrainingActive,
 } from '@/app/actions/training'
+import { resolveTrainingAccessRequest } from '@/app/actions/training-access'
 import type { TrainingItem, TrainingMaterial } from '@/app/actions/training'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,12 +22,23 @@ import {
   Plus, Pencil, Trash2, X, ExternalLink, GraduationCap, EyeOff,
   Upload, ImageIcon, Paperclip, ChevronDown, ChevronUp,
   FileText, Play, File, Link2, Eye, Radio, RotateCcw,
-  CheckCircle2, Clock,
+  CheckCircle2, Clock, MapPin, Users, Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { UF_NAMES } from '@/lib/estado-flag'
+
+const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
 type TrainingType = 'link' | 'live' | 'replay'
+
+export type PendingAccessRequest = {
+  id: string
+  memberName: string
+  company: string
+  uf: string
+  requestedAt: string
+}
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -243,7 +255,7 @@ function PreviewModal({ item, onClose }: { item: TrainingItem; onClose: () => vo
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-type TrainingItemWithEdit = TrainingItem & { canEdit?: boolean }
+type TrainingItemWithEdit = TrainingItem & { canEdit?: boolean; pendingAccessRequests?: PendingAccessRequest[] }
 
 export function TrainingsManager({ items, canCreate = true }: { items: TrainingItemWithEdit[]; canCreate?: boolean }) {
   const router = useRouter()
@@ -253,7 +265,9 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
   const [isPending, startTransition] = useTransition()
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [selectedUfs, setSelectedUfs] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [accessExpandedId, setAccessExpandedId] = useState<string | null>(null)
   const [addingMaterialFor, setAddingMaterialFor] = useState<string | null>(null)
   const [previewItem, setPreviewItem] = useState<TrainingItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -265,6 +279,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     setCoverPreview(null)
     setCoverFile(null)
     setFormType('link')
+    setSelectedUfs([])
   }
 
   function handleEdit(item: TrainingItem) {
@@ -272,8 +287,21 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     setFormType((item.type ?? 'link') as TrainingType)
     setCoverPreview(item.cover_url ?? null)
     setCoverFile(null)
+    setSelectedUfs(item.exclusive_ufs ?? [])
     setShowForm(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
+  function toggleUf(sigla: string) {
+    setSelectedUfs((prev) => prev.includes(sigla) ? prev.filter((u) => u !== sigla) : [...prev, sigla])
+  }
+
+  function handleResolveAccess(requestId: string, trainingId: string, approve: boolean) {
+    startTransition(async () => {
+      const result = await resolveTrainingAccessRequest(requestId, trainingId, approve)
+      if (result?.error) toast.error(result.error)
+      else { toast.success(approve ? 'Acesso liberado!' : 'Solicitação negada.'); router.refresh() }
+    })
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -294,6 +322,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
+    fd.set('exclusive_ufs', JSON.stringify(selectedUfs))
     startTransition(async () => {
       try {
         if (coverFile) {
@@ -488,6 +517,42 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                 </div>
               </div>
 
+              {/* Exclusividade por UF */}
+              <div className="md:col-span-2">
+                <Label>Exclusivo para UF(s) (opcional)</Label>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                  Deixe em branco pra liberar pra todo mundo. Marcando uma ou mais UFs, só agências dessas UFs
+                  acessam direto — as demais veem um selo &quot;Exclusivo&quot; e podem solicitar acesso.
+                </p>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 rounded-lg border border-border bg-muted/20">
+                  {UF_OPTIONS.map(([sigla, nome]) => {
+                    const selected = selectedUfs.includes(sigla)
+                    return (
+                      <button
+                        key={sigla}
+                        type="button"
+                        onClick={() => toggleUf(sigla)}
+                        title={nome}
+                        className={cn(
+                          'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors',
+                          selected
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                        )}
+                      >
+                        {selected && <Check className="w-3 h-3" />}
+                        {sigla}
+                      </button>
+                    )
+                  })}
+                </div>
+                {selectedUfs.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Selecionadas: {selectedUfs.map((s) => UF_NAMES[s] ?? s).join(', ')}
+                  </p>
+                )}
+              </div>
+
               <div>
                 <Label htmlFor="order_index">Ordem</Label>
                 <Input id="order_index" name="order_index" type="number" min={0} defaultValue={editing?.order_index ?? items.length} className="mt-1.5" />
@@ -528,6 +593,8 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
               const isExpanded = expandedId === item.id
               const materials = item.materials ?? []
               const isLiveFuture = item.type === 'live' && item.live_at && new Date(item.live_at) > new Date()
+              const pendingAccess = item.pendingAccessRequests ?? []
+              const isAccessExpanded = accessExpandedId === item.id
 
               return (
                 <div key={item.id} className={cn('bg-card border rounded-xl overflow-hidden transition-opacity', !item.is_active && 'opacity-70')}>
@@ -549,6 +616,14 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                         {!item.is_active && (
                           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-full px-2 py-0.5 shrink-0">
                             <EyeOff className="w-3 h-3" /> Rascunho
+                          </span>
+                        )}
+                        {(item.exclusive_ufs?.length ?? 0) > 0 && (
+                          <span
+                            title={`Exclusivo para ${item.exclusive_ufs!.join(', ')}`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 shrink-0"
+                          >
+                            <MapPin className="w-3 h-3" /> {item.exclusive_ufs!.join(', ')}
                           </span>
                         )}
                       </div>
@@ -611,6 +686,22 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
 
+                      {/* Solicitações de acesso pendentes */}
+                      {pendingAccess.length > 0 && (
+                        <button
+                          onClick={() => setAccessExpandedId(isAccessExpanded ? null : item.id)}
+                          className={cn(
+                            'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                            isAccessExpanded ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                          )}
+                          title="Solicitações de acesso pendentes"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          <span>{pendingAccess.length}</span>
+                          {isAccessExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                      )}
+
                       {(item.canEdit ?? true) && (
                         <>
                           {/* Edit */}
@@ -642,6 +733,42 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                       )}
                     </div>
                   </div>
+
+                  {/* Solicitações de acesso panel */}
+                  {isAccessExpanded && pendingAccess.length > 0 && (
+                    <div className="border-t border-border px-4 pb-4 pt-3 bg-amber-500/5 space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Solicitações de acesso pendentes</p>
+                      {pendingAccess.map((req) => (
+                        <div key={req.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 border border-border">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{req.memberName}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {[req.company, req.uf ? (UF_NAMES[req.uf] ?? req.uf) : null].filter(Boolean).join(' — ') || 'Sem empresa/UF informada'}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={isPending}
+                            onClick={() => handleResolveAccess(req.id, item.id, false)}
+                            className="h-7 text-xs gap-1 text-red-500 hover:text-red-600 border-red-500/20 hover:bg-red-500/10"
+                          >
+                            <X className="w-3.5 h-3.5" /> Negar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => handleResolveAccess(req.id, item.id, true)}
+                            className="h-7 text-xs gap-1"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Aprovar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Materials panel */}
                   {isExpanded && (

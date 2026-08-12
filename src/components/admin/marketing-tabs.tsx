@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap, Luggage, Users2 } from 'lucide-react'
 import { MarketingManager } from '@/components/admin/marketing-manager'
-import { TrainingsManager } from '@/components/admin/trainings-manager'
+import { TrainingsManager, type PendingAccessRequest } from '@/components/admin/trainings-manager'
 import { FamtoursManager } from '@/components/admin/famtours-manager'
 import { GruposManager } from '@/components/admin/grupos-manager'
 import { CommercialConditionsManager } from '@/components/admin/commercial-conditions-manager'
@@ -107,7 +107,7 @@ export function MarketingTabs({
 }: {
   marketingItems: object[]
   sections: MarketingSection[]
-  trainingItems: (TrainingItem & { canEdit?: boolean })[]
+  trainingItems: (TrainingItem & { canEdit?: boolean; pendingAccessRequests?: PendingAccessRequest[] })[]
   famtours?: (Famtour & { canEdit?: boolean })[]
   grupos?: (Grupo & { canEdit?: boolean })[]
   commercialConditions?: (CommercialCondition & { canEdit?: boolean })[]

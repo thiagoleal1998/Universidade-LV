@@ -1,3 +1,39 @@
+// Sigla → nome completo (com acento), ordenado alfabeticamente pelo nome —
+// fonte única pra todo seletor/rótulo de UF do projeto (cadastro, perfil,
+// edição admin de membro, UF exclusiva de treinamento, selo "Exclusivo
+// para..."). Não reaproveita NOME_PARA_SIGLA porque aquele é normalizado
+// (sem acento, minúsculo) só pra detecção de texto livre, não serve como
+// rótulo de exibição.
+export const UF_NAMES: Record<string, string> = {
+  AC: 'Acre',
+  AL: 'Alagoas',
+  AP: 'Amapá',
+  AM: 'Amazonas',
+  BA: 'Bahia',
+  CE: 'Ceará',
+  DF: 'Distrito Federal',
+  ES: 'Espírito Santo',
+  GO: 'Goiás',
+  MA: 'Maranhão',
+  MT: 'Mato Grosso',
+  MS: 'Mato Grosso do Sul',
+  MG: 'Minas Gerais',
+  PA: 'Pará',
+  PB: 'Paraíba',
+  PR: 'Paraná',
+  PE: 'Pernambuco',
+  PI: 'Piauí',
+  RJ: 'Rio de Janeiro',
+  RN: 'Rio Grande do Norte',
+  RS: 'Rio Grande do Sul',
+  RO: 'Rondônia',
+  RR: 'Roraima',
+  SC: 'Santa Catarina',
+  SP: 'São Paulo',
+  SE: 'Sergipe',
+  TO: 'Tocantins',
+}
+
 const ESTADO_FILES: Record<string, string> = {
   AC: 'Bandeira_do_Acre.svg',
   AL: 'Bandeira_de_Alagoas.svg',
@@ -17,6 +53,7 @@ const ESTADO_FILES: Record<string, string> = {
   PR: 'Bandeira_do_Paraná.svg',
   PE: 'Bandeira_de_Pernambuco.svg',
   PI: 'Bandeira_do_Piauí.svg',
+  RJ: 'Bandeira_do_estado_do_Rio_de_Janeiro.svg',
   RN: 'Bandeira_do_Rio_Grande_do_Norte.svg',
   RS: 'Bandeira_do_Rio_Grande_do_Sul.svg',
   RO: 'Bandeira_de_Rondônia.svg',
@@ -52,6 +89,7 @@ const NOME_PARA_SIGLA: Record<string, string> = {
   'parana': 'PR',
   'pernambuco': 'PE',
   'piaui': 'PI',
+  'rio de janeiro': 'RJ',
   'rio grande do norte': 'RN',
   'rio grande do sul': 'RS',
   'rondonia': 'RO',
