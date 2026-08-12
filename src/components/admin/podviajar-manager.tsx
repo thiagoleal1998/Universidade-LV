@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { SimpleDatePicker } from '@/components/ui/simple-date-picker'
 import { toast } from 'sonner'
 import { Headphones, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Upload, X, SquarePlay, Loader2, Lock } from 'lucide-react'
 
@@ -385,10 +386,10 @@ export function PodviajarManager({ raw, canEdit = true }: { raw: string; canEdit
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Data de publicação</Label>
-                <Input
+                <SimpleDatePicker
                   className="mt-1"
                   value={ep.date}
-                  onChange={(e) => updateEpisode(idx, 'date', e.target.value)}
+                  onChange={(v) => updateEpisode(idx, 'date', v)}
                   placeholder="27 Jun 2026"
                 />
               </div>
