@@ -4,8 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logActivity } from '@/lib/activity-log'
-import { notifyTrainingOwners, notifyUser } from '@/app/actions/notifications'
+import { notifyTrainingAccessReviewers, notifyUser } from '@/app/actions/notifications'
 import { requireTrainingAccess } from '@/app/actions/training'
+import { rdTrainingAccessRequested } from '@/lib/rdstation'
 import type { AccessRequestStatus } from '@/lib/training-access'
 
 // Contexto de acesso do MEMBRO logado — UF do próprio perfil + status de
@@ -58,12 +59,24 @@ export async function requestTrainingAccess(trainingId: string) {
   const requesterName = profile?.full_name || 'Uma agência'
   const requesterInfo = [profile?.company, profile?.uf].filter(Boolean).join(' — ')
 
-  notifyTrainingOwners(trainingId, user.id, {
+  const { recipientIds } = await notifyTrainingAccessReviewers(user.id, {
     type: 'training_access_requested',
     title: `${requesterName} solicitou acesso a um treinamento exclusivo`,
     body: requesterInfo ? `"${training.title}" — ${requesterInfo}` : `"${training.title}"`,
     link: '/admin/marketing',
   })
+
+  // E-mail além do sino — mesmo padrão de notifyMembers/rdNewTraining
+  // (training.ts): busca os e-mails a partir dos IDs já resolvidos acima,
+  // não recalcula quem são os destinatários de novo.
+  if (recipientIds.length > 0) {
+    const idSet = new Set(recipientIds)
+    const { data: usersData } = await adminClient.auth.admin.listUsers()
+    const emails = (usersData?.users ?? [])
+      .filter((u) => idSet.has(u.id) && u.email)
+      .map((u) => u.email!)
+    rdTrainingAccessRequested(emails, requesterName, training.title, `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://universidadelv.com.br'}/admin/marketing`)
+  }
 
   revalidatePath('/dashboard/treinamentos')
   revalidatePath(`/dashboard/treinamentos/${trainingId}`)

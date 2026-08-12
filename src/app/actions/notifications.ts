@@ -220,52 +220,46 @@ export async function notifyCourseOwners(
   sendPushToUsers(admins.map((a) => a.id), { title: opts.title, body: opts.body, url: opts.link })
 }
 
-// Notify collaborators who own a training (capacidade 'trainings' + área
-// dona do treinamento) — mesmo molde de notifyCourseOwners. Usado por
-// requestTrainingAccess (src/app/actions/training-access.ts) pra avisar
-// quem pode aprovar/negar uma solicitação de acesso.
-export async function notifyTrainingOwners(
-  trainingId: string,
+// Quem revisa solicitação de acesso a treinamento exclusivo: SEMPRE admins +
+// colaboradores da área "Promotor Interno" — decisão do usuário, independe
+// de qual área é dona do treinamento específico sendo solicitado (diferente
+// de notifyCourseOwners, que segue o owner_area_id do item). Nome de área
+// como constante e resolvido em runtime segue o mesmo padrão já usado pra
+// TESTER_TAG_NAME ('Beta') em dashboard/layout.tsx.
+const TRAINING_ACCESS_REVIEWER_AREA_NAME = 'Promotor Interno'
+
+// Insere a notificação (sino + push) pra admins + colaboradores da área
+// revisora e devolve os IDs — o chamador (requestTrainingAccess) usa esses
+// IDs pra buscar e-mail e disparar o evento de e-mail via RD Station
+// separadamente, mesmo padrão de notifyMembers em training.ts.
+export async function notifyTrainingAccessReviewers(
   actorId: string,
   opts: { type: string; title: string; body: string; link: string }
-) {
+): Promise<{ recipientIds: string[] }> {
   const adminClient = createAdminClient()
 
-  let ownerAreaName: string | null = null
-  const { data: training } = await adminClient.from('training_items').select('owner_area_id').eq('id', trainingId).single()
-  if (training?.owner_area_id) {
-    const { data: area } = await adminClient
-      .from('collaborator_areas')
-      .select('id, name, capabilities')
-      .eq('id', training.owner_area_id)
-      .single()
-    if (area?.capabilities?.includes('trainings')) {
-      ownerAreaName = area.name
-      const { data: owners } = await adminClient
-        .from('profiles')
-        .select('id')
-        .eq('collaborator_area_id', area.id)
-        .eq('active', true)
-        .neq('id', actorId)
-      if (owners?.length) {
-        await adminClient.from('notifications').insert(owners.map((o) => ({ user_id: o.id, ...opts })))
-        sendPushToUsers(owners.map((o) => o.id), { title: opts.title, body: opts.body, url: opts.link })
-      }
-    }
-  }
+  const { data: area } = await adminClient
+    .from('collaborator_areas')
+    .select('id')
+    .eq('name', TRAINING_ACCESS_REVIEWER_AREA_NAME)
+    .maybeSingle()
 
-  const { data: admins } = await adminClient
+  const orFilter = area
+    ? `role.eq.admin,collaborator_area_id.eq.${area.id}`
+    : 'role.eq.admin'
+
+  const { data: recipients } = await adminClient
     .from('profiles')
     .select('id')
-    .eq('role', 'admin')
+    .eq('active', true)
     .neq('id', actorId)
+    .or(orFilter)
 
-  if (!admins?.length) return
+  if (!recipients?.length) return { recipientIds: [] }
 
-  await adminClient.from('notifications').insert(
-    admins.map((a) => ({ user_id: a.id, ...opts, area_tag: ownerAreaName }))
-  )
-  sendPushToUsers(admins.map((a) => a.id), { title: opts.title, body: opts.body, url: opts.link })
+  await adminClient.from('notifications').insert(recipients.map((r) => ({ user_id: r.id, ...opts })))
+  sendPushToUsers(recipients.map((r) => r.id), { title: opts.title, body: opts.body, url: opts.link })
+  return { recipientIds: recipients.map((r) => r.id) }
 }
 
 // IDs de chamados de feedback com notificação `feedback_update` não lida —

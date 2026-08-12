@@ -22,6 +22,7 @@ const RD_EVENTS = {
   chamado_resolvido: 'universidade-lv-chamado-resolvido',
   redefinicao_senha: 'universidade-lv-redefinicao-senha',
   consentimento_inicial: 'universidade-lv-consentimento-inicial',
+  treinamento_acesso_solicitado: 'universidade-lv-treinamento-acesso-solicitado',
 } as const
 
 // Destinatário dos 2 eventos admin-only abaixo — não é um membro, é o
@@ -195,6 +196,20 @@ export async function rdFeedbackResolved(email: string, name: string, title: str
     cf_corpo: `Seu chamado "${title}" foi finalizado.`,
     cf_link: link,
   })
+}
+
+// Um e-mail por destinatário (mesmo padrão de rdMembersNewAnnouncement/
+// rdNewTraining) — os destinatários são sempre admins + colaboradores da
+// área "Promotor Interno" (ver notifyTrainingAccessReviewers), nunca um
+// único e-mail fixo.
+export async function rdTrainingAccessRequested(emails: string[], requesterName: string, trainingTitle: string, link: string) {
+  for (const email of emails) {
+    await sendConversion(RD_EVENTS.treinamento_acesso_solicitado, email, {
+      cf_titulo: `${requesterName} solicitou acesso a um treinamento exclusivo`,
+      cf_corpo: `"${trainingTitle}" — acesse o painel de Treinamentos pra aprovar ou negar.`,
+      cf_link: link,
+    })
+  }
 }
 
 // Link de recuperação gerado via adminClient.auth.admin.generateLink (não
