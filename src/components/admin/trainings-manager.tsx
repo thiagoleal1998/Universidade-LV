@@ -8,6 +8,7 @@ import {
 } from '@/app/actions/training'
 import { resolveTrainingAccessRequest } from '@/app/actions/training-access'
 import type { TrainingItem, TrainingMaterial } from '@/app/actions/training'
+import type { PendingAccessRequest } from '@/lib/access-lock'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,14 +32,6 @@ import { UF_NAMES } from '@/lib/estado-flag'
 const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
 type TrainingType = 'link' | 'live' | 'replay'
-
-export type PendingAccessRequest = {
-  id: string
-  memberName: string
-  company: string
-  uf: string
-  requestedAt: string
-}
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 

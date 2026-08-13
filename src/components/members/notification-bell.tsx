@@ -27,11 +27,11 @@ function NotifIcon({ type }: { type: string }) {
     return <div className={cn(base, 'bg-violet-500/15')}><MessageSquare className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" /></div>
   if (type === 'new_training' || type === 'training_replay')
     return <div className={cn(base, 'bg-purple-500/15')}><Video className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /></div>
-  if (type === 'training_access_requested')
+  if (type === 'training_access_requested' || type === 'famtour_access_requested')
     return <div className={cn(base, 'bg-amber-500/15')}><Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /></div>
-  if (type === 'training_access_approved')
+  if (type === 'training_access_approved' || type === 'famtour_access_approved')
     return <div className={cn(base, 'bg-green-500/15')}><CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" /></div>
-  if (type === 'training_access_denied')
+  if (type === 'training_access_denied' || type === 'famtour_access_denied')
     return <div className={cn(base, 'bg-red-500/15')}><XCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" /></div>
   return <div className={cn(base, 'bg-primary/10')}><BookOpen className="w-3.5 h-3.5 text-primary" /></div>
 }

@@ -23,6 +23,7 @@ const RD_EVENTS = {
   redefinicao_senha: 'universidade-lv-redefinicao-senha',
   consentimento_inicial: 'universidade-lv-consentimento-inicial',
   treinamento_acesso_solicitado: 'universidade-lv-treinamento-acesso-solicitado',
+  famtour_acesso_solicitado: 'universidade-lv-famtour-acesso-solicitado',
 } as const
 
 // Destinatário dos 2 eventos admin-only abaixo — não é um membro, é o
@@ -207,6 +208,20 @@ export async function rdTrainingAccessRequested(emails: string[], requesterName:
     await sendConversion(RD_EVENTS.treinamento_acesso_solicitado, email, {
       cf_titulo: `${requesterName} solicitou acesso a um treinamento exclusivo`,
       cf_corpo: `"${trainingTitle}" — acesse o painel de Treinamentos pra aprovar ou negar.`,
+      cf_link: link,
+    })
+  }
+}
+
+// Evento PRÓPRIO, não reaproveita rdTrainingAccessRequested — texto muda
+// ("famtour" em vez de "treinamento") e precisa de Automação dedicada na
+// RD Station de qualquer forma (mesmo padrão de manter 1 evento por cenário
+// de negócio já usado pros 3 eventos de chamado de feedback).
+export async function rdFamtourAccessRequested(emails: string[], requesterName: string, famtourTitle: string, link: string) {
+  for (const email of emails) {
+    await sendConversion(RD_EVENTS.famtour_acesso_solicitado, email, {
+      cf_titulo: `${requesterName} solicitou acesso a um famtour exclusivo`,
+      cf_corpo: `"${famtourTitle}" — acesse o painel de Famtours pra aprovar ou negar.`,
       cf_link: link,
     })
   }

@@ -4,21 +4,23 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { MapPin, Clock, XCircle, Lock } from 'lucide-react'
-import { requestTrainingAccess } from '@/app/actions/training-access'
 import { UF_NAMES } from '@/lib/estado-flag'
-import type { AccessRequestStatus } from '@/lib/training-access'
+import type { AccessRequestStatus } from '@/lib/access-lock'
 import { cn } from '@/lib/utils'
 
 // Selo "Exclusivo para..." + botão de solicitar/estado da solicitação —
-// usado nos 3 lugares onde um treinamento bloqueado aparece pro membro
-// (lista, detalhe, e o widget compacto da home, que usa só o `compact`).
-export function RequestTrainingAccessButton({
-  trainingId,
+// genérico por conteúdo (treinamento, famtour, etc.): quem chama passa
+// `onRequest`, a própria server action de cada entidade (requestTrainingAccess/
+// requestFamtourAccess). Usado nos lugares onde um item bloqueado aparece
+// pro membro; `compact` mostra só o selo (sem botão), pra cards de grade e o
+// widget da home, onde o botão completo mora em outro lugar (detalhe/página).
+export function RequestAccessButton({
+  onRequest,
   exclusiveUfs,
   status,
   compact = false,
 }: {
-  trainingId: string
+  onRequest: () => Promise<{ error?: string } | { success: true }>
   exclusiveUfs: string[]
   status: AccessRequestStatus
   compact?: boolean
@@ -30,8 +32,8 @@ export function RequestTrainingAccessButton({
 
   function handleRequest() {
     startTransition(async () => {
-      const result = await requestTrainingAccess(trainingId)
-      if (result?.error) toast.error(result.error)
+      const result = await onRequest()
+      if ('error' in result && result.error) toast.error(result.error)
       else { toast.success('Solicitação enviada! Você será avisado quando for respondida.'); router.refresh() }
     })
   }
@@ -88,4 +90,3 @@ export function RequestTrainingAccessButton({
     </div>
   )
 }
-

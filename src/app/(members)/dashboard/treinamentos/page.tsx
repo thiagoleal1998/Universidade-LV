@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainingItems, checkAndNotifyExpiredLive } from '@/app/actions/training'
 import type { TrainingItem, TrainingMaterial } from '@/app/actions/training'
-import { getMyTrainingAccessContext } from '@/app/actions/training-access'
-import { isTrainingLocked, type AccessRequestStatus } from '@/lib/training-access'
-import { RequestTrainingAccessButton } from '@/components/members/request-training-access-button'
+import { getMyTrainingAccessContext, requestTrainingAccess } from '@/app/actions/training-access'
+import { isAccessLocked, type AccessRequestStatus } from '@/lib/access-lock'
+import { RequestAccessButton } from '@/components/members/request-access-button'
 import { getSettings } from '@/lib/settings'
 import {
   GraduationCap, ExternalLink, FileText, Play, File, Link2,
@@ -91,7 +91,7 @@ function HappeningNowBanner({ item, locked, requestStatus }: { item: TrainingIte
           </Link>
           {item.description && <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>}
           {locked ? (
-            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
+            <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
           ) : (
             <div className="flex items-center gap-2 flex-wrap mt-1">
               <a
@@ -155,7 +155,7 @@ function FeaturedLiveCard({ item, locked, requestStatus }: { item: TrainingItem;
           )}
           {locked ? (
             <div className="mt-1">
-              <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
+              <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
             </div>
           ) : (
             <Link
@@ -192,7 +192,7 @@ function SmallLiveCard({ item, locked, requestStatus }: { item: TrainingItem; lo
         <p className="font-semibold text-sm text-foreground truncate group-hover:text-red-500 transition-colors">{item.title}</p>
         {locked ? (
           <div className="mt-1">
-            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
+            <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
           </div>
         ) : (
           <>
@@ -233,7 +233,7 @@ function LinkCard({ item, locked, requestStatus }: { item: TrainingItem; locked:
           <p className="font-semibold text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">{item.title}</p>
           {item.description && <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{item.description}</p>}
           {locked ? (
-            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
+            <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
           ) : (
             <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mt-1">
               <ChevronRight className="w-3.5 h-3.5" />
@@ -273,7 +273,7 @@ function ReplayCard({ item, locked, requestStatus }: { item: TrainingItem; locke
             </div>
           )}
           {locked ? (
-            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
+            <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
           ) : (
             <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 mt-1">
               <ChevronRight className="w-3.5 h-3.5" />
@@ -300,7 +300,7 @@ export default async function TreinamentosPage() {
 
   function accessFor(item: TrainingItem) {
     const requestStatus = accessCtx.requestsByTrainingId[item.id] ?? 'none'
-    return { locked: isTrainingLocked(item, accessCtx.uf, requestStatus), requestStatus }
+    return { locked: isAccessLocked(item, accessCtx.uf, requestStatus), requestStatus }
   }
 
   // Array, não item único — dois treinamentos podem estar "ao vivo" na mesma

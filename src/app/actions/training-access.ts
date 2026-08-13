@@ -4,10 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logActivity } from '@/lib/activity-log'
-import { notifyTrainingAccessReviewers, notifyUser } from '@/app/actions/notifications'
-import { requireTrainingAccess } from '@/app/actions/training'
+import { notifyAccessReviewers, notifyUser } from '@/app/actions/notifications'
+import { requireAccessReviewer } from '@/lib/authz'
 import { rdTrainingAccessRequested } from '@/lib/rdstation'
-import type { AccessRequestStatus } from '@/lib/training-access'
+import type { AccessRequestStatus } from '@/lib/access-lock'
 
 // Contexto de acesso do MEMBRO logado — UF do próprio perfil + status de
 // solicitação (se houver) pra cada treinamento que já pediu acesso. Usado
@@ -59,7 +59,7 @@ export async function requestTrainingAccess(trainingId: string) {
   const requesterName = profile?.full_name || 'Uma agência'
   const requesterInfo = [profile?.company, profile?.uf].filter(Boolean).join(' — ')
 
-  const { recipientIds } = await notifyTrainingAccessReviewers(user.id, {
+  const { recipientIds } = await notifyAccessReviewers(user.id, {
     type: 'training_access_requested',
     title: `${requesterName} solicitou acesso a um treinamento exclusivo`,
     body: requesterInfo ? `"${training.title}" — ${requesterInfo}` : `"${training.title}"`,
@@ -85,7 +85,7 @@ export async function requestTrainingAccess(trainingId: string) {
 }
 
 export async function resolveTrainingAccessRequest(requestId: string, trainingId: string, approve: boolean) {
-  const ctx = await requireTrainingAccess(trainingId)
+  const ctx = await requireAccessReviewer()
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()

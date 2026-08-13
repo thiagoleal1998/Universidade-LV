@@ -4,7 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import { getTrainingItems } from '@/app/actions/training'
 import { getMyTrainingAccessContext } from '@/app/actions/training-access'
-import { isTrainingLocked } from '@/lib/training-access'
+import { getMyFamtourAccessContext, requestFamtourAccess } from '@/app/actions/famtour-access'
+import { isAccessLocked } from '@/lib/access-lock'
+import { RequestAccessButton } from '@/components/members/request-access-button'
 import { buttonVariants } from '@/components/ui/button'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import { WinnersCarousel } from '@/components/members/winners-carousel'
@@ -382,6 +384,7 @@ export default async function DashboardPage() {
     allTrainings,
     trainingAccessCtx,
     { data: famtoursData },
+    famtourAccessCtx,
   ] = await Promise.all([
     isAdmin || accessibleCourseIds.length > 0
       ? coursesQuery
@@ -398,9 +401,10 @@ export default async function DashboardPage() {
     getMyTrainingAccessContext(),
     adminClient
       .from('famtours')
-      .select('id, title, description, cover_url, url, start_date, end_date')
+      .select('id, title, description, cover_url, url, start_date, end_date, exclusive_ufs')
       .eq('is_active', true)
       .order('start_date', { ascending: true, nullsFirst: false }),
+    getMyFamtourAccessContext(),
   ])
 
   const courses = (coursesData ?? []) as CourseWithModules[]
@@ -822,37 +826,69 @@ export default async function DashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {famtours.map((f) => (
-                  <a
-                    key={f.id}
-                    href={f.url || undefined}
-                    target={f.url ? '_blank' : undefined}
-                    rel={f.url ? 'noreferrer' : undefined}
-                    className="group block rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all"
-                  >
-                    {f.cover_url ? (
-                      <img src={f.cover_url} alt={f.title} className="w-full aspect-video object-cover" />
-                    ) : (
-                      <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
-                        <Luggage className="w-8 h-8 text-muted-foreground/40" />
-                      </div>
-                    )}
-                    <div className="p-4">
-                      <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
-                        {f.title}
-                      </p>
-                      {(f.start_date || f.end_date) && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <Calendar className="w-3 h-3 shrink-0" />
-                          {formatFamtourPeriod(f.start_date, f.end_date)}
-                        </span>
-                      )}
-                      {f.description && (
-                        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{f.description}</p>
-                      )}
+                {famtours.map((f) => {
+                  const requestStatus = famtourAccessCtx.requestsByFamtourId[f.id] ?? 'none'
+                  const locked = isAccessLocked(f, famtourAccessCtx.uf, requestStatus)
+                  const cover = f.cover_url ? (
+                    <img src={f.cover_url} alt={f.title} className="w-full aspect-video object-cover" />
+                  ) : (
+                    <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
+                      <Luggage className="w-8 h-8 text-muted-foreground/40" />
                     </div>
-                  </a>
-                ))}
+                  )
+                  // Exclusivo sem acesso liberado: nunca navega pro link real
+                  // (nem UF batendo nem solicitação aprovada) — mesma regra
+                  // de "não vaza conteúdo real" já aplicada ao treinamento.
+                  if (locked) {
+                    return (
+                      <div key={f.id} className="block rounded-2xl border border-amber-500/30 overflow-hidden bg-card">
+                        {cover}
+                        <div className="p-4 space-y-2">
+                          <p className="font-semibold text-foreground text-sm leading-snug">{f.title}</p>
+                          {(f.start_date || f.end_date) && (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Calendar className="w-3 h-3 shrink-0" />
+                              {formatFamtourPeriod(f.start_date, f.end_date)}
+                            </span>
+                          )}
+                          {f.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">{f.description}</p>
+                          )}
+                          <RequestAccessButton
+                            onRequest={requestFamtourAccess.bind(null, f.id)}
+                            exclusiveUfs={f.exclusive_ufs}
+                            status={requestStatus}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+                  return (
+                    <a
+                      key={f.id}
+                      href={f.url || undefined}
+                      target={f.url ? '_blank' : undefined}
+                      rel={f.url ? 'noreferrer' : undefined}
+                      className="group block rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all"
+                    >
+                      {cover}
+                      <div className="p-4">
+                        <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
+                          {f.title}
+                        </p>
+                        {(f.start_date || f.end_date) && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            {formatFamtourPeriod(f.start_date, f.end_date)}
+                          </span>
+                        )}
+                        {f.description && (
+                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{f.description}</p>
+                        )}
+                      </div>
+                    </a>
+                  )
+                })}
               </div>
             </section></>
           )}
@@ -948,7 +984,7 @@ export default async function DashboardPage() {
                     <SidebarTrainingCard
                       key={item.id}
                       item={item}
-                      locked={isTrainingLocked(item, trainingAccessCtx.uf, trainingAccessCtx.requestsByTrainingId[item.id] ?? 'none')}
+                      locked={isAccessLocked(item, trainingAccessCtx.uf, trainingAccessCtx.requestsByTrainingId[item.id] ?? 'none')}
                     />
                   ))}
                 </div>

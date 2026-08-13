@@ -6,6 +6,8 @@ import {
   createFamtour, updateFamtour, deleteFamtour, toggleFamtourActive, uploadFamtourCover,
   type Famtour,
 } from '@/app/actions/famtours'
+import { resolveFamtourAccessRequest } from '@/app/actions/famtour-access'
+import type { PendingAccessRequest } from '@/lib/access-lock'
 import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,8 +19,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { Plus, Trash2, Pencil, X, Upload, ImageIcon, Luggage, ExternalLink, Calendar, Crop } from 'lucide-react'
+import {
+  Plus, Trash2, Pencil, X, Upload, ImageIcon, Luggage, ExternalLink, Calendar, Crop,
+  MapPin, Users, ChevronDown, ChevronUp, Check,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { UF_NAMES } from '@/lib/estado-flag'
+
+const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -34,7 +42,7 @@ function formatPeriod(start: string | null, end: string | null): string {
   return fmt(start)
 }
 
-type FamtourWithEdit = Famtour & { canEdit?: boolean }
+type FamtourWithEdit = Famtour & { canEdit?: boolean; pendingAccessRequests?: PendingAccessRequest[] }
 
 export function FamtoursManager({ items, canCreate = true }: { items: FamtourWithEdit[]; canCreate?: boolean }) {
   const router = useRouter()
@@ -44,6 +52,8 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [selectedUfs, setSelectedUfs] = useState<string[]>([])
+  const [accessExpandedId, setAccessExpandedId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -57,14 +67,28 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
     revokeIfBlob(coverPreview)
     setCoverPreview(null)
     setCoverFile(null)
+    setSelectedUfs([])
   }
 
   function handleEdit(item: Famtour) {
     setEditing(item)
     setCoverPreview(item.cover_url || null)
     setCoverFile(null)
+    setSelectedUfs(item.exclusive_ufs ?? [])
     setShowForm(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
+  function toggleUf(sigla: string) {
+    setSelectedUfs((prev) => prev.includes(sigla) ? prev.filter((u) => u !== sigla) : [...prev, sigla])
+  }
+
+  function handleResolveAccess(requestId: string, famtourId: string, approve: boolean) {
+    startTransition(async () => {
+      const result = await resolveFamtourAccessRequest(requestId, famtourId, approve)
+      if (result?.error) toast.error(result.error)
+      else { toast.success(approve ? 'Acesso liberado!' : 'Solicitação negada.'); router.refresh() }
+    })
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -114,6 +138,7 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
+    fd.set('exclusive_ufs', JSON.stringify(selectedUfs))
     startTransition(async () => {
       try {
         if (coverFile) {
@@ -253,6 +278,42 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
               </div>
             </div>
 
+            {/* Exclusividade por UF */}
+            <div className="md:col-span-2">
+              <Label>Exclusivo para UF(s) (opcional)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                Deixe em branco pra liberar pra todo mundo. Marcando uma ou mais UFs, só agências dessas UFs
+                acessam direto — as demais veem um selo &quot;Exclusivo&quot; e podem solicitar acesso.
+              </p>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 rounded-lg border border-border bg-muted/20">
+                {UF_OPTIONS.map(([sigla, nome]) => {
+                  const selected = selectedUfs.includes(sigla)
+                  return (
+                    <button
+                      key={sigla}
+                      type="button"
+                      onClick={() => toggleUf(sigla)}
+                      title={nome}
+                      className={cn(
+                        'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors',
+                        selected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                      )}
+                    >
+                      {selected && <Check className="w-3 h-3" />}
+                      {sigla}
+                    </button>
+                  )
+                })}
+              </div>
+              {selectedUfs.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Selecionadas: {selectedUfs.map((s) => UF_NAMES[s] ?? s).join(', ')}
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center gap-3 md:col-span-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="is_active" value="true" defaultChecked={editing ? editing.is_active : true} className="w-4 h-4 accent-primary" />
@@ -293,7 +354,10 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {items.map((item) => (
+          {items.map((item) => {
+            const pendingAccess = item.pendingAccessRequests ?? []
+            const isAccessExpanded = accessExpandedId === item.id
+            return (
             <div key={item.id} className={cn('rounded-xl border border-border bg-card overflow-hidden', !item.is_active && 'opacity-60')}>
               {item.cover_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -308,6 +372,14 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
                   <p className="font-semibold text-foreground leading-snug">{item.title}</p>
                   {!item.is_active && <span className="text-[10px] uppercase font-semibold text-amber-500 bg-amber-500/10 rounded px-1.5 py-0.5 shrink-0">Rascunho</span>}
                 </div>
+                {(item.exclusive_ufs?.length ?? 0) > 0 && (
+                  <span
+                    title={`Exclusivo para ${item.exclusive_ufs!.join(', ')}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 w-fit"
+                  >
+                    <MapPin className="w-3 h-3" /> {item.exclusive_ufs!.join(', ')}
+                  </span>
+                )}
                 {(item.start_date || item.end_date) && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
@@ -320,36 +392,89 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
                     <ExternalLink className="w-3 h-3" /> {item.url}
                   </a>
                 )}
-                {(item.canEdit ?? true) && (
-                  <div className="flex items-center gap-1.5 pt-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(item)} className="gap-1.5 h-7 text-xs">
-                      <Pencil className="w-3 h-3" /> Editar
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleToggle(item)} disabled={isPending} className="h-7 text-xs">
-                      {item.is_active ? 'Despublicar' : 'Publicar'}
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger render={<Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-red-500 gap-1" />}>
-                        <Trash2 className="w-3 h-3" /> Excluir
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir famtour?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            O famtour <strong>{item.title}</strong> será removido e sairá da home dos membros. Essa ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(item.id)}>Excluir</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 pt-2 flex-wrap">
+                  {pendingAccess.length > 0 && (
+                    <button
+                      onClick={() => setAccessExpandedId(isAccessExpanded ? null : item.id)}
+                      className={cn(
+                        'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                        isAccessExpanded ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                      )}
+                      title="Solicitações de acesso pendentes"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>{pendingAccess.length}</span>
+                      {isAccessExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+                  )}
+                  {(item.canEdit ?? true) && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(item)} className="gap-1.5 h-7 text-xs">
+                        <Pencil className="w-3 h-3" /> Editar
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleToggle(item)} disabled={isPending} className="h-7 text-xs">
+                        {item.is_active ? 'Despublicar' : 'Publicar'}
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger render={<Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-red-500 gap-1" />}>
+                          <Trash2 className="w-3 h-3" /> Excluir
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir famtour?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              O famtour <strong>{item.title}</strong> será removido e sairá da home dos membros. Essa ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(item.id)}>Excluir</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
+                </div>
               </div>
+
+              {/* Solicitações de acesso panel */}
+              {isAccessExpanded && pendingAccess.length > 0 && (
+                <div className="border-t border-border px-4 pb-4 pt-3 bg-amber-500/5 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Solicitações de acesso pendentes</p>
+                  {pendingAccess.map((req) => (
+                    <div key={req.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 border border-border">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{req.memberName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[req.company, req.uf ? (UF_NAMES[req.uf] ?? req.uf) : null].filter(Boolean).join(' — ') || 'Sem empresa/UF informada'}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isPending}
+                        onClick={() => handleResolveAccess(req.id, item.id, false)}
+                        className="h-7 text-xs gap-1 text-red-500 hover:text-red-600 border-red-500/20 hover:bg-red-500/10"
+                      >
+                        <X className="w-3.5 h-3.5" /> Negar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => handleResolveAccess(req.id, item.id, true)}
+                        className="h-7 text-xs gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Aprovar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

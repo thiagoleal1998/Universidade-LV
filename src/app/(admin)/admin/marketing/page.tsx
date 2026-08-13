@@ -7,7 +7,7 @@ import type { MarketingSection } from '@/components/admin/marketing-manager'
 import { getTrainingItems } from '@/app/actions/training'
 import { getMarketingProducts, getMarketingPeriods } from '@/app/actions/marketing'
 import { toOne } from '@/lib/supabase/relations'
-import type { PendingAccessRequest } from '@/components/admin/trainings-manager'
+import type { PendingAccessRequest } from '@/lib/access-lock'
 
 const REMOVED_KEYS = ['email', 'script']
 
@@ -33,7 +33,7 @@ export default async function MarketingPage() {
   const [
     { data }, settings, { data: trainingData }, products, periods, { data: tagsData },
     { data: famtoursData }, { data: gruposData }, { data: commercialConditionsData },
-    { data: accessRequestsData },
+    { data: accessRequestsData }, { data: famtourAccessRequestsData },
   ] = await Promise.all([
     db.from('marketing_items').select('*').order('order_index'),
     getSettings(),
@@ -51,6 +51,12 @@ export default async function MarketingPage() {
     // vazio). Precisa do nome da constraint explícito.
     db.from('training_access_requests')
       .select('id, training_id, member_id, requested_at, profiles!training_access_requests_member_id_fkey(full_name, company, uf)')
+      .eq('status', 'pending')
+      .order('requested_at'),
+    // Mesma armadilha do PGRST201 — famtour_access_requests também tem duas
+    // FKs pra profiles (member_id e resolved_by), qualificar desde o início.
+    db.from('famtour_access_requests')
+      .select('id, famtour_id, member_id, requested_at, profiles!famtour_access_requests_member_id_fkey(full_name, company, uf)')
       .eq('status', 'pending')
       .order('requested_at'),
   ])
@@ -72,6 +78,20 @@ export default async function MarketingPage() {
     pendingAccessByTraining.set(r.training_id, list)
   }
 
+  const pendingAccessByFamtour = new Map<string, PendingAccessRequest[]>()
+  for (const r of famtourAccessRequestsData ?? []) {
+    const profile = toOne(r.profiles as unknown as { full_name: string; company: string; uf: string }[] | { full_name: string; company: string; uf: string })
+    const list = pendingAccessByFamtour.get(r.famtour_id) ?? []
+    list.push({
+      id: r.id,
+      memberName: profile?.full_name || 'Agência sem nome',
+      company: profile?.company || '',
+      uf: profile?.uf || '',
+      requestedAt: r.requested_at,
+    })
+    pendingAccessByFamtour.set(r.famtour_id, list)
+  }
+
   const visibleTrainingItems = (trainingData ?? []) as Awaited<ReturnType<typeof getTrainingItems>>
 
   const canEditTraining = isAdmin || viewCtx.capabilities.includes('trainings')
@@ -90,6 +110,7 @@ export default async function MarketingPage() {
   const famtoursWithEdit = (famtoursData ?? []).map((f) => ({
     ...f,
     canEdit: isAdmin || (canEditFamtour && f.owner_area_id === viewCtx.areaId),
+    pendingAccessRequests: pendingAccessByFamtour.get(f.id) ?? [],
   }))
   const gruposWithEdit = (gruposData ?? []).map((g) => ({
     ...g,

@@ -24,6 +24,7 @@ export const ACTIVITY_ENTITY_LABELS = {
   treinamento: 'Treinamento',
   material_treinamento: 'Material de treinamento',
   solicitacao_treinamento: 'Solicitação de acesso a treinamento',
+  solicitacao_famtour: 'Solicitação de acesso a famtour',
   produto_marketing: 'Produto de marketing',
   periodo_marketing: 'Período de marketing',
   item_marketing: 'Item de marketing',

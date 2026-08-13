@@ -3,9 +3,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainingItem } from '@/app/actions/training'
 import type { TrainingMaterial } from '@/app/actions/training'
-import { getMyTrainingAccessContext } from '@/app/actions/training-access'
-import { isTrainingLocked } from '@/lib/training-access'
-import { RequestTrainingAccessButton } from '@/components/members/request-training-access-button'
+import { getMyTrainingAccessContext, requestTrainingAccess } from '@/app/actions/training-access'
+import { isAccessLocked } from '@/lib/access-lock'
+import { RequestAccessButton } from '@/components/members/request-access-button'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import { StudyVideoPlayer } from '@/components/members/study-video-player'
 import { extractYouTubeId } from '@/lib/youtube'
@@ -42,7 +42,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
 
   const accessCtx = await getMyTrainingAccessContext()
   const requestStatus = accessCtx.requestsByTrainingId[item.id] ?? 'none'
-  const locked = isTrainingLocked(item, accessCtx.uf, requestStatus)
+  const locked = isAccessLocked(item, accessCtx.uf, requestStatus)
 
   const now = Date.now()
   const liveMs = item.live_at ? new Date(item.live_at).getTime() : null
@@ -139,7 +139,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
             acesso, aprovado ou por UF). */}
         {locked && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
-            <RequestTrainingAccessButton trainingId={item.id} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
+            <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
           </div>
         )}
 

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { rdCourseContentPublished } from '@/lib/rdstation'
 import { sendPushToUsers } from '@/lib/webpush'
+import { ACCESS_REVIEWER_AREA_NAME } from '@/lib/access-lock'
 
 export type Notification = {
   id: string
@@ -220,19 +221,12 @@ export async function notifyCourseOwners(
   sendPushToUsers(admins.map((a) => a.id), { title: opts.title, body: opts.body, url: opts.link })
 }
 
-// Quem revisa solicitação de acesso a treinamento exclusivo: SEMPRE admins +
-// colaboradores da área "Promotor Interno" — decisão do usuário, independe
-// de qual área é dona do treinamento específico sendo solicitado (diferente
-// de notifyCourseOwners, que segue o owner_area_id do item). Nome de área
-// como constante e resolvido em runtime segue o mesmo padrão já usado pra
-// TESTER_TAG_NAME ('Beta') em dashboard/layout.tsx.
-const TRAINING_ACCESS_REVIEWER_AREA_NAME = 'Promotor Interno'
-
 // Insere a notificação (sino + push) pra admins + colaboradores da área
-// revisora e devolve os IDs — o chamador (requestTrainingAccess) usa esses
-// IDs pra buscar e-mail e disparar o evento de e-mail via RD Station
-// separadamente, mesmo padrão de notifyMembers em training.ts.
-export async function notifyTrainingAccessReviewers(
+// revisora e devolve os IDs — o chamador (requestTrainingAccess/
+// requestFamtourAccess) usa esses IDs pra buscar e-mail e disparar o evento
+// de e-mail via RD Station separadamente, mesmo padrão de notifyMembers em
+// training.ts.
+export async function notifyAccessReviewers(
   actorId: string,
   opts: { type: string; title: string; body: string; link: string }
 ): Promise<{ recipientIds: string[] }> {
@@ -241,7 +235,7 @@ export async function notifyTrainingAccessReviewers(
   const { data: area } = await adminClient
     .from('collaborator_areas')
     .select('id')
-    .eq('name', TRAINING_ACCESS_REVIEWER_AREA_NAME)
+    .eq('name', ACCESS_REVIEWER_AREA_NAME)
     .maybeSingle()
 
   const orFilter = area

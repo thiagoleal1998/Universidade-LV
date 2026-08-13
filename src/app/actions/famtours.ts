@@ -5,6 +5,7 @@ import { requireCapability, requireContentAccess, type AdminContext } from '@/li
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+import { parseExclusiveUfs } from '@/lib/access-lock'
 
 export type Famtour = {
   id: string
@@ -17,10 +18,16 @@ export type Famtour = {
   is_active: boolean
   owner_area_id: string | null
   created_at: string
+  // Array vazio = sem restrição (comportamento padrão). Uma ou mais UFs =
+  // só membro dessa(s) UF ou com solicitação aprovada acessa direto.
+  exclusive_ufs: string[]
 }
 
-// Guard de posse: colaborador só mexe em famtour da própria área
-async function requireFamtourAccess(id: string): Promise<AdminContext | { error: string }> {
+// Guard de posse: colaborador só mexe em famtour da própria área.
+// Exportado — reaproveitado por resolveFamtourAccessRequest
+// (src/app/actions/famtour-access.ts) pra aprovar/negar solicitação de
+// acesso, sem duplicar a checagem de posse.
+export async function requireFamtourAccess(id: string): Promise<AdminContext | { error: string }> {
   const adminClient = createAdminClient()
   const { data: item } = await adminClient.from('famtours').select('owner_area_id').eq('id', id).single()
   if (!item) return { error: 'Famtour não encontrado.' }
@@ -50,6 +57,7 @@ export async function createFamtour(formData: FormData) {
   if (endDate && endDate < today) return { error: 'A data de fim não pode ser uma data que já passou.' }
 
   const adminClient = createAdminClient()
+  const exclusiveUfs = parseExclusiveUfs(formData.get('exclusive_ufs') as string | null)
   const { data: inserted, error } = await adminClient.from('famtours').insert({
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
@@ -59,6 +67,7 @@ export async function createFamtour(formData: FormData) {
     end_date: endDate,
     is_active: formData.get('is_active') === 'true',
     owner_area_id: ctx.areaId,
+    exclusive_ufs: exclusiveUfs,
   }).select('id').single()
   if (error) return { error: error.message }
 
@@ -79,7 +88,7 @@ export async function updateFamtour(id: string, formData: FormData) {
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('famtours')
-    .select('title, description, cover_url, url, start_date, end_date, is_active')
+    .select('title, description, cover_url, url, start_date, end_date, is_active, exclusive_ufs')
     .eq('id', id)
     .single()
 
@@ -104,6 +113,7 @@ export async function updateFamtour(id: string, formData: FormData) {
     start_date: startDate,
     end_date: endDate,
     is_active: formData.get('is_active') === 'true',
+    exclusive_ufs: parseExclusiveUfs(formData.get('exclusive_ufs') as string | null),
   }
   const { error } = await adminClient.from('famtours').update(after).eq('id', id)
   if (error) return { error: error.message }
@@ -111,6 +121,7 @@ export async function updateFamtour(id: string, formData: FormData) {
   const changed = diffFields(prev ?? {}, after, {
     title: 'título', description: 'descrição', cover_url: 'capa', url: 'link',
     start_date: 'data de início', end_date: 'data de fim', is_active: 'ativação',
+    exclusive_ufs: 'UFs exclusivas',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'famtour', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })

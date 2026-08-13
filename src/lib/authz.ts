@@ -6,6 +6,7 @@ import { getSessionUser } from '@/lib/session-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CAPABILITIES, type Capability } from '@/lib/capabilities'
 import { PREVIEW_COOKIE } from '@/lib/preview'
+import { ACCESS_REVIEWER_AREA_NAME } from '@/lib/access-lock'
 
 // Contexto de autorização do painel /admin. Admin tem todas as capacidades;
 // colaborador tem as da sua área (collaborator_areas.capabilities). Member ou
@@ -87,6 +88,25 @@ export async function requireContentAccess(
   if ('error' in ctx) return ctx
   if (ctx.role === 'admin') return ctx
   if (ownerAreaId !== ctx.areaId) return { error: 'Este conteúdo pertence a outra área.' }
+  return ctx
+}
+
+// Quem pode aprovar/negar uma solicitação de acesso a conteúdo exclusivo
+// (treinamento OU famtour): admin OU colaborador ativo da área
+// "Promotor Interno" — público FIXO, independente de quem é dono do
+// conteúdo sendo solicitado (não usa requireContentAccess/owner_area_id de
+// propósito). Precisa apontar pro MESMO público de notifyAccessReviewers
+// (notifications.ts) — os dois leem ACCESS_REVIEWER_AREA_NAME de
+// access-lock.ts —, senão quem recebe o aviso no sino não consegue de fato
+// resolver a solicitação.
+export async function requireAccessReviewer(): Promise<AdminContext | { error: string }> {
+  const ctx = await getAdminContext()
+  if (!ctx) return { error: 'Sem permissão.' }
+  if (ctx.role === 'admin') return ctx
+
+  const adminClient = createAdminClient()
+  const { data: area } = await adminClient.from('collaborator_areas').select('name').eq('id', ctx.areaId).single()
+  if (area?.name !== ACCESS_REVIEWER_AREA_NAME) return { error: 'Apenas admins ou a área "Promotor Interno" podem revisar esta solicitação.' }
   return ctx
 }
 

@@ -7,7 +7,7 @@ import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 import { rdNewTraining } from '@/lib/rdstation'
-import { UF_NAMES } from '@/lib/estado-flag'
+import { parseExclusiveUfs } from '@/lib/access-lock'
 
 // Guard de posse: colaborador só mexe em treinamento da própria área.
 // Exportado — reaproveitado por resolveTrainingAccessRequest
@@ -133,22 +133,6 @@ export type TrainingItem = {
   // Array vazio = sem restrição (comportamento padrão). Uma ou mais UFs =
   // só membro dessa(s) UF ou com solicitação aprovada acessa direto.
   exclusive_ufs: string[]
-}
-
-// Serializado como JSON pelo client (fd.set('exclusive_ufs', JSON.stringify(arr))
-// em trainings-manager.tsx) — valida cada sigla contra UF_NAMES, ignora
-// qualquer coisa que não seja uma UF real em vez de quebrar o save inteiro.
-function parseExclusiveUfs(raw: string | null): string[] {
-  if (!raw) return []
-  try {
-    const arr = JSON.parse(raw)
-    if (!Array.isArray(arr)) return []
-    return arr
-      .map((v) => String(v).toUpperCase().trim())
-      .filter((v) => UF_NAMES[v])
-  } catch {
-    return []
-  }
 }
 
 export async function getTrainingItem(id: string): Promise<TrainingItem | null> {
