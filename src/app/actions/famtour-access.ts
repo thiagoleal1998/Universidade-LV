@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { logActivity } from '@/lib/activity-log'
 import { notifyAccessReviewers, notifyUser } from '@/app/actions/notifications'
 import { requireAccessReviewer } from '@/lib/authz'
-import { rdFamtourAccessRequested } from '@/lib/rdstation'
+import { rdFamtourAccessRequested, rdFamtourAccessApproved, rdFamtourAccessDenied, getMemberEmailAndName } from '@/lib/rdstation'
 import type { AccessRequestStatus } from '@/lib/access-lock'
 
 // Contexto de acesso do MEMBRO logado — UF do próprio perfil + status de
@@ -119,6 +119,15 @@ export async function resolveFamtourAccessRequest(requestId: string, famtourId: 
     body: famtour?.title ? `"${famtour.title}"` : '',
     link: '/dashboard',
   })
+
+  // E-mail além do sino — mesmo padrão de resolveTrainingAccessRequest.
+  const contact = await getMemberEmailAndName(request.member_id)
+  if (contact) {
+    const link = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://universidadelv.com.br'}/dashboard`
+    const title = famtour?.title ?? ''
+    if (approve) rdFamtourAccessApproved(contact.email, contact.name, title, link)
+    else rdFamtourAccessDenied(contact.email, contact.name, title, link)
+  }
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard', 'layout')

@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { logActivity } from '@/lib/activity-log'
 import { notifyAccessReviewers, notifyUser } from '@/app/actions/notifications'
 import { requireAccessReviewer } from '@/lib/authz'
-import { rdTrainingAccessRequested } from '@/lib/rdstation'
+import { rdTrainingAccessRequested, rdTrainingAccessApproved, rdTrainingAccessDenied, getMemberEmailAndName } from '@/lib/rdstation'
 import type { AccessRequestStatus } from '@/lib/access-lock'
 
 // Contexto de acesso do MEMBRO logado — UF do próprio perfil + status de
@@ -124,6 +124,16 @@ export async function resolveTrainingAccessRequest(requestId: string, trainingId
     body: training?.title ? `"${training.title}"` : '',
     link: `/dashboard/treinamentos/${trainingId}`,
   })
+
+  // E-mail além do sino — mesmo padrão de getMemberEmailAndName usado em
+  // updateFeedbackStatus/gradeTaskResponse.
+  const contact = await getMemberEmailAndName(request.member_id)
+  if (contact) {
+    const link = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://universidadelv.com.br'}/dashboard/treinamentos/${trainingId}`
+    const title = training?.title ?? ''
+    if (approve) rdTrainingAccessApproved(contact.email, contact.name, title, link)
+    else rdTrainingAccessDenied(contact.email, contact.name, title, link)
+  }
 
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')

@@ -24,6 +24,10 @@ const RD_EVENTS = {
   consentimento_inicial: 'universidade-lv-consentimento-inicial',
   treinamento_acesso_solicitado: 'universidade-lv-treinamento-acesso-solicitado',
   famtour_acesso_solicitado: 'universidade-lv-famtour-acesso-solicitado',
+  treinamento_acesso_aprovado: 'universidade-lv-treinamento-acesso-aprovado',
+  treinamento_acesso_negado: 'universidade-lv-treinamento-acesso-negado',
+  famtour_acesso_aprovado: 'universidade-lv-famtour-acesso-aprovado',
+  famtour_acesso_negado: 'universidade-lv-famtour-acesso-negado',
 } as const
 
 // Destinatário dos 2 eventos admin-only abaixo — não é um membro, é o
@@ -225,6 +229,48 @@ export async function rdFamtourAccessRequested(emails: string[], requesterName: 
       cf_link: link,
     })
   }
+}
+
+// Aprovação/negação de acesso a conteúdo exclusivo — 4 eventos PRÓPRIOS
+// (aprovado/negado × treinamento/famtour, mesmo motivo de rdFamtourAccessRequested
+// não reaproveitar o de treinamento: texto muda, Automação própria na RD
+// Station). Diferente de rdTrainingAccessRequested/rdFamtourAccessRequested
+// (um e-mail por revisor), estes são pro MEMBRO solicitante — um único
+// destinatário, mesmo padrão de rdFeedbackInProgress/rdFeedbackResolved.
+export async function rdTrainingAccessApproved(email: string, name: string, trainingTitle: string, link: string) {
+  await sendConversion(RD_EVENTS.treinamento_acesso_aprovado, email, {
+    name,
+    cf_titulo: 'Acesso liberado a um treinamento exclusivo',
+    cf_corpo: `Seu acesso a "${trainingTitle}" foi aprovado — já pode acessar o treinamento.`,
+    cf_link: link,
+  })
+}
+
+export async function rdTrainingAccessDenied(email: string, name: string, trainingTitle: string, link: string) {
+  await sendConversion(RD_EVENTS.treinamento_acesso_negado, email, {
+    name,
+    cf_titulo: 'Solicitação de acesso negada',
+    cf_corpo: `Sua solicitação de acesso a "${trainingTitle}" foi negada.`,
+    cf_link: link,
+  })
+}
+
+export async function rdFamtourAccessApproved(email: string, name: string, famtourTitle: string, link: string) {
+  await sendConversion(RD_EVENTS.famtour_acesso_aprovado, email, {
+    name,
+    cf_titulo: 'Acesso liberado a um famtour exclusivo',
+    cf_corpo: `Seu acesso a "${famtourTitle}" foi aprovado — já pode acessar o famtour.`,
+    cf_link: link,
+  })
+}
+
+export async function rdFamtourAccessDenied(email: string, name: string, famtourTitle: string, link: string) {
+  await sendConversion(RD_EVENTS.famtour_acesso_negado, email, {
+    name,
+    cf_titulo: 'Solicitação de acesso negada',
+    cf_corpo: `Sua solicitação de acesso a "${famtourTitle}" foi negada.`,
+    cf_link: link,
+  })
 }
 
 // Link de recuperação gerado via adminClient.auth.admin.generateLink (não
