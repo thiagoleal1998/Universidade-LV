@@ -251,7 +251,7 @@ Descritas em [docs/historico-tecnico.md](docs/historico-tecnico.md) — leia a s
 Famtours · Grupos · Condições Comerciais · Presença ("online agora") e tempo na plataforma · Logout por inatividade · Dashboard → aba Gráficos · Instrutor com perfil vinculado · Comunidade (ocultar post/resposta, moderação por posse) · Log de Atividades Administrativas · RD Station (9 eventos de conversão, OAuth2) · Sincronização automática de chamados com o Notion
 
 ## Rollout faseado (em andamento, deadline 31/08/2026)
-- Plano completo em `C:\Users\thiago.leal\.claude\plans\recursive-painting-wave.md`. Fase 1 (Marketing/T.I.) em execução.
+- **Fase 1 (Marketing/T.I.) concluída em 17/08/2026. Fase 2 em execução**, com todos os gestores/diretores da empresa + 1 colaborador de cada departamento.
 - Testadores são marcados com a tag **"Beta"** (criada em Admin → Membros → Gerenciar tags, atribuída via `assignMemberTags` já existente).
 - Feedback virou um "chamado" completo, não mais popup: item "Feedback" na sidebar do membro (`src/components/members/member-feedback-widget.tsx`, só aparece com a tag Beta — checado em `src/app/(members)/dashboard/layout.tsx` e de novo, server-side, na própria página `src/app/(members)/dashboard/feedback/page.tsx` — bloqueia acesso direto por URL) leva para uma página com formulário completo (`feedback-ticket-form.tsx`: título, tipo, editor rico com imagem inline, link, anexos de foto) + lista "Minhas solicitações" (`my-feedback-list.tsx`).
 - Dados em `feedback_reports` (migração `031`) + `title`/`link_url` (migração `032`) + `feedback_attachments` (tabela filha, bucket `feedback-attachments`). Visível em Admin → Feedback (`src/app/(admin)/admin/feedback/`).
