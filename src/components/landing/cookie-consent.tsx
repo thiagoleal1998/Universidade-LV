@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Cookie, X } from 'lucide-react'
 
 const STORAGE_KEY = 'cookie_consent_v2'
-const HINT_DURATION_MS = 3000
+const HINT_DURATION_MS = 15000
 
 type CookiePrefs = { necessary: true; statistics: boolean; marketing: boolean; updatedAt: string }
 // 'loading' = ainda não sabemos (server render / antes do efeito de mount) —
