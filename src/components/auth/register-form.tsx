@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, startTransition } from 'react'
+import { useActionState, startTransition, useState } from 'react'
 import Link from 'next/link'
 import { register } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -19,13 +19,19 @@ type State = { error?: string; success?: boolean } | undefined
 
 export function RegisterForm({ settings, messages }: { settings: Settings; messages: string[] }) {
   const [state, action, pending] = useActionState<State, FormData>(register, undefined)
+  // Cobre a espera pelo token do Turnstile — ver mesmo comentário em
+  // login-form.tsx (`pending` do useActionState não reflete essa fase).
+  const [isVerifying, setIsVerifying] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (isVerifying || pending) return
+    setIsVerifying(true)
     const formData = new FormData(e.currentTarget)
     const token = await getTurnstileToken('register')
     formData.set('captcha_token', token ?? '')
     startTransition(() => { action(formData) })
+    setIsVerifying(false)
   }
 
   return (
@@ -105,8 +111,8 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
               </p>
             )}
 
-            <Button type="submit" className="w-full" disabled={pending}>
-              {pending ? <Spinner className="w-5 h-5" /> : 'Criar conta'}
+            <Button type="submit" className="w-full" disabled={isVerifying || pending}>
+              {isVerifying || pending ? <Spinner className="w-5 h-5" /> : 'Criar conta'}
             </Button>
 
             <div className="pt-2 border-t border-border text-center">

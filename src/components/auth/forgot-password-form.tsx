@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, startTransition } from 'react'
+import { useActionState, startTransition, useState } from 'react'
 import Link from 'next/link'
 import { forgotPassword } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -16,13 +16,19 @@ type State = { error?: string; success?: boolean } | undefined
 
 export function ForgotPasswordForm({ settings, messages }: { settings: Settings; messages: string[] }) {
   const [state, action, pending] = useActionState<State, FormData>(forgotPassword, undefined)
+  // Cobre a espera pelo token do Turnstile — ver mesmo comentário em
+  // login-form.tsx (`pending` do useActionState não reflete essa fase).
+  const [isVerifying, setIsVerifying] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (isVerifying || pending) return
+    setIsVerifying(true)
     const formData = new FormData(e.currentTarget)
     const token = await getTurnstileToken('forgot_password')
     formData.set('captcha_token', token ?? '')
     startTransition(() => { action(formData) })
+    setIsVerifying(false)
   }
 
   return (
@@ -61,8 +67,8 @@ export function ForgotPasswordForm({ settings, messages }: { settings: Settings;
               </p>
             )}
 
-            <Button type="submit" className="w-full" disabled={pending}>
-              {pending ? <Spinner className="w-5 h-5" /> : 'Enviar link de recuperação'}
+            <Button type="submit" className="w-full" disabled={isVerifying || pending}>
+              {isVerifying || pending ? <Spinner className="w-5 h-5" /> : 'Enviar link de recuperação'}
             </Button>
 
             <div className="pt-2 text-center">

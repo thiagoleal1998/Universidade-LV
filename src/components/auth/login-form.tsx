@@ -18,13 +18,24 @@ type LoginState = { error?: string; info?: string; redirectTo?: string } | undef
 export function LoginForm({ settings, messages, reason }: { settings: Settings; messages: string[]; reason?: string }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(login, undefined)
   const [showPassword, setShowPassword] = useState(false)
+  // Cobre a espera pelo token do Turnstile — `pending` do useActionState só
+  // vira true depois que a action é despachada, então sem isso o botão fica
+  // sem nenhum feedback (e clicável de novo) durante o round-trip do
+  // captcha, que pode demorar. Sem esse guard, cliques repetidos disparavam
+  // handleSubmit várias vezes em paralelo, e só um deles (o que terminasse
+  // primeiro) acabava despachando a action de verdade — dando a impressão
+  // de que "só funciona no 3º clique".
+  const [isVerifying, setIsVerifying] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (isVerifying || pending) return
+    setIsVerifying(true)
     const formData = new FormData(e.currentTarget)
     const token = await getTurnstileToken('login')
     formData.set('captcha_token', token ?? '')
     startTransition(() => { action(formData) })
+    setIsVerifying(false)
   }
 
   useEffect(() => {
@@ -88,10 +99,10 @@ export function LoginForm({ settings, messages, reason }: { settings: Settings; 
             </p>
           )}
 
-          <Button type="submit" className="w-full gap-2" disabled={pending || !!state?.redirectTo}>
+          <Button type="submit" className="w-full gap-2" disabled={isVerifying || pending || !!state?.redirectTo}>
             {state?.redirectTo ? (
               <><Spinner className="w-4 h-4" /> Redirecionando para o ambiente de estudos...</>
-            ) : pending ? (
+            ) : isVerifying || pending ? (
               <><Spinner className="w-4 h-4" /> Entrando...</>
             ) : (
               'Entrar'
