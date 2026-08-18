@@ -609,8 +609,13 @@ function VisualCard({ item, cat, products, periods = [], tags = [], canEdit = tr
     <>
       {/* Lightbox */}
       {lightbox && isImage && (
+        // z-[10000] (acima do z-[9999] do sino de notificações,
+        // `notification-bell.tsx`): este overlay APAGA a tela (bg-black/85) pra
+        // mostrar só a imagem — com z-50 o sino continuava desenhado por cima,
+        // brilhante, no meio da oferta (CLV-0116). Diferente do `Dialog` comum
+        // (scrim claro, navegável), onde o sino ganhar é proposital.
         <div
-          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[10000] bg-black/85 flex items-center justify-center p-4"
           onClick={() => setLightbox(false)}
         >
           <button

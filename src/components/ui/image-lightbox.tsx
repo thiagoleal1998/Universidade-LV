@@ -30,8 +30,14 @@ export function ImageLightbox({
   if (!current) return null
 
   return (
+    // z-[10000], não z-[9999]: empatar com o sino de notificações
+    // (`notification-bell.tsx`, também z-[9999]) deixava a ordem de pintura
+    // decidida pela posição no DOM — hoje este lightbox é renderizado dentro
+    // do <main> (depois da sidebar), então ganhava por acaso. Um lightbox
+    // sempre precisa cobrir o sino; sem o valor maior, mover a chamada pra
+    // outro ponto da árvore reintroduziria o CLV-0116 em silêncio.
     <div
-      className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center"
+      className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center"
       onClick={onClose}
     >
       <button

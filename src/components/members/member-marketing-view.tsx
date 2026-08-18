@@ -302,9 +302,13 @@ function OfertaLightbox({ item, onClose }: { item: MarketingItem; onClose: () =>
   }
 
   return (
+    // z-[10000] (acima do z-[9999] do sino de notificações,
+    // `notification-bell.tsx`) — mesmo motivo do lightbox do admin em
+    // `marketing-manager.tsx`: overlay que apaga a tela inteira pra mostrar a
+    // oferta não pode ter o sino desenhado por cima (CLV-0116).
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 bg-black/92 overflow-hidden"
+      className="fixed inset-0 z-[10000] bg-black/92 overflow-hidden"
       onClick={handleBackdropClick}
     >
       {/* Fechar */}
