@@ -662,7 +662,12 @@ export function FeedbackPanel({ reports, admins, initialOpenId = null, initialOp
       )}
 
       <Dialog open={openReport !== null} onOpenChange={(v) => { if (!v) setOpenId(null) }}>
-        <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-3xl">
+        {/* Decisão revertida (CLV-0116): o sino não deve mais ficar visível
+            por cima do chamado aberto — sobe pra z-[10000], mesmo valor já
+            usado por AlertDialog/NavigationProgress pra vencer o sino
+            (z-[9999]). Era proposital o contrário até o CLV-0051 (v1.124.7),
+            decisão revertida a pedido do usuário. */}
+        <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-3xl z-[10000]" overlayClassName="z-[10000]">
           {openReport && (
             <>
               <DialogHeader>

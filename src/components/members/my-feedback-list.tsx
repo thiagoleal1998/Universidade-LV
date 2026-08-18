@@ -358,7 +358,8 @@ export function MyFeedbackList({ reports, initialOpenId = null, initialOpenNonce
       )}
 
       <Dialog open={openReport !== null} onOpenChange={(v) => { if (!v) setOpenId(null) }}>
-        <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-3xl">
+        {/* Decisão revertida (CLV-0116) — ver mesmo comentário em feedback-panel.tsx */}
+        <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-3xl z-[10000]" overlayClassName="z-[10000]">
           {openReport && (
             <>
               <DialogHeader>

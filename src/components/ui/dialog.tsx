@@ -41,15 +41,21 @@ function DialogOverlay({
 
 function DialogContent({
   className,
+  overlayClassName,
   children,
   showCloseButton = true,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
+  // Override pontual de z-index do overlay — usado quando ESTE Dialog
+  // específico precisa ficar por cima de elementos com z-index alto de
+  // propósito (ex.: o sino de notificações, z-[9999]). Não muda o padrão
+  // (z-50) pros demais usos de Dialog no projeto.
+  overlayClassName?: string
 }) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
