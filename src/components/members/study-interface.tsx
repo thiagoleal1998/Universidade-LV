@@ -426,13 +426,13 @@ function TextToSpeechPlayer({ html }: { html: string }) {
   const duration = totalChars / (observedCharsPerSec * rate)
   const current = Math.min(playedChars, totalChars) / (observedCharsPerSec * rate)
   const fraction = totalChars > 0 ? Math.min(playedChars / totalChars, 1) : 0
-  const iconBtn = 'w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground hover:text-foreground shrink-0'
+  const iconBtn = 'w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-primary/20 text-primary shrink-0'
 
   return (
-    <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-2.5">
+    <div className="rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 space-y-2.5">
       <div className="flex items-center gap-2">
-        <Volume2 className={cn('w-4 h-4 shrink-0', ttsState === 'playing' ? 'text-primary' : 'text-muted-foreground')} />
-        <span className="text-sm text-muted-foreground">Ouvir esta aula</span>
+        <Volume2 className={cn('w-4 h-4 shrink-0 text-primary', ttsState !== 'playing' && 'opacity-80')} />
+        <span className="text-sm font-medium text-primary">Ouvir esta aula</span>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
@@ -468,7 +468,7 @@ function TextToSpeechPlayer({ html }: { html: string }) {
           <button
             onClick={() => setSpeedMenuOpen((o) => !o)}
             title="Velocidade de leitura"
-            className="h-8 px-2 rounded-full flex items-center gap-1 transition-colors hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium"
+            className="h-8 px-2 rounded-full flex items-center gap-1 transition-colors hover:bg-primary/20 text-primary text-xs font-medium"
           >
             <Gauge className="w-3.5 h-3.5" />
             {rate}×
