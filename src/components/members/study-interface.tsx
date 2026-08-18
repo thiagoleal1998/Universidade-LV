@@ -203,6 +203,16 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     const utteranceStartTime = performance.now()
     utterance.onboundary = (e) => {
       if (gen !== generationRef.current) return
+      // Enquanto um seek está em voo (arrastando a barra, aguardando o
+      // soltar), a utterance ANTIGA continua falando por baixo até o
+      // release — e seu onboundary continuava chamando setPlayedChars()
+      // com a posição REAL (antiga), brigando com o setPlayedChars(target)
+      // do próprio arraste. Resultado: a barra ficava "voltando sozinha"
+      // repetidas vezes durante o drag, dando a impressão de trecho
+      // perdido/áudio confuso (chamado CLV-0048, relatado de novo pelo
+      // Cesar). O timer de extrapolação já tinha esse mesmo guard
+      // (isSeekingRef) — faltava aplicar aqui também.
+      if (isSeekingRef.current) return
       const abs = fromChar + e.charIndex
       playStartCharRef.current = abs
       playStartTimeRef.current = performance.now()
