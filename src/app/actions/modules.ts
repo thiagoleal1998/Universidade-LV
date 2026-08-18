@@ -5,6 +5,7 @@ import { requireAdmin, requireCourseAccess, requireModuleAccess } from '@/lib/au
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { notifyCourseMembers } from '@/app/actions/notifications'
+import { generateUniqueSlug } from '@/lib/slug'
 
 // Mutações usam adminClient após o guard (RLS de modules é admin-only).
 // Módulo herda o dono via course_id — módulo sem curso é global (admin-only).
@@ -27,9 +28,20 @@ export async function createModule(formData: FormData) {
 
   const nextIndex = (modules?.[0]?.order_index ?? -1) + 1
 
+  // URL bonita (/dashboard/modulos/<slug>) — compõe com o nome do curso pai
+  // (quando existe) pra reduzir colisão na raiz sem precisar de rota
+  // aninhada; módulo sem curso (global) usa só o próprio título. Gerado
+  // uma vez na criação, nunca regenerado em edição (src/lib/slug.ts).
+  const [{ data: course }, { data: existingSlugs }] = await Promise.all([
+    course_id ? adminClient.from('courses').select('name, slug').eq('id', course_id).single() : Promise.resolve({ data: null }),
+    adminClient.from('modules').select('slug'),
+  ])
+  const slugSet = new Set((existingSlugs ?? []).map((r) => r.slug).filter((s): s is string => !!s))
+  const slug = generateUniqueSlug(course?.name ? `${title} ${course.name}` : title, slugSet)
+
   const { data, error } = await adminClient
     .from('modules')
-    .insert({ title, description, order_index: nextIndex, course_id })
+    .insert({ title, description, order_index: nextIndex, course_id, slug })
     .select()
     .single()
 
@@ -39,7 +51,7 @@ export async function createModule(formData: FormData) {
 
   revalidatePath('/admin/modulos')
   revalidatePath('/admin/cursos')
-  if (course_id) revalidatePath(`/admin/cursos/${course_id}`)
+  if (course_id) revalidatePath(`/admin/cursos/${course?.slug ?? course_id}`)
   return { data }
 }
 
@@ -56,7 +68,7 @@ export async function updateModule(id: string, formData: FormData) {
 
   const { data: prev } = await adminClient
     .from('modules')
-    .select('title, description, is_published, prerequisite_module_id, course_id')
+    .select('title, description, is_published, prerequisite_module_id, course_id, slug, courses(slug)')
     .eq('id', id)
     .single()
 
@@ -76,16 +88,17 @@ export async function updateModule(id: string, formData: FormData) {
   }
 
   if (is_published && prev && !prev.is_published && prev.course_id) {
+    const prevCourseSlug = (prev.courses as { slug?: string | null } | null)?.slug
     notifyCourseMembers(prev.course_id, {
       type: 'module_published',
       title: `Novo módulo disponível: ${title}`,
       body: 'Um novo módulo foi adicionado ao seu curso. Confira!',
-      link: `/dashboard/cursos/${prev.course_id}`,
+      link: `/dashboard/cursos/${prevCourseSlug ?? prev.course_id}`,
     })
   }
 
   revalidatePath('/admin/modulos')
-  revalidatePath(`/admin/modulos/${id}`)
+  revalidatePath(`/admin/modulos/${prev?.slug ?? id}`)
   revalidatePath('/dashboard')
   return { success: true }
 }
@@ -143,7 +156,7 @@ export async function toggleModulePublished(id: string, is_published: boolean) {
   const adminClient = createAdminClient()
   const { data: mod } = await adminClient
     .from('modules')
-    .select('title, course_id, is_published')
+    .select('title, course_id, is_published, courses(slug)')
     .eq('id', id)
     .single()
 
@@ -157,11 +170,12 @@ export async function toggleModulePublished(id: string, is_published: boolean) {
   logActivity(ctx, { action: 'toggle', entityType: 'modulo', entityId: id, entityLabel: mod?.title ?? id, detail: is_published ? 'publicou' : 'despublicou' })
 
   if (is_published && mod && !mod.is_published && mod.course_id) {
+    const modCourseSlug = (mod.courses as { slug?: string | null } | null)?.slug
     notifyCourseMembers(mod.course_id, {
       type: 'module_published',
       title: `Novo módulo disponível: ${mod.title}`,
       body: 'Um novo módulo foi adicionado ao seu curso. Confira!',
-      link: `/dashboard/cursos/${mod.course_id}`,
+      link: `/dashboard/cursos/${modCourseSlug ?? mod.course_id}`,
     })
   }
 

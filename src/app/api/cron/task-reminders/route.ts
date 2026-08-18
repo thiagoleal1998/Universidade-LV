@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
 
   type LessonRow = {
     id: string
+    slug: string | null
     title: string
     modules: { course_id: string | null } | null
   }
@@ -39,17 +40,17 @@ export async function GET(req: NextRequest) {
     await Promise.all([
       adminClient
         .from('lessons')
-        .select('id, title, modules!inner(course_id)')
+        .select('id, slug, title, modules!inner(course_id)')
         .eq('task_start_date', todayStr)
         .eq('is_published', true),
       adminClient
         .from('lessons')
-        .select('id, title, modules!inner(course_id)')
+        .select('id, slug, title, modules!inner(course_id)')
         .eq('task_end_date', plus3Str)
         .eq('is_published', true),
       adminClient
         .from('lessons')
-        .select('id, title, modules!inner(course_id)')
+        .select('id, slug, title, modules!inner(course_id)')
         .eq('task_end_date', plus1Str)
         .eq('is_published', true),
     ])
@@ -85,19 +86,19 @@ export async function GET(req: NextRequest) {
       type: 'task_opened',
       title: `Tarefa disponível: ${l.title}`,
       body: 'O período de envio desta tarefa foi aberto. Não perca o prazo!',
-      link: `/dashboard/aulas/${l.id}`,
+      link: `/dashboard/aulas/${l.slug ?? l.id}`,
     })),
     notifyLessonMembers(closingIn3 as LessonRow[] | null, (l) => ({
       type: 'task_closing_soon',
       title: `Prazo em 3 dias: ${l.title}`,
       body: 'Você tem 3 dias para enviar a tarefa desta aula.',
-      link: `/dashboard/aulas/${l.id}`,
+      link: `/dashboard/aulas/${l.slug ?? l.id}`,
     })),
     notifyLessonMembers(closingTomorrow as LessonRow[] | null, (l) => ({
       type: 'task_closing_tomorrow',
       title: `Tarefa encerra amanhã: ${l.title}`,
       body: 'Último dia para enviar a tarefa desta aula. Não deixe para depois!',
-      link: `/dashboard/aulas/${l.id}`,
+      link: `/dashboard/aulas/${l.slug ?? l.id}`,
     })),
   ])
 

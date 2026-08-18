@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { CAPABILITIES, type Capability } from '@/lib/capabilities'
 import { PREVIEW_COOKIE } from '@/lib/preview'
 import { ACCESS_REVIEWER_AREA_NAME } from '@/lib/access-lock'
+import { isUuid } from '@/lib/slug'
 
 // Contexto de autorização do painel /admin. Admin tem todas as capacidades;
 // colaborador tem as da sua área (collaborator_areas.capabilities). Member ou
@@ -110,16 +111,23 @@ export async function requireAccessReviewer(): Promise<AdminContext | { error: s
   return ctx
 }
 
+// `courseId`/`moduleId`/`lessonId` aceitam o UUID real OU o slug legível —
+// quem chama pode vir de uma URL (slug OU UUID antigo já persistido em
+// notificação/RD Station/push) ou de código que já tem o UUID real em mãos
+// (ex.: updateCourse(item.id)); os dois casos passam pelo mesmo dual lookup
+// sem custo extra pro caminho já-UUID. Só a busca INICIAL (a que resolve o
+// parâmetro recebido) precisa disso — o resto da cadeia de posse
+// (mod.course_id, lesson.module_id) já são UUIDs de FK reais.
 export async function requireCourseAccess(courseId: string): Promise<AdminContext | { error: string }> {
   const adminClient = createAdminClient()
-  const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', courseId).single()
+  const { data: course } = await adminClient.from('courses').select('owner_area_id').eq(isUuid(courseId) ? 'id' : 'slug', courseId).single()
   if (!course) return { error: 'Curso não encontrado.' }
   return requireContentAccess('courses', course.owner_area_id)
 }
 
 export async function requireModuleAccess(moduleId: string): Promise<AdminContext | { error: string }> {
   const adminClient = createAdminClient()
-  const { data: mod } = await adminClient.from('modules').select('course_id').eq('id', moduleId).single()
+  const { data: mod } = await adminClient.from('modules').select('course_id').eq(isUuid(moduleId) ? 'id' : 'slug', moduleId).single()
   if (!mod) return { error: 'Módulo não encontrado.' }
   if (!mod.course_id) return requireAdmin() // módulo sem curso = global, só admin
   return requireCourseAccess(mod.course_id)
@@ -127,7 +135,7 @@ export async function requireModuleAccess(moduleId: string): Promise<AdminContex
 
 export async function requireLessonAccess(lessonId: string): Promise<AdminContext | { error: string }> {
   const adminClient = createAdminClient()
-  const { data: lesson } = await adminClient.from('lessons').select('module_id').eq('id', lessonId).single()
+  const { data: lesson } = await adminClient.from('lessons').select('module_id').eq(isUuid(lessonId) ? 'id' : 'slug', lessonId).single()
   if (!lesson) return { error: 'Aula não encontrada.' }
   return requireModuleAccess(lesson.module_id)
 }
@@ -171,7 +179,7 @@ export async function requireCoursePage(courseId: string): Promise<AdminContext>
   const ctx = await requireContentPage()
   if (ctx.role === 'admin') return ctx
   const adminClient = createAdminClient()
-  const { data } = await adminClient.from('courses').select('id').eq('id', courseId).single()
+  const { data } = await adminClient.from('courses').select('id').eq(isUuid(courseId) ? 'id' : 'slug', courseId).single()
   if (!data) redirect('/admin/cursos')
   return ctx
 }
@@ -180,7 +188,7 @@ export async function requireModulePage(moduleId: string): Promise<AdminContext>
   const ctx = await requireContentPage()
   if (ctx.role === 'admin') return ctx
   const adminClient = createAdminClient()
-  const { data: mod } = await adminClient.from('modules').select('id').eq('id', moduleId).single()
+  const { data: mod } = await adminClient.from('modules').select('id').eq(isUuid(moduleId) ? 'id' : 'slug', moduleId).single()
   if (!mod) redirect('/admin/modulos')
   return ctx
 }
@@ -189,7 +197,7 @@ export async function requireLessonPage(lessonId: string): Promise<AdminContext>
   const ctx = await requireContentPage()
   if (ctx.role === 'admin') return ctx
   const adminClient = createAdminClient()
-  const { data: lesson } = await adminClient.from('lessons').select('id').eq('id', lessonId).single()
+  const { data: lesson } = await adminClient.from('lessons').select('id').eq(isUuid(lessonId) ? 'id' : 'slug', lessonId).single()
   if (!lesson) redirect('/admin/modulos')
   return ctx
 }

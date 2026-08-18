@@ -12,6 +12,7 @@ type CourseWithModules = Course & { modules: ModuleWithLessons[] }
 
 type InstructorCourseRow = {
   id: string
+  slug: string | null
   name: string
   instructor_name: string | null
   instructor_role: string | null
@@ -41,12 +42,12 @@ function buildInstructors(
 
     const existing = map.get(key)
     if (existing) {
-      existing.courses.push({ id: c.id, name: c.name })
+      existing.courses.push({ id: c.id, slug: c.slug, name: c.name })
       if (!existing.role && role) existing.role = role
       if (!existing.photo && photo) existing.photo = photo
       if (!existing.bio && bio) existing.bio = bio
     } else {
-      map.set(key, { key, name, role, photo, bio, courses: [{ id: c.id, name: c.name }] })
+      map.set(key, { key, name, role, photo, bio, courses: [{ id: c.id, slug: c.slug, name: c.name }] })
     }
   }
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
@@ -97,7 +98,7 @@ export default async function CursosPage() {
   const adminClient = createAdminClient()
   const { data: allCoursesData } = await adminClient
     .from('courses')
-    .select('id, name, instructor_name, instructor_role, instructor_photo_url, instructor_profile_id')
+    .select('id, slug, name, instructor_name, instructor_role, instructor_photo_url, instructor_profile_id')
     .eq('is_published', true)
 
   const instructorProfileIds = [...new Set(

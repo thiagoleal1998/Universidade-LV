@@ -116,7 +116,7 @@ export function CoursesList({ courses, isAdmin = true }: { courses: CourseWithCo
                 entrada pro modo leitura de conteúdo de outra área); só a
                 exclusão exige posse. */}
             <div className="flex items-center gap-1 shrink-0">
-              <Link href={`/admin/cursos/${course.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
+              <Link href={`/admin/cursos/${course.slug ?? course.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
                 <Pencil className="w-4 h-4" />
               </Link>
               {(course.canEdit ?? true) && <DeleteButton course={course} />}

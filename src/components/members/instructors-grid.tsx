@@ -11,7 +11,7 @@ export type InstructorEntry = {
   role: string | null
   photo: string | null
   bio: string
-  courses: { id: string; name: string }[]
+  courses: { id: string; slug: string | null; name: string }[]
 }
 
 function InstructorDialog({ instructor, onClose }: { instructor: InstructorEntry; onClose: () => void }) {
@@ -58,7 +58,7 @@ function InstructorDialog({ instructor, onClose }: { instructor: InstructorEntry
               {instructor.courses.map((c) => (
                 <Link
                   key={c.id}
-                  href={`/dashboard/cursos/${c.id}`}
+                  href={`/dashboard/cursos/${c.slug ?? c.id}`}
                   onClick={onClose}
                   className="flex items-center gap-2 text-sm text-primary hover:underline"
                 >

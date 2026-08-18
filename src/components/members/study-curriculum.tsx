@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 
 export type CurriculumLesson = {
   id: string
+  slug?: string | null
   title: string
   isCompleted: boolean
 }
@@ -198,7 +199,7 @@ export function StudyCurriculum({ courseId, modules, currentLessonId, isOpen, on
                     return (
                       <Link
                         key={lesson.id}
-                        href={`/dashboard/aulas/${lesson.id}`}
+                        href={`/dashboard/aulas/${lesson.slug ?? lesson.id}`}
                         className={cn(
                           'flex items-start gap-3 px-4 py-3 transition-colors border-l-2',
                           isCurrent

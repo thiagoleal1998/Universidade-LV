@@ -9,9 +9,10 @@ import { ArrowLeft, PlayCircle, Eye } from 'lucide-react'
 import { CourseModulesAccordion } from '@/components/members/course-modules-accordion'
 import { CourseInstructorCard } from '@/components/members/course-instructor-card'
 import { cn } from '@/lib/utils'
+import { isUuid } from '@/lib/slug'
 import type { Course, Module } from '@/lib/supabase/types'
 
-type LessonSummary = { id: string; title: string; is_published: boolean; task_start_date: string | null; task_end_date: string | null }
+type LessonSummary = { id: string; slug: string | null; title: string; is_published: boolean; task_start_date: string | null; task_end_date: string | null }
 type ModuleWithLessons = Module & { lessons: LessonSummary[] }
 type CourseWithModules = Course & { modules: ModuleWithLessons[] }
 
@@ -26,18 +27,21 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const isAdmin = profileData?.role === 'admin'
   const client = isAdmin ? await createAdminClient() : supabase
 
+  // Aceita slug (URL bonita) OU o UUID antigo já persistido em notificação/
+  // RD Station/push — ver src/lib/slug.ts.
+  const idColumn = isUuid(id) ? 'id' : 'slug'
   const [{ data: courseData }, { data: progressData }] = await Promise.all([
     isAdmin
       ? client
           .from('courses')
-          .select('*, modules(*, lessons(id, title, is_published, task_start_date, task_end_date))')
-          .eq('id', id)
+          .select('*, modules(*, lessons(id, slug, title, is_published, task_start_date, task_end_date))')
+          .eq(idColumn, id)
           .order('order_index', { referencedTable: 'modules' })
           .single()
       : supabase
           .from('courses')
-          .select('*, modules(*, lessons(id, title, is_published, task_start_date, task_end_date))')
-          .eq('id', id)
+          .select('*, modules(*, lessons(id, slug, title, is_published, task_start_date, task_end_date))')
+          .eq(idColumn, id)
           .eq('is_published', true)
           .order('order_index', { referencedTable: 'modules' })
           .single(),
@@ -119,7 +123,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             </Badge>
           )}
           <Link
-            href={`/admin/cursos/${id}`}
+            href={`/admin/cursos/${course.slug ?? course.id}`}
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'ml-auto gap-1.5 text-xs h-7')}
           >
             <ArrowLeft className="w-3 h-3" />
@@ -147,7 +151,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           <h1 className="text-2xl font-bold text-foreground">{course.name}</h1>
           {nextLesson && (
             <Link
-              href={`/dashboard/aulas/${nextLesson.id}`}
+              href={`/dashboard/aulas/${nextLesson.slug ?? nextLesson.id}`}
               className={cn(buttonVariants(), 'shrink-0 gap-1.5')}
             >
               <PlayCircle className="w-4 h-4" />

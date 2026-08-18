@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 
 type LessonSummary = {
   id: string
+  slug?: string | null
   title: string
   is_published: boolean
   task_start_date: string | null
@@ -174,7 +175,7 @@ export function CourseModulesAccordion({
                   {lessons.map((lesson) => (
                     <Link
                       key={lesson.id}
-                      href={`/dashboard/aulas/${lesson.id}`}
+                      href={`/dashboard/aulas/${lesson.slug ?? lesson.id}`}
                       className="flex items-center justify-between px-5 py-3 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors group"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">

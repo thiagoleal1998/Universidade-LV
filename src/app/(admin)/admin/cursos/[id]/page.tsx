@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import type { Course, Module } from '@/lib/supabase/types'
 import { requireCoursePage, getPreviewAreaContext } from '@/lib/authz'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isUuid } from '@/lib/slug'
 
 type ModuleWithCount = Module & { lessons: { count: number }[] }
 type CourseWithOwner = Course & { owner_area_id: string | null }
@@ -26,19 +27,21 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
   // esconderia rascunhos de qualquer forma.
   const db = createAdminClient()
 
-  const [{ data: courseData, error: courseError }, { data: modulesData }, { data: candidatesData }] = await Promise.all([
-    db.from('courses').select('*').eq('id', id).single(),
-    db.from('modules').select('*, lessons(count)').eq('course_id', id).order('order_index'),
+  // Aceita slug (URL bonita) OU o UUID antigo já persistido em notificação/
+  // RD Station/push — ver src/lib/slug.ts.
+  const idColumn = isUuid(id) ? 'id' : 'slug'
+  const { data: courseData, error: courseError } = await db.from('courses').select('*').eq(idColumn, id).single()
+  const course = courseData as CourseWithOwner | null
+  if (courseError) console.error('[Admin] Erro ao buscar curso id=%s:', id, courseError)
+  if (!course) notFound()
+
+  const [{ data: modulesData }, { data: candidatesData }] = await Promise.all([
+    db.from('modules').select('*, lessons(count)').eq('course_id', course.id).order('order_index'),
     db.from('profiles').select('id, full_name, job_title').in('role', ['admin', 'collaborator']).eq('active', true).order('full_name'),
   ])
 
-  if (courseError) console.error('[Admin] Erro ao buscar curso id=%s:', id, courseError)
-
-  const course = courseData as CourseWithOwner | null
   const modules = (modulesData ?? []) as ModuleWithCount[]
   const instructorCandidates = candidatesData ?? []
-
-  if (!course) notFound()
 
   const canEdit = isAdmin || (viewCtx.capabilities.includes('courses') && course.owner_area_id === viewCtx.areaId)
 
@@ -53,7 +56,7 @@ export default async function EditCursoPpage({ params }: { params: Promise<{ id:
           {course.is_published ? 'Publicado' : 'Rascunho'}
         </Badge>
         <Link
-          href={`/dashboard/cursos/${course.id}`}
+          href={`/dashboard/cursos/${course.slug ?? course.id}`}
           target="_blank"
           className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'ml-auto gap-1.5')}
         >

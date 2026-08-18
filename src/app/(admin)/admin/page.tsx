@@ -232,12 +232,12 @@ export default async function AdminDashboard() {
     const lessonIds = [...new Set((tasksRaw ?? []).map((t: any) => t.lesson_id))]
     const { data: lessonTitlesRaw } = await adminClient
       .from('lessons')
-      .select('id, title')
+      .select('id, slug, title')
       .in('id', lessonIds)
-    const lessonTitleMap = new Map((lessonTitlesRaw ?? []).map((l: any) => [l.id, l.title]))
+    const lessonMap = new Map((lessonTitlesRaw ?? []).map((l: any) => [l.id, l]))
     pendingLessons = (tasksRaw ?? []).map((t: any) => ({
-      lessonId: t.lesson_id,
-      lessonTitle: lessonTitleMap.get(t.lesson_id) ?? 'Aula',
+      lessonId: lessonMap.get(t.lesson_id)?.slug ?? t.lesson_id,
+      lessonTitle: lessonMap.get(t.lesson_id)?.title ?? 'Aula',
       taskTitle: t.title,
       count: taskCountMap.get(t.id) ?? 0,
     }))

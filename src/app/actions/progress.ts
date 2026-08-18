@@ -25,12 +25,16 @@ export async function toggleLessonComplete(lessonId: string, completed: boolean,
     if (error) return { error: error.message }
   }
 
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  const { data: lesson } = await supabase.from('lessons').select('slug').eq('id', lessonId).single()
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   revalidatePath('/dashboard')
   // Formato Manual interativo: a barra de progresso e o ModuleCompletionBanner
   // vivem na página do MÓDULO, não na da aula — sem isso, só atualizariam na
   // próxima navegação (o manual mantém estado otimista no cliente, mas o
   // revalidate garante consistência ao recarregar).
-  if (moduleId) revalidatePath(`/dashboard/modulos/${moduleId}`)
+  if (moduleId) {
+    const { data: mod } = await supabase.from('modules').select('slug').eq('id', moduleId).single()
+    revalidatePath(`/dashboard/modulos/${mod?.slug ?? moduleId}`)
+  }
   return { success: true }
 }

@@ -12,6 +12,7 @@ type ModuleSummary = { id: string; title: string; lessons: LessonSummary[] }
 
 export type CourseCard = {
   id: string
+  slug: string | null
   name: string
   description: string | null
   cover_image_url: string | null
@@ -154,7 +155,7 @@ function CourseDetailDialog({
 
           {/* CTA */}
           <Link
-            href={`/dashboard/cursos/${course.id}`}
+            href={`/dashboard/cursos/${course.slug ?? course.id}`}
             onClick={onClose}
             className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-semibold text-sm py-2.5 rounded-xl mt-1"
           >
@@ -192,7 +193,7 @@ export function CourseGrid({
           const modCount = course.modules.length
           return (
             <div key={course.id} className="relative group">
-              <Link href={`/dashboard/cursos/${course.id}`} className="block">
+              <Link href={`/dashboard/cursos/${course.slug ?? course.id}`} className="block">
                 <div className="h-full rounded-xl border border-border bg-card hover:border-primary/50 transition-colors overflow-hidden">
                   {course.cover_image_url ? (
                     <div className="aspect-video overflow-hidden bg-muted">

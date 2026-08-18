@@ -5,6 +5,7 @@ import { requireCapability, requireCourseAccess, requireAdmin } from '@/lib/auth
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+import { generateUniqueSlug } from '@/lib/slug'
 
 // Mutações usam adminClient após o guard (RLS de courses é admin-only; para
 // colaborador a mutação via client de sessão falharia silenciosamente).
@@ -24,9 +25,16 @@ export async function createCourse(formData: FormData) {
 
   const nextIndex = (existing?.[0]?.order_index ?? -1) + 1
 
+  // URL bonita (/dashboard/cursos/<slug>) em vez de UUID — pedido do
+  // usuário. Gerado uma vez na criação, nunca regenerado em edição (ver
+  // src/lib/slug.ts e CLAUDE.md).
+  const { data: existingSlugs } = await adminClient.from('courses').select('slug')
+  const slugSet = new Set((existingSlugs ?? []).map((r) => r.slug).filter((s): s is string => !!s))
+  const slug = generateUniqueSlug(name, slugSet)
+
   const { data: inserted, error } = await adminClient
     .from('courses')
-    .insert({ name, order_index: nextIndex, owner_area_id: ctx.areaId })
+    .insert({ name, order_index: nextIndex, owner_area_id: ctx.areaId, slug })
     .select('id')
     .single()
   if (error) return { error: error.message }
@@ -54,7 +62,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
 
   const { data: before } = await adminClient
     .from('courses')
-    .select('name, description, is_published, instructor_name, instructor_role, instructor_profile_id, layout')
+    .select('name, description, is_published, instructor_name, instructor_role, instructor_profile_id, layout, slug')
     .eq('id', courseId)
     .single()
 
@@ -75,7 +83,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
     logActivity(ctx, { action: 'update', entityType: 'curso', entityId: courseId, entityLabel: name, detail: `alterou: ${changed.join(', ')}` })
   }
 
-  revalidatePath(`/admin/cursos/${courseId}`)
+  revalidatePath(`/admin/cursos/${before?.slug ?? courseId}`)
   revalidatePath('/admin/cursos')
   // 'layout' de página: invalida também as páginas de módulo/aula do curso
   // inteiro — trocar o formato precisa refletir imediatamente pro aluno.
@@ -99,13 +107,13 @@ export async function uploadInstructorPhoto(courseId: string, file: File) {
 
   const { data: { publicUrl } } = adminClient.storage.from('course-covers').getPublicUrl(path)
 
-  const { data: course } = await adminClient.from('courses').select('name').eq('id', courseId).single()
+  const { data: course } = await adminClient.from('courses').select('name, slug').eq('id', courseId).single()
   const { error } = await adminClient.from('courses').update({ instructor_photo_url: publicUrl }).eq('id', courseId)
   if (error) return { error: error.message }
 
   logActivity(ctx, { action: 'upload', entityType: 'curso', entityId: courseId, entityLabel: course?.name ?? courseId, detail: `foto do instrutor: ${file.name}` })
 
-  revalidatePath(`/admin/cursos/${courseId}`)
+  revalidatePath(`/admin/cursos/${course?.slug ?? courseId}`)
   return { success: true, url: publicUrl }
 }
 
@@ -114,13 +122,13 @@ export async function toggleCoursePublished(courseId: string, is_published: bool
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
-  const { data: course } = await adminClient.from('courses').select('name').eq('id', courseId).single()
+  const { data: course } = await adminClient.from('courses').select('name, slug').eq('id', courseId).single()
   const { error } = await adminClient.from('courses').update({ is_published }).eq('id', courseId)
   if (error) return { error: error.message }
 
   logActivity(ctx, { action: 'toggle', entityType: 'curso', entityId: courseId, entityLabel: course?.name ?? courseId, detail: is_published ? 'publicou' : 'despublicou' })
 
-  revalidatePath(`/admin/cursos/${courseId}`)
+  revalidatePath(`/admin/cursos/${course?.slug ?? courseId}`)
   revalidatePath('/admin/cursos')
   revalidatePath('/dashboard')
   return { success: true }
@@ -162,13 +170,13 @@ export async function uploadCourseCover(courseId: string, file: File) {
 
   const { data: { publicUrl } } = adminClient.storage.from('course-covers').getPublicUrl(path)
 
-  const { data: course } = await adminClient.from('courses').select('name').eq('id', courseId).single()
+  const { data: course } = await adminClient.from('courses').select('name, slug').eq('id', courseId).single()
   const { error } = await adminClient.from('courses').update({ cover_image_url: publicUrl }).eq('id', courseId)
   if (error) return { error: error.message }
 
   logActivity(ctx, { action: 'upload', entityType: 'curso', entityId: courseId, entityLabel: course?.name ?? courseId, detail: `capa: ${file.name}` })
 
-  revalidatePath(`/admin/cursos/${courseId}`)
+  revalidatePath(`/admin/cursos/${course?.slug ?? courseId}`)
   revalidatePath('/admin/cursos')
   revalidatePath('/dashboard')
   return { success: true, url: publicUrl }

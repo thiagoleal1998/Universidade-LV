@@ -46,7 +46,7 @@ export async function searchContent(query: string): Promise<SearchResult[]> {
   if (modIds.length > 0) {
     const { data: lessons } = await supabase
       .from('lessons')
-      .select('id, title, module_id')
+      .select('id, slug, title, module_id')
       .eq('is_published', true)
       .in('module_id', modIds)
       .ilike('title', `%${q}%`)
@@ -57,7 +57,7 @@ export async function searchContent(query: string): Promise<SearchResult[]> {
         id: l.id,
         title: l.title,
         subtitle: modMap[l.module_id]?.courseName,
-        href: `/dashboard/aulas/${l.id}`,
+        href: `/dashboard/aulas/${l.slug ?? l.id}`,
       })
     }
   }

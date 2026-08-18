@@ -11,10 +11,11 @@ import { ModuleManual } from '@/components/members/module-manual'
 import type { ManualSectionData } from '@/components/members/manual-section'
 import { stripHtmlToText } from '@/lib/manual'
 import { cn } from '@/lib/utils'
+import { isUuid } from '@/lib/slug'
 import type { Module, Lesson, LessonPhoto, LessonAttachment } from '@/lib/supabase/types'
 import type { LessonTask, TaskResponse } from '@/app/actions/lesson-tasks'
 
-type LessonRow = Pick<Lesson, 'id' | 'title' | 'is_published' | 'order_index'>
+type LessonRow = Pick<Lesson, 'id' | 'slug' | 'title' | 'is_published' | 'order_index'>
 type ModuleWithLessons = Module & { lessons: LessonRow[] }
 
 function extractYouTubeId(url: string): string | null {
@@ -62,10 +63,12 @@ export default async function ModulePreviewPage({
   // Admin usa cliente sem RLS para ver rascunhos; membro usa cliente normal
   const client = isAdmin ? createAdminClient() : supabase
 
+  // Aceita slug (URL bonita) OU o UUID antigo já persistido em notificação/
+  // RD Station/push — ver src/lib/slug.ts.
   const { data: mod } = await client
     .from('modules')
-    .select('*, lessons(id, title, is_published, order_index)')
-    .eq('id', id)
+    .select('*, lessons(id, slug, title, is_published, order_index)')
+    .eq(isUuid(id) ? 'id' : 'slug', id)
     .order('order_index', { referencedTable: 'lessons' })
     .single() as { data: ModuleWithLessons | null }
 
@@ -341,7 +344,7 @@ export default async function ModulePreviewPage({
               return (
                 <Link
                   key={lesson.id}
-                  href={`/dashboard/aulas/${lesson.id}`}
+                  href={`/dashboard/aulas/${lesson.slug ?? lesson.id}`}
                   className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors group"
                 >
                   <div className="flex items-center gap-3">
@@ -373,7 +376,7 @@ export default async function ModulePreviewPage({
       {isAdmin && (
         <div className="text-center">
           <Link
-            href={`/admin/modulos/${mod.id}`}
+            href={`/admin/modulos/${mod.slug ?? mod.id}`}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             ← Voltar para edição

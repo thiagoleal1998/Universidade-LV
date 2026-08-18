@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import type { Lesson, LessonPhoto, LessonAttachment } from '@/lib/supabase/types'
 import type { LessonTask } from '@/app/actions/lesson-tasks'
 import { requireLessonPage, getPreviewAreaContext } from '@/lib/authz'
+import { isUuid } from '@/lib/slug'
 
 export default async function EditLessonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -20,37 +21,39 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   const supabase = await createClient()
   const adminClient = createAdminClient()
 
+  // Aceita slug (URL bonita) OU o UUID antigo já persistido em notificação/
+  // RD Station/push — ver src/lib/slug.ts.
+  const idColumn = isUuid(id) ? 'id' : 'slug'
+  const { data: lessonData } = await adminClient.from('lessons').select('*').eq(idColumn, id).single()
+  const lesson = lessonData as Lesson | null
+  if (!lesson) notFound()
+
   // adminClient nas leituras: posse validada no guard; RLS esconderia
   // rascunhos do colaborador via client de sessão
   const [
-    { data: lessonData },
     { data: photosData },
     { data: attachmentsData },
     { data: taskRaw },
+    { data: modData },
   ] = await Promise.all([
-    adminClient.from('lessons').select('*').eq('id', id).single(),
-    adminClient.from('lesson_photos').select('*').eq('lesson_id', id).order('order_index'),
-    adminClient.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
+    adminClient.from('lesson_photos').select('*').eq('lesson_id', lesson.id).order('order_index'),
+    adminClient.from('lesson_attachments').select('*').eq('lesson_id', lesson.id).order('order_index'),
     adminClient
       .from('lesson_tasks')
       .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, correct_answer, required, order_index, points), response_count:lesson_task_responses(count)')
-      .eq('lesson_id', id)
+      .eq('lesson_id', lesson.id)
       .maybeSingle(),
+    adminClient.from('modules').select('id, slug, course_id').eq('id', lesson.module_id).single(),
   ])
 
-  const lesson = lessonData as Lesson | null
   const photos = (photosData as LessonPhoto[] | null) ?? []
   const attachments = (attachmentsData as LessonAttachment[] | null) ?? []
-
-  if (!lesson) notFound()
+  const mod = modData as { id: string; slug: string | null; course_id: string | null } | null
 
   let canEdit = viewCtx.role === 'admin'
-  if (!canEdit) {
-    const { data: mod } = await adminClient.from('modules').select('course_id').eq('id', lesson.module_id).single()
-    if (mod?.course_id) {
-      const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
-      canEdit = viewCtx.capabilities.includes('courses') && course?.owner_area_id === viewCtx.areaId
-    }
+  if (!canEdit && mod?.course_id) {
+    const { data: course } = await adminClient.from('courses').select('owner_area_id').eq('id', mod.course_id).single()
+    canEdit = viewCtx.capabilities.includes('courses') && course?.owner_area_id === viewCtx.areaId
   }
 
   const photoUrls = photos.map((p) => ({
@@ -98,7 +101,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
     <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-10">
       <div>
         <div className="flex items-center gap-3 mb-6">
-          <Link href={`/admin/modulos/${lesson.module_id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
+          <Link href={`/admin/modulos/${mod?.slug ?? lesson.module_id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <h2 className="text-2xl font-bold text-foreground">Editar Aula</h2>
@@ -120,7 +123,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
           <TaskResponsesPanel
             responses={responses}
             questions={task.questions}
-            lessonId={id}
+            lessonId={lesson.id}
             canGrade={canEdit}
           />
         </div>

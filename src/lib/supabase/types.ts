@@ -43,6 +43,7 @@ export type Database = {
           created_at: string
           prerequisite_module_id: string | null
           course_id: string | null
+          slug: string | null
         }
         Insert: {
           id?: string
@@ -54,6 +55,7 @@ export type Database = {
           created_at?: string
           prerequisite_module_id?: string | null
           course_id?: string | null
+          slug?: string | null
         }
         Update: {
           id?: string
@@ -65,6 +67,7 @@ export type Database = {
           created_at?: string
           prerequisite_module_id?: string | null
           course_id?: string | null
+          slug?: string | null
         }
       }
       lessons: {
@@ -81,6 +84,7 @@ export type Database = {
           created_at: string
           task_start_date: string | null
           task_end_date: string | null
+          slug: string | null
         }
         Insert: {
           id?: string
@@ -95,6 +99,7 @@ export type Database = {
           created_at?: string
           task_start_date?: string | null
           task_end_date?: string | null
+          slug?: string | null
         }
         Update: {
           id?: string
@@ -109,6 +114,7 @@ export type Database = {
           created_at?: string
           task_start_date?: string | null
           task_end_date?: string | null
+          slug?: string | null
         }
       }
       lesson_photos: {
@@ -174,6 +180,7 @@ export type Course = {
   instructor_photo_url: string | null
   instructor_profile_id: string | null
   layout: 'padrao' | 'manual'
+  slug: string | null
 }
 export type Tag = { id: string; name: string; color: string; created_at: string }
 export type LessonAttachment = {

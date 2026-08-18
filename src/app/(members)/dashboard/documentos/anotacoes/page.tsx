@@ -24,14 +24,15 @@ export default async function AnotacoesPage() {
   // Busca títulos das aulas em query separada (evita depender de FK registrada)
   const lessonIds = rawNotes.map((n) => n.lesson_id)
   const { data: lessonsData } = lessonIds.length > 0
-    ? await supabase.from('lessons').select('id, title').in('id', lessonIds)
+    ? await supabase.from('lessons').select('id, slug, title').in('id', lessonIds)
     : { data: [] }
 
-  const lessonMap = new Map((lessonsData ?? []).map((l: { id: string; title: string }) => [l.id, l.title]))
+  const lessonMap = new Map((lessonsData ?? []).map((l: { id: string; slug: string | null; title: string }) => [l.id, l]))
 
   const notes = rawNotes.map((n) => ({
     ...n,
-    lessonTitle: lessonMap.get(n.lesson_id) ?? 'Aula sem título',
+    lessonTitle: lessonMap.get(n.lesson_id)?.title ?? 'Aula sem título',
+    lessonUrlId: lessonMap.get(n.lesson_id)?.slug ?? n.lesson_id,
   }))
 
   if (notes.length === 0) {
@@ -62,7 +63,7 @@ export default async function AnotacoesPage() {
                 </p>
               </div>
               <Link
-                href={`/dashboard/aulas/${note.lesson_id}?tab=anotacoes`}
+                href={`/dashboard/aulas/${note.lessonUrlId}?tab=anotacoes`}
                 className="flex items-center gap-1.5 text-xs text-primary hover:underline shrink-0"
               >
                 Ir para aula

@@ -6,6 +6,7 @@ import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { notifyCourseMembers } from '@/app/actions/notifications'
 import { toWebP } from '@/lib/image'
+import { generateUniqueSlug } from '@/lib/slug'
 
 // Mutações usam adminClient após o guard (RLS de lessons é admin-only).
 // A posse é herdada: lesson → module → course.owner_area_id.
@@ -27,9 +28,20 @@ export async function createLesson(moduleId: string, formData: FormData) {
 
   const nextIndex = (lessons?.[0]?.order_index ?? -1) + 1
 
+  // URL bonita (/dashboard/aulas/<slug>) — compõe com o nome do módulo pai
+  // pra reduzir colisão na raiz (ex.: "Aula 1" existe em vários módulos)
+  // sem precisar de rota aninhada. Gerado uma vez na criação, nunca
+  // regenerado em edição (src/lib/slug.ts).
+  const [{ data: mod }, { data: existingSlugs }] = await Promise.all([
+    adminClient.from('modules').select('title, slug').eq('id', moduleId).single(),
+    adminClient.from('lessons').select('slug'),
+  ])
+  const slugSet = new Set((existingSlugs ?? []).map((r) => r.slug).filter((s): s is string => !!s))
+  const slug = generateUniqueSlug(mod?.title ? `${title} ${mod.title}` : title, slugSet)
+
   const { data, error } = await adminClient
     .from('lessons')
-    .insert({ module_id: moduleId, title, description, order_index: nextIndex })
+    .insert({ module_id: moduleId, title, description, order_index: nextIndex, slug })
     .select()
     .single()
 
@@ -37,7 +49,7 @@ export async function createLesson(moduleId: string, formData: FormData) {
 
   logActivity(ctx, { action: 'create', entityType: 'aula', entityLabel: title, entityId: data?.id })
 
-  revalidatePath(`/admin/modulos/${moduleId}`)
+  revalidatePath(`/admin/modulos/${mod?.slug ?? moduleId}`)
   return { data }
 }
 
@@ -60,7 +72,7 @@ export async function updateLesson(id: string, moduleId: string, formData: FormD
   // Get previous state to detect first-publish event
   const { data: prev } = await adminClient
     .from('lessons')
-    .select('title, description, youtube_url, content_text, sheet_url, is_published, publish_at, task_start_date, task_end_date, modules(course_id)')
+    .select('title, description, youtube_url, content_text, sheet_url, is_published, publish_at, task_start_date, task_end_date, slug, modules(course_id, slug)')
     .eq('id', id)
     .single()
 
@@ -89,14 +101,15 @@ export async function updateLesson(id: string, moduleId: string, formData: FormD
         type: 'lesson_published',
         title: `Nova aula disponível: ${title}`,
         body: description ?? '',
-        link: `/dashboard/aulas/${id}`,
+        link: `/dashboard/aulas/${prev?.slug ?? id}`,
       })
     }
   }
 
-  revalidatePath(`/admin/aulas/${id}`)
-  revalidatePath(`/admin/modulos/${moduleId}`)
-  revalidatePath(`/dashboard/aulas/${id}`)
+  const prevModSlug = (prev?.modules as { slug?: string | null } | null)?.slug
+  revalidatePath(`/admin/aulas/${prev?.slug ?? id}`)
+  revalidatePath(`/admin/modulos/${prevModSlug ?? moduleId}`)
+  revalidatePath(`/dashboard/aulas/${prev?.slug ?? id}`)
   return { success: true }
 }
 
@@ -107,7 +120,7 @@ export async function setLessonPublished(id: string, moduleId: string, is_publis
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('lessons')
-    .select('is_published, title, description, modules(course_id)')
+    .select('is_published, title, description, slug, modules(course_id, slug)')
     .eq('id', id)
     .single()
 
@@ -127,14 +140,15 @@ export async function setLessonPublished(id: string, moduleId: string, is_publis
         type: 'lesson_published',
         title: `Nova aula disponível: ${prev?.title ?? ''}`,
         body: prev?.description ?? '',
-        link: `/dashboard/aulas/${id}`,
+        link: `/dashboard/aulas/${prev?.slug ?? id}`,
       })
     }
   }
 
-  revalidatePath(`/admin/aulas/${id}`)
-  revalidatePath(`/admin/modulos/${moduleId}`)
-  revalidatePath(`/dashboard/aulas/${id}`)
+  const prevModSlug = (prev?.modules as { slug?: string | null } | null)?.slug
+  revalidatePath(`/admin/aulas/${prev?.slug ?? id}`)
+  revalidatePath(`/admin/modulos/${prevModSlug ?? moduleId}`)
+  revalidatePath(`/dashboard/aulas/${prev?.slug ?? id}`)
   return { success: true }
 }
 
@@ -143,7 +157,7 @@ export async function scheduleLesson(id: string, moduleId: string, publish_at: s
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
-  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', id).single()
+  const { data: lesson } = await adminClient.from('lessons').select('title, slug, modules(slug)').eq('id', id).single()
   const { error } = await adminClient
     .from('lessons')
     .update({ publish_at: new Date(publish_at).toISOString(), is_published: false })
@@ -153,8 +167,9 @@ export async function scheduleLesson(id: string, moduleId: string, publish_at: s
 
   logActivity(ctx, { action: 'update', entityType: 'aula', entityId: id, entityLabel: lesson?.title ?? id, detail: `agendou publicação para ${new Date(publish_at).toLocaleString('pt-BR')}` })
 
-  revalidatePath(`/admin/aulas/${id}`)
-  revalidatePath(`/admin/modulos/${moduleId}`)
+  const lessonModSlug = (lesson?.modules as { slug?: string | null } | null)?.slug
+  revalidatePath(`/admin/aulas/${lesson?.slug ?? id}`)
+  revalidatePath(`/admin/modulos/${lessonModSlug ?? moduleId}`)
   return { success: true }
 }
 
@@ -165,8 +180,10 @@ export async function reorderLesson(id: string, moduleId: string, direction: 'up
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
-  const { data: current } = await adminClient
-    .from('lessons').select('order_index, title').eq('id', id).single()
+  const [{ data: current }, { data: mod }] = await Promise.all([
+    adminClient.from('lessons').select('order_index, title').eq('id', id).single(),
+    adminClient.from('modules').select('slug').eq('id', moduleId).single(),
+  ])
   if (!current) return { error: 'Aula não encontrada' }
 
   const { data: neighbor } = await adminClient
@@ -182,7 +199,7 @@ export async function reorderLesson(id: string, moduleId: string, direction: 'up
 
   logActivity(ctx, { action: 'reorder', entityType: 'aula', entityId: id, entityLabel: current.title ?? id, detail: `moveu para ${direction === 'up' ? 'cima' : 'baixo'}` })
 
-  revalidatePath(`/admin/modulos/${moduleId}`)
+  revalidatePath(`/admin/modulos/${mod?.slug ?? moduleId}`)
   return { success: true }
 }
 
@@ -193,7 +210,7 @@ export async function publishAllLessons(moduleId: string) {
   const adminClient = createAdminClient()
   const { data: lessons } = await adminClient
     .from('lessons')
-    .select('id, is_published, title, description, modules(course_id)')
+    .select('id, slug, is_published, title, description, modules(course_id, slug)')
     .eq('module_id', moduleId)
     .eq('is_published', false)
 
@@ -216,13 +233,14 @@ export async function publishAllLessons(moduleId: string) {
         type: 'lesson_published',
         title: `Nova aula disponível: ${lesson.title}`,
         body: lesson.description ?? '',
-        link: `/dashboard/aulas/${lesson.id}`,
+        link: `/dashboard/aulas/${lesson.slug ?? lesson.id}`,
       })
     }
   }
 
-  revalidatePath(`/admin/modulos/${moduleId}`)
-  lessons.forEach((l) => revalidatePath(`/dashboard/aulas/${l.id}`))
+  const modSlug = (lessons[0]?.modules as { slug?: string | null } | null)?.slug
+  revalidatePath(`/admin/modulos/${modSlug ?? moduleId}`)
+  lessons.forEach((l) => revalidatePath(`/dashboard/aulas/${l.slug ?? l.id}`))
   return { count: lessons.length }
 }
 
@@ -249,14 +267,17 @@ export async function deleteLesson(id: string, moduleId: string) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
-  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', id).single()
+  const [{ data: lesson }, { data: mod }] = await Promise.all([
+    adminClient.from('lessons').select('title').eq('id', id).single(),
+    adminClient.from('modules').select('slug').eq('id', moduleId).single(),
+  ])
   const { error } = await adminClient.from('lessons').delete().eq('id', id)
 
   if (error) return { error: error.message }
 
   logActivity(ctx, { action: 'delete', entityType: 'aula', entityId: id, entityLabel: lesson?.title ?? id })
 
-  revalidatePath(`/admin/modulos/${moduleId}`)
+  revalidatePath(`/admin/modulos/${mod?.slug ?? moduleId}`)
   return { success: true }
 }
 
@@ -293,11 +314,11 @@ export async function uploadLessonPhoto(
 
   if (dbError) return { error: dbError.message }
 
-  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', lessonId).single()
+  const { data: lesson } = await adminClient.from('lessons').select('title, slug').eq('id', lessonId).single()
   logActivity(ctx, { action: 'upload', entityType: 'aula', entityId: lessonId, entityLabel: lesson?.title ?? lessonId, detail: `foto: ${caption || file.name}` })
 
-  revalidatePath(`/admin/aulas/${lessonId}`)
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${lesson?.slug ?? lessonId}`)
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }
 
@@ -308,14 +329,17 @@ export async function deleteLessonPhoto(photoId: string, storagePath: string, le
   const adminClient = createAdminClient()
   await adminClient.storage.from('lesson-photos').remove([storagePath])
 
-  const { error } = await adminClient.from('lesson_photos').delete().eq('id', photoId)
+  const [{ error }, { data: lesson }] = await Promise.all([
+    adminClient.from('lesson_photos').delete().eq('id', photoId),
+    adminClient.from('lessons').select('slug').eq('id', lessonId).single(),
+  ])
 
   if (error) return { error: error.message }
 
   logActivity(ctx, { action: 'delete', entityType: 'aula', entityId: lessonId, entityLabel: lessonId, detail: 'excluiu foto' })
 
-  revalidatePath(`/admin/aulas/${lessonId}`)
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${lesson?.slug ?? lessonId}`)
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }
 
@@ -352,11 +376,11 @@ export async function uploadLessonAttachment(lessonId: string, file: File) {
 
   if (dbError) return { error: dbError.message }
 
-  const { data: lesson } = await adminClient.from('lessons').select('title').eq('id', lessonId).single()
+  const { data: lesson } = await adminClient.from('lessons').select('title, slug').eq('id', lessonId).single()
   logActivity(ctx, { action: 'upload', entityType: 'aula', entityId: lessonId, entityLabel: lesson?.title ?? lessonId, detail: `anexo: ${file.name}` })
 
-  revalidatePath(`/admin/aulas/${lessonId}`)
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${lesson?.slug ?? lessonId}`)
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }
 
@@ -367,13 +391,16 @@ export async function deleteLessonAttachment(attachmentId: string, storagePath: 
   const adminClient = createAdminClient()
   await adminClient.storage.from('lesson-attachments').remove([storagePath])
 
-  const { error } = await adminClient.from('lesson_attachments').delete().eq('id', attachmentId)
+  const [{ error }, { data: lesson }] = await Promise.all([
+    adminClient.from('lesson_attachments').delete().eq('id', attachmentId),
+    adminClient.from('lessons').select('slug').eq('id', lessonId).single(),
+  ])
 
   if (error) return { error: error.message }
 
   logActivity(ctx, { action: 'delete', entityType: 'aula', entityId: lessonId, entityLabel: lessonId, detail: 'excluiu anexo' })
 
-  revalidatePath(`/admin/aulas/${lessonId}`)
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${lesson?.slug ?? lessonId}`)
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }

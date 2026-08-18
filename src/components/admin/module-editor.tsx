@@ -81,7 +81,7 @@ export function ModuleEditor({ mod, allModules = [], canEdit = true }: { mod: Mo
       if (result?.error) toast.error(result.error)
       else {
         toast.success('Aula criada!')
-        if (result.data) router.push(`/admin/aulas/${result.data.id}`)
+        if (result.data) router.push(`/admin/aulas/${result.data.slug ?? result.data.id}`)
       }
     })
   }
@@ -135,7 +135,7 @@ export function ModuleEditor({ mod, allModules = [], canEdit = true }: { mod: Mo
               {mod.is_published ? 'Despublicar' : 'Publicar'}
             </Button>
             <Link
-              href={`/dashboard/modulos/${mod.id}`}
+              href={`/dashboard/modulos/${mod.slug ?? mod.id}`}
               target="_blank"
               className={cn(
                 buttonVariants({ variant: mod.is_published ? 'outline' : 'ghost' }),
@@ -240,7 +240,7 @@ export function ModuleEditor({ mod, allModules = [], canEdit = true }: { mod: Mo
                 </Badge>
               </div>
               <div className="flex items-center gap-1">
-                <Link href={`/admin/aulas/${lesson.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
+                <Link href={`/admin/aulas/${lesson.slug ?? lesson.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
                   <Pencil className="w-4 h-4" />
                 </Link>
                 <AlertDialog>

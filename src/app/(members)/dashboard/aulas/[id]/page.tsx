@@ -5,6 +5,7 @@ import { getSettings } from '@/lib/settings'
 import { requireLessonAccess } from '@/lib/authz'
 import { getNote } from '@/app/actions/notes'
 import { StudyInterface } from '@/components/members/study-interface'
+import { isUuid } from '@/lib/slug'
 import type { Lesson, LessonPhoto, LessonAttachment } from '@/lib/supabase/types'
 import type { LessonTask, TaskResponse } from '@/app/actions/lesson-tasks'
 
@@ -33,8 +34,8 @@ function getEmbedUrl(url: string): string | null {
   return null
 }
 
-type ModuleRow = { id: string; title: string; order_index: number; course_id: string | null }
-type LessonRow = { id: string; title: string; is_published: boolean; order_index: number; module_id: string }
+type ModuleRow = { id: string; slug: string | null; title: string; order_index: number; course_id: string | null }
+type LessonRow = { id: string; slug: string | null; title: string; is_published: boolean; order_index: number; module_id: string }
 
 export default async function LessonPage({
   params,
@@ -57,29 +58,37 @@ export default async function LessonPage({
   // guard devolve erro para membro comum, que é o caso normal aqui.
   const canModerate = !('error' in (await requireLessonAccess(id)))
 
+  // Aceita slug (URL bonita) OU o UUID antigo já persistido em notificação/
+  // RD Station/push — ver src/lib/slug.ts.
+  const idColumn = isUuid(id) ? 'id' : 'slug'
+
   // Fetch the lesson with module + course info
   const { data: lessonData } = await client
     .from('lessons')
-    .select('*, modules(id, title, order_index, course_id, courses(id, name, layout))')
-    .eq('id', id)
+    .select('*, modules(id, slug, title, order_index, course_id, courses(id, name, slug, layout))')
+    .eq(idColumn, id)
     .single()
 
   const lesson = lessonData as (Lesson & {
-    modules: (ModuleRow & { courses: { id: string; name: string; layout?: 'padrao' | 'manual' } | null }) | null
+    modules: (ModuleRow & { courses: { id: string; name: string; slug: string | null; layout?: 'padrao' | 'manual' } | null }) | null
   }) | null
 
   if (!lesson || (!isAdmin && !lesson.is_published)) notFound()
 
+  const lessonRealId = lesson.id
   const module = lesson.modules
   const course = module?.courses
   const courseId = course?.id ?? module?.course_id ?? ''
   const courseName = course?.name ?? module?.title ?? ''
+  const courseUrlId = course?.slug ?? courseId
 
   // Curso no formato "Manual interativo": link direto de aula cai na âncora
   // certa da página do módulo (mantém notificações/busca/links salvos
-  // funcionando, sem duplicar a leitura em duas telas).
+  // funcionando, sem duplicar a leitura em duas telas). `?aula=` continua
+  // sendo o UUID real da aula — é comparado contra manualSectionId(lesson.id)
+  // em module-manual.tsx, não é um segmento de rota que precise de slug.
   if (course?.layout === 'manual' && module?.id) {
-    redirect(`/dashboard/modulos/${module.id}?aula=${id}`)
+    redirect(`/dashboard/modulos/${module.slug ?? module.id}?aula=${lessonRealId}`)
   }
 
   // Fetch curriculum: all modules + lessons for this course
@@ -88,7 +97,7 @@ export default async function LessonPage({
   if (courseId) {
     const { data: modulesData } = await client
       .from('modules')
-      .select('id, title, order_index, lessons(id, title, is_published, order_index, module_id)')
+      .select('id, slug, title, order_index, lessons(id, slug, title, is_published, order_index, module_id)')
       .eq('course_id', courseId)
       .order('order_index')
 
@@ -106,7 +115,7 @@ export default async function LessonPage({
 
   // All lessons in order (for prev/next navigation)
   const allLessons = curriculum.flatMap((m) => m.lessons)
-  const currentIndex = allLessons.findIndex((l) => l.id === id)
+  const currentIndex = allLessons.findIndex((l) => l.id === lessonRealId)
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
 
@@ -124,6 +133,7 @@ export default async function LessonPage({
     title: m.title,
     lessons: m.lessons.map((l) => ({
       id: l.id,
+      slug: l.slug,
       title: l.title,
       isCompleted: completedSet.has(l.id),
     })),
@@ -139,13 +149,13 @@ export default async function LessonPage({
     { data: commentsData },
     { data: taskRaw },
   ] = await Promise.all([
-    client.from('lesson_photos').select('*').eq('lesson_id', id).order('order_index'),
-    client.from('lesson_attachments').select('*').eq('lesson_id', id).order('order_index'),
-    supabase.from('lesson_comments').select('id, body, created_at, user_id, parent_id, is_pinned, is_hidden').eq('lesson_id', id).order('created_at'),
+    client.from('lesson_photos').select('*').eq('lesson_id', lessonRealId).order('order_index'),
+    client.from('lesson_attachments').select('*').eq('lesson_id', lessonRealId).order('order_index'),
+    supabase.from('lesson_comments').select('id, body, created_at, user_id, parent_id, is_pinned, is_hidden').eq('lesson_id', lessonRealId).order('created_at'),
     supabase
       .from('lesson_tasks')
       .select('id, title, description, questions:lesson_task_questions(id, type, question, options, correct_options, required, order_index)')
-      .eq('lesson_id', id)
+      .eq('lesson_id', lessonRealId)
       .maybeSingle(),
   ])
 
@@ -201,12 +211,12 @@ export default async function LessonPage({
   const videoId = lesson.youtube_url ? extractYouTubeId(lesson.youtube_url) : null
   const embedUrl = lesson.youtube_url ? getEmbedUrl(lesson.youtube_url) : null
 
-  const note = await getNote(id)
+  const note = await getNote(lessonRealId)
   const settings = await getSettings()
 
   return (
     <StudyInterface
-      lessonId={id}
+      lessonId={lessonRealId}
       lessonTitle={lesson.title}
       lessonDescription={lesson.description ?? null}
       contentText={lesson.content_text}
@@ -214,19 +224,19 @@ export default async function LessonPage({
       videoId={videoId}
       photos={photos}
       attachments={attachments}
-      isCompleted={completedSet.has(id)}
+      isCompleted={completedSet.has(lessonRealId)}
       isAdmin={isAdmin}
       canModerate={canModerate}
       isDraft={!lesson.is_published}
       note={note.content}
       noteDraft={note.draftContent}
-      courseId={courseId}
+      courseId={courseUrlId}
       courseName={courseName}
       logoUrl={settings.logo_url}
       siteName={settings.site_name}
       curriculum={curriculumWithStatus}
-      prevLessonId={prevLesson?.id ?? null}
-      nextLessonId={nextLesson?.id ?? null}
+      prevLessonId={prevLesson?.slug ?? prevLesson?.id ?? null}
+      nextLessonId={nextLesson?.slug ?? nextLesson?.id ?? null}
       nextLessonTitle={nextLesson?.title ?? null}
       comments={comments as Parameters<typeof StudyInterface>[0]['comments']}
       currentUserId={user.id}

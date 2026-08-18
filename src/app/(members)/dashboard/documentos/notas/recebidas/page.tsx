@@ -51,7 +51,7 @@ export default async function NotasRecebidasPage() {
 
   const lessonIds = [...new Set((tasks ?? []).map((t) => t.lesson_id))]
   const [{ data: lessons }, { data: questionsRaw }] = await Promise.all([
-    adminClient.from('lessons').select('id, title').in('id', lessonIds),
+    adminClient.from('lessons').select('id, slug, title').in('id', lessonIds),
     adminClient
       .from('lesson_task_questions')
       .select('id, task_id, question, type, options, correct_options, correct_answer, points, order_index')
@@ -59,11 +59,12 @@ export default async function NotasRecebidasPage() {
       .order('order_index'),
   ])
 
-  const lessonTitleMap = new Map((lessons ?? []).map((l) => [l.id, l.title]))
+  const lessonMap = new Map((lessons ?? []).map((l) => [l.id, l]))
   const taskMap = new Map((tasks ?? []).map((t) => [t.id, {
     title: t.title,
     lesson_id: t.lesson_id,
-    lesson_title: lessonTitleMap.get(t.lesson_id) ?? 'Aula',
+    lesson_url_id: lessonMap.get(t.lesson_id)?.slug ?? t.lesson_id,
+    lesson_title: lessonMap.get(t.lesson_id)?.title ?? 'Aula',
   }]))
   const questionsByTask = new Map<string, typeof questionsRaw>()
   for (const q of (questionsRaw ?? [])) {
@@ -83,7 +84,7 @@ export default async function NotasRecebidasPage() {
       submitted_at: resp.submitted_at,
       taskTitle: task.title,
       lessonTitle: task.lesson_title,
-      lessonId: task.lesson_id,
+      lessonId: task.lesson_url_id,
       answers: (resp.answers ?? []) as NotaData['answers'],
       questions: ((questionsByTask.get(resp.task_id) ?? []) as NotaData['questions']),
     }]

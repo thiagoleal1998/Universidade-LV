@@ -42,7 +42,8 @@ export async function createComment(lessonId: string, formData: FormData) {
     .insert({ lesson_id: lessonId, user_id: user.id, body, parent_id: parentId })
 
   if (error) return { error: error.message }
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  const { data: lesson } = await supabase.from('lessons').select('slug').eq('id', lessonId).single()
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }
 
@@ -70,7 +71,8 @@ export async function deleteComment(commentId: string, lessonId: string) {
 
   const { error } = await adminClient.from('lesson_comments').delete().eq('id', commentId)
   if (error) return { error: error.message }
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  const { data: lesson } = await adminClient.from('lessons').select('slug').eq('id', lessonId).single()
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }
 
@@ -109,7 +111,8 @@ async function moderateComment(
     detail,
   })
 
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  const { data: lesson } = await adminClient.from('lessons').select('slug').eq('id', lessonId).single()
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }
 

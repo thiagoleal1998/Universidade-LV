@@ -18,7 +18,7 @@ export default async function BuscaPage({
   const isAdmin = profileData?.role === 'admin'
 
   let courses: { id: string; name: string }[] = []
-  let lessons: { id: string; title: string; moduleName: string; courseName: string }[] = []
+  let lessons: { id: string; slug: string | null; title: string; moduleName: string; courseName: string }[] = []
 
   if (query.length >= 2) {
     let courseIds: string[] = []
@@ -55,7 +55,7 @@ export default async function BuscaPage({
     if (modIds.length > 0) {
       const { data: lessonsData } = await supabase
         .from('lessons')
-        .select('id, title, module_id')
+        .select('id, slug, title, module_id')
         .eq('is_published', true)
         .in('module_id', modIds)
         .ilike('title', `%${query}%`)
@@ -63,6 +63,7 @@ export default async function BuscaPage({
 
       lessons = (lessonsData ?? []).map((l) => ({
         id: l.id,
+        slug: l.slug,
         title: l.title,
         moduleName: modMap[l.module_id]?.moduleName ?? '',
         courseName: modMap[l.module_id]?.courseName ?? '',
@@ -131,7 +132,7 @@ export default async function BuscaPage({
             {lessons.map((l) => (
               <Link
                 key={l.id}
-                href={`/dashboard/aulas/${l.id}`}
+                href={`/dashboard/aulas/${l.slug ?? l.id}`}
                 className="flex items-center gap-3 bg-card border rounded-xl px-4 py-3 hover:border-primary/30 hover:bg-primary/5 transition-all group"
               >
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">

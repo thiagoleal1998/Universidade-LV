@@ -73,14 +73,14 @@ export function ModulesList({ modules, isAdmin = true }: { modules: ModuleWithCo
 
           <div className="flex items-center gap-1">
             <Link
-              href={`/dashboard/modulos/${mod.id}`}
+              href={`/dashboard/modulos/${mod.slug ?? mod.id}`}
               target="_blank"
               className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), !mod.is_published && 'text-muted-foreground')}
               title={mod.is_published ? 'Ver página' : 'Ver prévia'}
             >
               <Eye className="w-4 h-4" />
             </Link>
-            <Link href={`/admin/modulos/${mod.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
+            <Link href={`/admin/modulos/${mod.slug ?? mod.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}>
               <Pencil className="w-4 h-4" />
             </Link>
           </div>

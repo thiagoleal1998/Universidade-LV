@@ -30,7 +30,8 @@ export async function saveNote(lessonId: string, content: string) {
     )
 
   if (error) return { error: error.message }
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  const { data: lesson } = await supabase.from('lessons').select('slug').eq('id', lessonId).single()
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   revalidatePath('/dashboard/documentos/anotacoes')
   return { success: true }
 }
@@ -84,7 +85,8 @@ export async function discardNoteDraft(lessonId: string) {
     .eq('lesson_id', lessonId)
 
   if (error) return { error: error.message }
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  const { data: lesson } = await supabase.from('lessons').select('slug').eq('id', lessonId).single()
+  revalidatePath(`/dashboard/aulas/${lesson?.slug ?? lessonId}`)
   return { success: true }
 }
 

@@ -50,6 +50,14 @@ export type TaskResponse = {
   attempt_number: number
 }
 
+// URL bonita nos revalidatePath/links de notificação — path por UUID não bate
+// mais com o cache da página (que agora é visitada por slug), então a
+// invalidação precisa mirar o mesmo path que o usuário realmente navega.
+async function lessonUrlId(adminClient: ReturnType<typeof createAdminClient>, lessonId: string) {
+  const { data } = await adminClient.from('lessons').select('slug').eq('id', lessonId).single()
+  return data?.slug ?? lessonId
+}
+
 // ── Admin actions ────────────────────────────────────────────────────────────
 
 export async function createTask(lessonId: string) {
@@ -64,7 +72,7 @@ export async function createTask(lessonId: string) {
     .single()
   if (error) return { error: error.message }
   logActivity(ctx, { action: 'create', entityType: 'tarefa_aula', entityId: data?.id, entityLabel: 'Tarefa', detail: `aula ${lessonId}` })
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   return { data }
 }
 
@@ -79,7 +87,7 @@ export async function updateTask(taskId: string, lessonId: string, title: string
     .eq('id', taskId)
   if (error) return { error: error.message }
   logActivity(ctx, { action: 'update', entityType: 'tarefa_aula', entityId: taskId, entityLabel: title, detail: 'alterou: título, descrição' })
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   return { success: true }
 }
 
@@ -92,7 +100,7 @@ export async function deleteTask(taskId: string, lessonId: string) {
   const { error } = await adminClient.from('lesson_tasks').delete().eq('id', taskId)
   if (error) return { error: error.message }
   logActivity(ctx, { action: 'delete', entityType: 'tarefa_aula', entityId: taskId, entityLabel: task?.title ?? taskId })
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   return { success: true }
 }
 
@@ -115,7 +123,7 @@ export async function addQuestion(taskId: string, lessonId: string) {
     .single()
   if (error) return { error: error.message }
   logActivity(ctx, { action: 'create', entityType: 'pergunta_aula', entityId: data?.id, entityLabel: `tarefa ${taskId}` })
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   return { data }
 }
 
@@ -134,7 +142,7 @@ export async function updateQuestion(
     .eq('id', questionId)
   if (error) return { error: error.message }
   logActivity(ctx, { action: 'update', entityType: 'pergunta_aula', entityId: questionId, entityLabel: payload.question || questionId })
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   return { success: true }
 }
 
@@ -147,7 +155,7 @@ export async function deleteQuestion(questionId: string, lessonId: string) {
   const { error } = await adminClient.from('lesson_task_questions').delete().eq('id', questionId)
   if (error) return { error: error.message }
   logActivity(ctx, { action: 'delete', entityType: 'pergunta_aula', entityId: questionId, entityLabel: question?.question || questionId })
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   return { success: true }
 }
 
@@ -174,7 +182,7 @@ export async function reorderQuestion(
   await adminClient.from('lesson_task_questions').update({ order_index: neighbor.order_index }).eq('id', questionId)
   await adminClient.from('lesson_task_questions').update({ order_index: current.order_index }).eq('id', neighbor.id)
   logActivity(ctx, { action: 'reorder', entityType: 'pergunta_aula', entityId: questionId, entityLabel: questionId, detail: `moveu para ${direction === 'up' ? 'cima' : 'baixo'}` })
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   return { success: true }
 }
 
@@ -253,19 +261,20 @@ export async function submitTaskResponse(
   const adminClient = createAdminClient()
   const { data: lessonData } = await adminClient
     .from('lessons')
-    .select('module_id, modules(course_id)')
+    .select('module_id, slug, modules(course_id)')
     .eq('id', lessonId)
     .single()
   const courseId = toOne(lessonData?.modules)?.course_id ?? null
+  const lessonUrl = lessonData?.slug ?? lessonId
 
   await notifyCourseOwners(courseId, user.id, {
     type: 'task_submitted',
     title: `Nova tarefa aguardando correção`,
     body: `${taskTitle}${lessonTitle ? ` · ${lessonTitle}` : ''} — enviada por um aluno.`,
-    link: `/admin/aulas/${lessonId}`,
+    link: `/admin/aulas/${lessonUrl}`,
   })
 
-  revalidatePath(`/dashboard/aulas/${lessonId}`)
+  revalidatePath(`/dashboard/aulas/${lessonUrl}`)
   revalidatePath('/dashboard', 'layout')
   return { success: true }
 }
@@ -325,7 +334,7 @@ export async function gradeTaskResponse(
     if (contact) rdTaskGraded(contact.email, contact.name, taskTitle, grade, link)
   }
 
-  revalidatePath(`/admin/aulas/${lessonId}`)
+  revalidatePath(`/admin/aulas/${await lessonUrlId(adminClient, lessonId)}`)
   revalidatePath(`/dashboard/documentos/notas`)
   revalidatePath('/dashboard', 'layout')
   return { success: true }

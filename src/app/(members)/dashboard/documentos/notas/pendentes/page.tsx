@@ -20,7 +20,7 @@ export default async function NotasPendentesPage() {
 
   const responses = responsesRaw ?? []
 
-  let taskMap = new Map<string, { title: string; lesson_id: string; lesson_title: string }>()
+  let taskMap = new Map<string, { title: string; lesson_id: string; lesson_url_id: string; lesson_title: string }>()
   if (responses.length) {
     const taskIds = [...new Set(responses.map((r) => r.task_id))]
     const { data: tasks } = await adminClient
@@ -32,14 +32,15 @@ export default async function NotasPendentesPage() {
       const lessonIds = [...new Set(tasks.map((t) => t.lesson_id))]
       const { data: lessons } = await adminClient
         .from('lessons')
-        .select('id, title')
+        .select('id, slug, title')
         .in('id', lessonIds)
-      const lessonTitleMap = new Map((lessons ?? []).map((l) => [l.id, l.title]))
+      const lessonMap = new Map((lessons ?? []).map((l) => [l.id, l]))
       taskMap = new Map(
         tasks.map((t) => [t.id, {
           title: t.title,
           lesson_id: t.lesson_id,
-          lesson_title: lessonTitleMap.get(t.lesson_id) ?? 'Aula',
+          lesson_url_id: lessonMap.get(t.lesson_id)?.slug ?? t.lesson_id,
+          lesson_title: lessonMap.get(t.lesson_id)?.title ?? 'Aula',
         }])
       )
     }
@@ -90,7 +91,7 @@ export default async function NotasPendentesPage() {
                     </div>
                   </div>
                   <Link
-                    href={`/dashboard/aulas/${task.lesson_id}?tab=tarefa`}
+                    href={`/dashboard/aulas/${task.lesson_url_id}?tab=tarefa`}
                     className="shrink-0 text-xs text-primary hover:underline"
                   >
                     Ver aula →
