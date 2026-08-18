@@ -654,8 +654,20 @@ export function MemberMarketingView({
   periods?: MarketingPeriod[]
   hideB2BBadge?: boolean
 }) {
+  // Sub-abas "Ofertas Diárias"/"Lâminas de Condições" só aparecem quando têm
+  // pelo menos 1 item — pedido do usuário, pra não mostrar uma aba clicável
+  // que só leva a "Nenhuma oferta disponível". Calculado a partir dos
+  // `items` recebidos (mesma fonte que os cards usam), não muda depois do
+  // mount (a página inteira é re-renderizada pelo servidor quando o
+  // conteúdo muda, não precisa de efeito pra recalcular).
+  const availableVisualSubsections = VISUAL_SUBSECTIONS.filter((sub) =>
+    items.some((i) => i.category === sub.key)
+  )
+
   const [activeKey, setActiveKey] = useState(sections[0]?.key ?? '')
-  const [visualSubTab, setVisualSubTab] = useState(VISUAL_SUBSECTIONS[0].key)
+  const [visualSubTab, setVisualSubTab] = useState(
+    availableVisualSubsections[0]?.key ?? VISUAL_SUBSECTIONS[0].key
+  )
   const [selectedItem, setSelectedItem] = useState<MarketingItem | null>(null)
 
   const activeSection = sections.find((s) => s.key === activeKey)
@@ -695,10 +707,10 @@ export function MemberMarketingView({
         })}
       </div>
 
-      {/* Sub-tabs visuais */}
-      {isVisual && (
+      {/* Sub-tabs visuais — só aparecem se houver pelo menos uma com item */}
+      {isVisual && availableVisualSubsections.length > 0 && (
         <div className="flex gap-0 border-b border-border mb-6">
-          {VISUAL_SUBSECTIONS.map(({ key, label }) => (
+          {availableVisualSubsections.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setVisualSubTab(key)}
@@ -715,7 +727,7 @@ export function MemberMarketingView({
         </div>
       )}
 
-      {!isVisual && <div className="mb-6" />}
+      {(!isVisual || availableVisualSubsections.length === 0) && <div className="mb-6" />}
 
       {/* Conteúdo */}
       {isVisual && effectiveCategory === 'ofertas_diarias' && (
