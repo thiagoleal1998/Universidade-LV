@@ -255,7 +255,15 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     playStartTimeRef.current = performance.now()
     hasLiveUtteranceRef.current = true
     setPlayedChars(clamped)
-    window.speechSynthesis.speak(buildUtterance(clamped, rate, volume))
+    const utterance = buildUtterance(clamped, rate, volume)
+    // `speak()` chamado no MESMO tick de `cancel()` é um bug conhecido do
+    // motor do Chrome — a fala nova às vezes é silenciosamente descartada
+    // ou demora bem mais que o esperado pra começar, em vez do gap curto
+    // esperado de uma recriação normal. Um `setTimeout(0)` empurra o
+    // `speak()` pro próximo tick, depois do `cancel()` já ter sido
+    // processado de verdade pelo motor — mitigação padrão documentada
+    // pra esse bug.
+    setTimeout(() => window.speechSynthesis.speak(utterance), 0)
     setTtsState('playing')
   }
 
@@ -350,8 +358,13 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     playStartCharRef.current = clamped
     playStartTimeRef.current = performance.now()
     hasLiveUtteranceRef.current = true
-    window.speechSynthesis.speak(buildUtterance(clamped, next, volume))
-    if (!wasPlaying) window.speechSynthesis.pause()
+    const utterance = buildUtterance(clamped, next, volume)
+    // Ver comentário em playFrom — mesmo bug do Chrome (speak() colado no
+    // cancel() no mesmo tick).
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance)
+      if (!wasPlaying) window.speechSynthesis.pause()
+    }, 0)
     setTtsState(wasPlaying ? 'playing' : 'paused')
   }
 
@@ -365,8 +378,17 @@ function TextToSpeechPlayer({ html }: { html: string }) {
     playStartCharRef.current = clamped
     playStartTimeRef.current = performance.now()
     hasLiveUtteranceRef.current = true
-    window.speechSynthesis.speak(buildUtterance(clamped, rate, next))
-    if (!wasPlaying) window.speechSynthesis.pause()
+    const utterance = buildUtterance(clamped, rate, next)
+    // Ver comentário em playFrom — mesmo bug do Chrome (speak() colado no
+    // cancel() no mesmo tick). Era a suspeita mais provável pro chamado
+    // CLV-0048 reaberto de novo ("fica mudo por um pequeno tempo ao soltar
+    // o volume") — cancel()+speak() síncronos no mesmo tick fazem o motor
+    // ora descartar a fala nova, ora demorar bem mais que o esperado pra
+    // retomar; adiar o speak() um tick evita as duas coisas.
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance)
+      if (!wasPlaying) window.speechSynthesis.pause()
+    }, 0)
     setTtsState(wasPlaying ? 'playing' : 'paused')
   }
 
