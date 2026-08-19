@@ -125,7 +125,7 @@ export function MembrosTabs({
         </>
       )}
 
-      {tab === 'areas' && <CollaboratorAreasManager areas={areas} />}
+      {tab === 'areas' && <CollaboratorAreasManager areas={areas} members={[...active, ...inactive]} />}
 
       {tab === 'tags' && <TagsManager tags={allTags} />}
     </>

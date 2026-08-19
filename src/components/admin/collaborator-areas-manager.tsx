@@ -9,17 +9,26 @@ import {
   type CollaboratorArea,
 } from '@/app/actions/collaborator-areas'
 import { CAPABILITIES, CAPABILITY_LABELS, type Capability } from '@/lib/capabilities'
+import type { MemberWithEmail } from '@/components/admin/members-table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { Plus, Trash2, Briefcase, Pencil, X } from 'lucide-react'
+import { Plus, Trash2, Briefcase, Pencil, X, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+function initialsOf(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || '?'
+}
 
 function CapabilityCheckboxes({
   selected,
@@ -108,11 +117,59 @@ function AreaForm({
   )
 }
 
-export function CollaboratorAreasManager({ areas }: { areas: CollaboratorArea[] }) {
+function AreaMembersDialog({
+  area,
+  members,
+  onClose,
+}: {
+  area: CollaboratorArea
+  members: MemberWithEmail[]
+  onClose: () => void
+}) {
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-muted-foreground" />
+            {area.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        {members.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic py-4">
+            Nenhum colaborador nesta área ainda.
+          </p>
+        ) : (
+          <div className="space-y-1.5 overflow-y-auto pr-1">
+            {members.map((m) => (
+              <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors">
+                <Avatar className="w-8 h-8 shrink-0">
+                  {m.avatar_url && <AvatarImage src={m.avatar_url} alt={m.full_name} />}
+                  <AvatarFallback className="text-xs">{initialsOf(m.full_name)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{m.full_name || 'Sem nome'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                </div>
+                {!m.active && (
+                  <Badge variant="outline" className="text-[10px] shrink-0 text-muted-foreground">Inativo</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export function CollaboratorAreasManager({ areas, members }: { areas: CollaboratorArea[]; members: MemberWithEmail[] }) {
   const router = useRouter()
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewingArea, setViewingArea] = useState<CollaboratorArea | null>(null)
 
   async function handleDelete(id: string, name: string) {
     setDeletingId(id)
@@ -136,13 +193,25 @@ export function CollaboratorAreasManager({ areas }: { areas: CollaboratorArea[] 
         {areas.length === 0 && !showCreate && (
           <p className="text-xs text-muted-foreground italic">Nenhuma área criada ainda.</p>
         )}
-        {areas.map((area) =>
-          editingId === area.id ? (
+        {areas.map((area) => {
+          const areaMembers = members.filter((m) => m.role === 'collaborator' && m.collaborator_area_id === area.id)
+          return editingId === area.id ? (
             <AreaForm key={area.id} initial={area} onDone={() => setEditingId(null)} />
           ) : (
             <div key={area.id} className="flex items-center justify-between gap-3 border rounded-lg px-3 py-2.5">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">{area.name}</p>
+              <button
+                type="button"
+                onClick={() => setViewingArea(area)}
+                className="min-w-0 flex-1 text-left rounded-md -m-1 p-1 hover:bg-muted/60 transition-colors"
+                title="Ver colaboradores desta área"
+              >
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground">{area.name}</p>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                    <Users className="w-3 h-3" />
+                    {areaMembers.length}
+                  </span>
+                </div>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {area.capabilities.map((cap) => (
                     <Badge key={cap} variant="outline" className="text-[10px]">
@@ -150,7 +219,7 @@ export function CollaboratorAreasManager({ areas }: { areas: CollaboratorArea[] 
                     </Badge>
                   ))}
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-1 shrink-0">
                 <Button variant="ghost" size="icon" onClick={() => setEditingId(area.id)} title="Editar área">
                   <Pencil className="w-3.5 h-3.5" />
@@ -176,8 +245,16 @@ export function CollaboratorAreasManager({ areas }: { areas: CollaboratorArea[] 
               </div>
             </div>
           )
-        )}
+        })}
       </div>
+
+      {viewingArea && (
+        <AreaMembersDialog
+          area={viewingArea}
+          members={members.filter((m) => m.role === 'collaborator' && m.collaborator_area_id === viewingArea.id)}
+          onClose={() => setViewingArea(null)}
+        />
+      )}
 
       {showCreate ? (
         <AreaForm onDone={() => setShowCreate(false)} />
