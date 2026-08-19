@@ -210,42 +210,54 @@ async function checkHostgatorStatusPage() {
 // problema" ou "o cron nem rodou" (o próprio alerta silencioso não avisa
 // de si mesmo quebrado). Agora manda um e-mail TODO dia: resumo "tudo ok"
 // quando não há falha, e o mesmo alerta de sempre quando há.
+// Destinatários fixos além do ADMIN_EMAIL — pedido do usuário (19/08/2026).
+// Hardcoded aqui de propósito: é um script de infra que ninguém edita pela
+// UI, não um `settings` da tabela.
+const EXTRA_RECIPIENTS = ['jonas.almeida@litoralverde.com.br', 'gustavo.monken@litoralverde.com.br']
+
 async function sendReport(results, failures) {
   const ok = failures.length === 0
   const title = ok
     ? '✓ Verificação diária: tudo certo'
     : `⚠ Verificação diária: ${failures.length} problema(s) encontrado(s)`
+  // <br> em vez de \n: o RD Station insere cf_corpo dentro do HTML do
+  // template do jeito que veio — uma quebra de linha "crua" (\n) é
+  // whitespace comum pro HTML, que colapsa tudo numa linha só (foi
+  // exatamente o sintoma relatado: os itens saíam um do lado do outro).
   const body = ok
-    ? results.map((r) => `✓ ${r.name}`).join('\n')
-    : failures.map((f) => `• ${f.name}: ${f.detail || 'falhou, sem detalhe'}`).join('\n')
+    ? results.map((r) => `✓ ${r.name}`).join('<br>')
+    : failures.map((f) => `• ${f.name}: ${f.detail || 'falhou, sem detalhe'}`).join('<br>')
 
   if (dryRun) {
-    console.log(`\n[--dry-run] e-mail que seria enviado:\n${title}\n${body}`)
+    console.log(`\n[--dry-run] e-mail que seria enviado:\n${title}\n${body.replace(/<br>/g, '\n')}`)
     return
   }
   if (!env.ADMIN_EMAIL) {
     console.error('✗ ADMIN_EMAIL não configurado — não foi possível enviar o e-mail.')
     return
   }
+  const recipients = [...new Set([env.ADMIN_EMAIL, ...EXTRA_RECIPIENTS])]
   try {
     const token = await getRdAccessToken()
     if (!token) throw new Error('sem access_token')
-    await fetch(RD_EVENTS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        event_type: 'CONVERSION',
-        event_family: 'CDP',
-        payload: {
-          conversion_identifier: 'universidade-lv-alerta-sistema',
-          email: env.ADMIN_EMAIL,
-          cf_tags_lv: 'Admin',
-          cf_titulo: title,
-          cf_corpo: body,
-        },
-      }),
-    })
-    console.log('✓ e-mail enviado via RD Station')
+    for (const email of recipients) {
+      await fetch(RD_EVENTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          event_type: 'CONVERSION',
+          event_family: 'CDP',
+          payload: {
+            conversion_identifier: 'universidade-lv-alerta-sistema',
+            email,
+            cf_tags_lv: 'Admin',
+            cf_titulo: title,
+            cf_corpo: body,
+          },
+        }),
+      })
+    }
+    console.log(`✓ e-mail enviado via RD Station (${recipients.join(', ')})`)
   } catch (err) {
     // Se o próprio RD Station é o que está fora do ar, o e-mail não sai —
     // ponto único de falha aceito deliberadamente (decisão do usuário:
