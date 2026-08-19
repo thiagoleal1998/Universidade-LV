@@ -272,6 +272,7 @@ export async function deleteMarketingItem(id: string) {
 // documentado para anexos de feedback (Word/Excel via MIME sniffing ruim).
 const MARKETING_MIME_BY_EXT: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml',
+  heic: 'image/heic', heif: 'image/heif',
   pdf: 'application/pdf',
   zip: 'application/zip',
   ai: 'application/postscript',
@@ -285,15 +286,18 @@ const MARKETING_MIME_BY_EXT: Record<string, string> = {
 // relatado: Excel e vídeo aceitos nos campos de logo/lâmina da Corrida de
 // Vendas — Excel baixava direto sem preview, vídeo caía numa página de erro
 // porque o arquivo nem chegava a subir direito).
+// heic/heif inclusos nos 3 grupos — é a foto padrão de qualquer iPhone
+// (câmera nativa desde o iOS 11), então qualquer campo que aceite "imagem"
+// precisa aceitar essa também. toWebP() (src/lib/image.ts) já sabe converter.
 const MARKETING_UPLOAD_KINDS = {
-  image: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'],
-  image_pdf: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'pdf'],
-  material: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'pdf', 'zip', 'ai', 'psd'],
+  image: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'heic', 'heif'],
+  image_pdf: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'heic', 'heif', 'pdf'],
+  material: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'heic', 'heif', 'pdf', 'zip', 'ai', 'psd'],
 } as const
 export type MarketingUploadKind = keyof typeof MARKETING_UPLOAD_KINDS
 
 const MARKETING_UPLOAD_KIND_ERROR: Record<MarketingUploadKind, string> = {
-  image: 'Apenas imagens são aceitas (JPG, PNG, WEBP, GIF ou SVG).',
+  image: 'Apenas imagens são aceitas (JPG, PNG, WEBP, GIF, SVG ou HEIC).',
   image_pdf: 'Apenas imagem ou PDF são aceitos.',
   material: 'Tipo de arquivo não suportado. Envie imagem, PDF, ZIP, AI ou PSD.',
 }

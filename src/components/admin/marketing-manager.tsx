@@ -282,7 +282,7 @@ function ItemForm({
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*,application/pdf,.zip,.ai,.psd"
+                  accept="image/*,.heic,.heif,application/pdf,.zip,.ai,.psd"
                   className="hidden"
                   onChange={handleFileChange}
                 />
