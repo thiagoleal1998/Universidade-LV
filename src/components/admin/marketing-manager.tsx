@@ -185,10 +185,24 @@ function ItemForm({
   }
 
   function uploadFile(file: File) {
+    // Uma foto de celular (ex.: oferta fotografada na hora) facilmente passa
+    // de 10MB — sem esse guard, o corpo da requisição estourava o limite de
+    // Server Action do Next (next.config.ts) antes mesmo de chegar na
+    // validação de tipo do servidor, derrubando a página inteira ("This page
+    // couldn't load") sem nenhuma mensagem útil. Mesmo padrão já usado em
+    // corrida-vendas-manager.tsx/famtours-manager.tsx/trainings-manager.tsx.
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Arquivo muito grande (máx. 8MB). Escolha um arquivo menor.')
+      return
+    }
     startUpload(async () => {
-      const r = await uploadMarketingFile(file, 'material')
-      if (r?.error) toast.error(r.error)
-      else if (r.url) { setUrl(r.url); toast.success('Arquivo enviado!') }
+      try {
+        const r = await uploadMarketingFile(file, 'material')
+        if (r?.error) toast.error(r.error)
+        else if (r.url) { setUrl(r.url); toast.success('Arquivo enviado!') }
+      } catch {
+        toast.error('Não foi possível enviar o arquivo. Tente novamente com um arquivo menor.')
+      }
     })
   }
 
