@@ -218,6 +218,14 @@ export async function saveMemberAll(
  * Aprova o cadastro pendente definindo papel/área/tags/cursos numa ÚNICA
  * Server Action. Mesmo motivo de `saveMemberAll` acima: várias requisições
  * seguidas competiam pela renovação do token e uma delas chegava sem sessão.
+ *
+ * Ordem importa (chamado LV-0766): papel/tags/`syncLeadProfile` rodam e são
+ * AGUARDADOS antes de `approveMember` (que dispara o e-mail de aprovação) —
+ * antes disso, `syncLeadProfile` (que manda as tags pra RD Station) só
+ * disparava DEPOIS, sem `await`, correndo contra o e-mail de aprovação que
+ * já tinha saído segundos antes. Sem garantia de qual chegava primeiro na RD
+ * Station, uma automação que segmentasse por tag podia avaliar a condição
+ * antes da tag existir no lead.
  */
 export async function approveMemberAll(
   memberId: string,
@@ -231,16 +239,16 @@ export async function approveMemberAll(
   const authz = await requireAdmin()
   if ('error' in authz) return { error: authz.error }
 
-  const approveResult = await approveMember(memberId, data.courseIds)
-  if (approveResult?.error) return { error: approveResult.error }
-
   const roleResult = await updateMemberRole(memberId, data.role, data.collaboratorAreaId)
   if (roleResult?.error) return { error: roleResult.error }
 
   const tagsResult = await assignMemberTags(memberId, data.tagIds)
   if (tagsResult?.error) return { error: tagsResult.error }
 
-  syncLeadProfile(memberId)
+  await syncLeadProfile(memberId)
+
+  const approveResult = await approveMember(memberId, data.courseIds)
+  if (approveResult?.error) return { error: approveResult.error }
 
   revalidatePath('/admin/membros')
   return { success: true }
@@ -357,8 +365,9 @@ export async function approveMember(userId: string, courseIds: string[]) {
   ])
   const email = userData.user?.email ?? ''
   if (email) rdMemberApproved(email, profile?.full_name ?? '')
-  // Sem syncLeadProfile aqui de propósito — mesmo motivo de updateMember acima
-  // (approveMember é sempre seguido de updateMemberRole + assignMemberTags).
+  // Sem syncLeadProfile aqui de propósito — approveMemberAll já chama (e
+  // AGUARDA) syncLeadProfile antes de chegar aqui, de propósito (LV-0766):
+  // as tags precisam estar na RD Station antes do e-mail de aprovação sair.
 
   logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'aprovou' })
 
@@ -386,7 +395,14 @@ export async function rejectMember(userId: string) {
     adminClient.auth.admin.getUserById(userId),
   ])
   const email = userData.user?.email ?? ''
-  if (email) rdMemberRejected(email, profile?.full_name ?? '')
+  // Aguarda syncLeadProfile antes do e-mail de recusa (LV-0766) — um membro
+  // recusado normalmente não tem tag nenhuma ainda, mas isso garante que o
+  // consentimento (legal_bases) do lead esteja gravado na RD Station antes
+  // do evento de e-mail sair, mesmo raciocínio do fluxo de aprovação acima.
+  if (email) {
+    await syncLeadProfile(userId)
+    rdMemberRejected(email, profile?.full_name ?? '')
+  }
 
   logActivity(authz, { action: 'toggle', entityType: 'membro', entityId: userId, entityLabel: profile?.full_name || userId, detail: 'recusou' })
 

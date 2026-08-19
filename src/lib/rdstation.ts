@@ -37,12 +37,25 @@ const adminEmail = process.env.ADMIN_EMAIL ?? ''
 // Busca (e renova se preciso) o access_token guardado em rdstation_tokens.
 // Nunca lido/escrito via client de sessão — só adminClient (tabela sem
 // nenhuma policy de leitura pública, diferente de site_settings).
+//
+// Bug real investigado (chamado LV-0766, v1.128.1): um membro aprovado nunca
+// recebeu o e-mail de cadastro nem de aprovação, e não sobrava NENHUM rastro
+// nos logs do servidor. Causa: os 3 pontos abaixo que hoje só `return null`
+// (sem access_token/sem token configurado/refresh falhou) eram silenciosos —
+// sem log nenhum, só a mensagem de exceção do catch cobria um caso. Consultando
+// o contato dela direto na API da RD Station, `legal_bases` voltou vazio mesmo
+// o código mandando consentimento tanto no cadastro quanto na aprovação — ou
+// seja, pelo menos uma dessas chamadas nunca chegou a sair, e não havia como
+// saber qual nem por quê. Cada `return null` agora loga o motivo específico.
 async function getAccessToken(): Promise<string | null> {
-  if (!clientId || !clientSecret) return null
+  if (!clientId || !clientSecret) return null // sem chaves configuradas — no-op esperado em dev local
 
   const adminClient = createAdminClient()
   const { data: row } = await adminClient.from('rdstation_tokens').select('*').eq('id', 1).single()
-  if (!row) return null // ainda não autorizado (fluxo OAuth de uma vez feito manualmente)
+  if (!row) {
+    console.error('[rdstation] nenhum token em rdstation_tokens — fluxo OAuth nunca foi concluído')
+    return null
+  }
 
   const expiresAt = new Date(row.expires_at).getTime()
   if (Date.now() < expiresAt - 5 * 60 * 1000) return row.access_token
@@ -53,7 +66,10 @@ async function getAccessToken(): Promise<string | null> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, refresh_token: row.refresh_token }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error(`[rdstation] falhou ao renovar access_token: HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 300)}`)
+      return null
+    }
     const json = await res.json()
     const newExpiresAt = new Date(Date.now() + json.expires_in * 1000).toISOString()
     await adminClient
@@ -66,8 +82,8 @@ async function getAccessToken(): Promise<string | null> {
       })
       .eq('id', 1)
     return json.access_token
-  } catch {
-    console.error('[rdstation] falhou ao renovar access_token')
+  } catch (err) {
+    console.error('[rdstation] falhou ao renovar access_token (exceção):', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -82,27 +98,42 @@ type LegalBasis = { category: string; type: string; status: string }
 // aprovação, etc.) sempre funcionaram sem isso.
 const MARKETING_CONSENT: LegalBasis[] = [{ category: 'communications', type: 'consent', status: 'granted' }]
 
+// 1 retry (com pausa curta) + log de toda falha, inclusive HTTP não-2xx que
+// antes era ignorado (só exceção de rede caía no catch — uma resposta 4xx/5xx
+// da RD Station passava batido, sem log e sem retry). Fire-and-forget continua
+// não bloqueando quem chama (nunca lança), mas agora nunca falha em silêncio.
 async function sendConversion(conversionIdentifier: string, email: string, extra: Record<string, string> = {}, legalBases?: LegalBasis[]) {
   if (!email) return
-  try {
-    const token = await getAccessToken()
-    if (!token) return
-    await fetch(EVENTS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        event_type: 'CONVERSION',
-        event_family: 'CDP',
-        payload: {
-          conversion_identifier: conversionIdentifier,
-          email,
-          ...extra,
-          ...(legalBases ? { legal_bases: legalBases } : {}),
-        },
-      }),
-    })
-  } catch {
-    console.error('[rdstation] falhou ao enviar evento:', conversionIdentifier)
+  const token = await getAccessToken()
+  if (!token) {
+    console.error(`[rdstation] evento "${conversionIdentifier}" não enviado (${email}): sem access_token disponível`)
+    return
+  }
+
+  const body = JSON.stringify({
+    event_type: 'CONVERSION',
+    event_family: 'CDP',
+    payload: {
+      conversion_identifier: conversionIdentifier,
+      email,
+      ...extra,
+      ...(legalBases ? { legal_bases: legalBases } : {}),
+    },
+  })
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await fetch(EVENTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body,
+      })
+      if (res.ok) return
+      console.error(`[rdstation] evento "${conversionIdentifier}" rejeitado (${email}, tentativa ${attempt}/2): HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 300)}`)
+    } catch (err) {
+      console.error(`[rdstation] falhou ao enviar evento "${conversionIdentifier}" (${email}, tentativa ${attempt}/2):`, err instanceof Error ? err.message : err)
+    }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 1000))
   }
 }
 
@@ -118,12 +149,18 @@ export async function rdGrantMarketingConsent(email: string) {
   await sendConversion(RD_EVENTS.consentimento_inicial, email, {}, MARKETING_CONSENT)
 }
 
+// MARKETING_CONSENT aqui de propósito, mesmo esses dois sendo tratados como
+// transacionais pela RD Station (não precisavam de base legal antes) — LV-0766
+// mostrou o lead com `legal_bases` vazio mesmo o cadastro supostamente já
+// tendo concedido consentimento, então reforçar aqui é defesa em profundidade
+// barata: nunca faz mal, e cobre o caso de o consentimento do cadastro ter
+// falhado silenciosamente antes dessa correção existir.
 export async function rdMemberApproved(email: string, name: string) {
-  await sendConversion(RD_EVENTS.aprovado, email, { name })
+  await sendConversion(RD_EVENTS.aprovado, email, { name }, MARKETING_CONSENT)
 }
 
 export async function rdMemberRejected(email: string, name: string) {
-  await sendConversion(RD_EVENTS.recusado, email, { name })
+  await sendConversion(RD_EVENTS.recusado, email, { name }, MARKETING_CONSENT)
 }
 
 export async function rdMembersNewAnnouncement(emails: string[], title: string, body: string) {

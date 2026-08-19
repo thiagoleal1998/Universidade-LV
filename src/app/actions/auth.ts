@@ -139,7 +139,11 @@ export async function register(_state: unknown, formData: FormData) {
   if (data.user) {
     await adminClient.from('profiles').update({ active: false, full_name, uf, city }).eq('id', data.user.id)
     rdAdminNewMemberPending(full_name, email)
-    rdWelcomeOnRegister(email, full_name)
+    // Aguardado de propósito (LV-0766): sendConversion agora tenta 2x e loga
+    // qualquer falha — esperar aqui garante que o cadastro só "termina" depois
+    // do melhor esforço de enviar o e-mail de boas-vindas, em vez de um
+    // fire-and-forget que podia perder a corrida contra o fim da requisição.
+    await rdWelcomeOnRegister(email, full_name)
     await notifyAllAdmins(data.user.id, {
       type: 'new_member_pending',
       title: `Novo cadastro pendente: ${full_name || email}`,
