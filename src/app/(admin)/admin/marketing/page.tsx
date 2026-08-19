@@ -32,7 +32,7 @@ export default async function MarketingPage() {
 
   const [
     { data }, settings, { data: trainingData }, products, periods, { data: tagsData },
-    { data: famtoursData }, { data: gruposData }, { data: commercialConditionsData },
+    { data: famtoursData }, { data: eventosData }, { data: gruposData }, { data: commercialConditionsData },
     { data: accessRequestsData }, { data: famtourAccessRequestsData },
   ] = await Promise.all([
     db.from('marketing_items').select('*').order('order_index'),
@@ -41,7 +41,8 @@ export default async function MarketingPage() {
     getMarketingProducts(),
     getMarketingPeriods(),
     supabase.from('tags').select('*').order('name'),
-    db.from('famtours').select('*').order('start_date', { ascending: true, nullsFirst: false }),
+    db.from('famtours').select('*, photos:famtour_photos(*), testimonials:famtour_testimonials(*)').order('start_date', { ascending: true, nullsFirst: false }),
+    db.from('eventos').select('*, photos:evento_photos(*), testimonials:evento_testimonials(*)').order('start_date', { ascending: true, nullsFirst: false }),
     db.from('grupos').select('*').order('start_date', { ascending: true, nullsFirst: false }),
     db.from('commercial_conditions').select('*').order('created_at', { ascending: false }),
     // training_access_requests tem DUAS FKs pra profiles (member_id e
@@ -96,6 +97,7 @@ export default async function MarketingPage() {
 
   const canEditTraining = isAdmin || viewCtx.capabilities.includes('trainings')
   const canEditFamtour = isAdmin || viewCtx.capabilities.includes('famtours')
+  const canEditEvento = isAdmin || viewCtx.capabilities.includes('eventos')
   const canEditGrupo = isAdmin || viewCtx.capabilities.includes('grupos')
   const canEditComercial = isAdmin || viewCtx.capabilities.includes('comercial')
   // Premiação/PodViajar/Corrida de Vendas são settings globais (sem owner_area_id,
@@ -107,10 +109,30 @@ export default async function MarketingPage() {
     canEdit: isAdmin || (canEditTraining && t.owner_area_id === viewCtx.areaId),
     pendingAccessRequests: pendingAccessByTraining.get(t.id) ?? [],
   }))
+  // Foto de galeria só grava o storage_path — a URL pública é construída na
+  // hora (sem chamada de rede, `getPublicUrl` só monta a string), igual ao
+  // padrão já usado pra fotos de aula (`PhotoWithUrl` em lesson-editor.tsx).
+  function withGalleryUrls<P extends { storage_path: string; order_index: number }>(photos: P[] | null): (P & { url: string })[] {
+    return (photos ?? [])
+      .map((p) => ({ ...p, url: db.storage.from('marketing-files').getPublicUrl(p.storage_path).data.publicUrl }))
+      .sort((a, b) => a.order_index - b.order_index)
+  }
+  function sortByOrder<T extends { order_index: number }>(items: T[] | null): T[] {
+    return (items ?? []).slice().sort((a, b) => a.order_index - b.order_index)
+  }
+
   const famtoursWithEdit = (famtoursData ?? []).map((f) => ({
     ...f,
     canEdit: isAdmin || (canEditFamtour && f.owner_area_id === viewCtx.areaId),
     pendingAccessRequests: pendingAccessByFamtour.get(f.id) ?? [],
+    photos: withGalleryUrls(f.photos),
+    testimonials: sortByOrder(f.testimonials),
+  }))
+  const eventosWithEdit = (eventosData ?? []).map((e) => ({
+    ...e,
+    canEdit: isAdmin || (canEditEvento && e.owner_area_id === viewCtx.areaId),
+    photos: withGalleryUrls(e.photos),
+    testimonials: sortByOrder(e.testimonials),
   }))
   const gruposWithEdit = (gruposData ?? []).map((g) => ({
     ...g,
@@ -128,6 +150,7 @@ export default async function MarketingPage() {
         sections={parseSections(settings.marketing_sections)}
         trainingItems={trainingItemsWithEdit}
         famtours={famtoursWithEdit}
+        eventos={eventosWithEdit}
         grupos={gruposWithEdit}
         commercialConditions={commercialConditionsWithEdit}
         products={products}
@@ -138,6 +161,7 @@ export default async function MarketingPage() {
         corridaVendasRaw={settings.corrida_vendas}
         canCreateTraining={canEditTraining}
         canCreateFamtour={canEditFamtour}
+        canCreateEvento={canEditEvento}
         canCreateGrupo={canEditGrupo}
         canCreateComercial={canEditComercial}
         userRole={viewCtx.role}

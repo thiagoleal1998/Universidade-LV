@@ -30,6 +30,7 @@ export const ACTIVITY_ENTITY_LABELS = {
   item_marketing: 'Item de marketing',
   premiacao: 'Configuração de premiação',
   famtour: 'Famtour',
+  evento: 'Evento',
   grupo: 'Grupo',
   condicao_comercial: 'Condição comercial',
   membro: 'Membro',

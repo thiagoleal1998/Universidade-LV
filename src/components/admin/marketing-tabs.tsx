@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap, Luggage, Users2 } from 'lucide-react'
+import { Presentation, GraduationCap, TrendingUp, Plane, Trophy, Headphones, Link2, Zap, Luggage, CalendarDays, Users2 } from 'lucide-react'
 import { MarketingManager } from '@/components/admin/marketing-manager'
 import { TrainingsManager } from '@/components/admin/trainings-manager'
 import type { PendingAccessRequest } from '@/lib/access-lock'
 import { FamtoursManager } from '@/components/admin/famtours-manager'
+import { EventosManager } from '@/components/admin/eventos-manager'
 import { GruposManager } from '@/components/admin/grupos-manager'
 import { CommercialConditionsManager } from '@/components/admin/commercial-conditions-manager'
 import { TamoJuntoWinnersManager } from '@/components/admin/tamojunto-winners-manager'
@@ -14,6 +15,7 @@ import { CorridaVendasManager } from '@/components/admin/corrida-vendas-manager'
 import type { MarketingSection } from '@/components/admin/marketing-manager'
 import type { TrainingItem } from '@/app/actions/training'
 import type { Famtour } from '@/app/actions/famtours'
+import type { Evento } from '@/app/actions/eventos'
 import type { Grupo } from '@/app/actions/grupos'
 import type { CommercialCondition } from '@/app/actions/commercial-conditions'
 import type { MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
@@ -21,7 +23,7 @@ import type { Tag } from '@/components/admin/marketing-manager'
 import type { Capability } from '@/lib/capabilities'
 import { cn } from '@/lib/utils'
 
-type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'famtours' | 'grupos' | 'premiacao' | 'podviajar'
+type Tab = 'marketing' | 'treinamentos' | 'comercial' | 'aereo' | 'famtours' | 'eventos' | 'grupos' | 'premiacao' | 'podviajar'
 type ComercialSubTab = 'condicoes' | 'corrida'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] = [
@@ -54,6 +56,12 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; desc: string }[] 
     label: 'Famtours',
     icon: Luggage,
     desc: 'Divulgue viagens de familiarização para os agentes na home deles.',
+  },
+  {
+    id: 'eventos',
+    label: 'Eventos',
+    icon: CalendarDays,
+    desc: 'Divulgue eventos para os agentes na home deles.',
   },
   {
     id: 'grupos',
@@ -89,6 +97,7 @@ export function MarketingTabs({
   sections,
   trainingItems,
   famtours = [],
+  eventos = [],
   grupos = [],
   commercialConditions = [],
   products = [],
@@ -99,6 +108,7 @@ export function MarketingTabs({
   corridaVendasRaw = '{}',
   canCreateTraining = true,
   canCreateFamtour = true,
+  canCreateEvento = true,
   canCreateGrupo = true,
   canCreateComercial = true,
   userRole = 'admin',
@@ -110,6 +120,7 @@ export function MarketingTabs({
   sections: MarketingSection[]
   trainingItems: (TrainingItem & { canEdit?: boolean; pendingAccessRequests?: PendingAccessRequest[] })[]
   famtours?: (Famtour & { canEdit?: boolean })[]
+  eventos?: (Evento & { canEdit?: boolean })[]
   grupos?: (Grupo & { canEdit?: boolean })[]
   commercialConditions?: (CommercialCondition & { canEdit?: boolean })[]
   products?: MarketingProduct[]
@@ -120,6 +131,7 @@ export function MarketingTabs({
   corridaVendasRaw?: string
   canCreateTraining?: boolean
   canCreateFamtour?: boolean
+  canCreateEvento?: boolean
   canCreateGrupo?: boolean
   canCreateComercial?: boolean
   userRole?: 'admin' | 'collaborator'
@@ -210,6 +222,9 @@ export function MarketingTabs({
       )}
       {tab === 'famtours' && (
         <FamtoursManager items={famtours} canCreate={canCreateFamtour} />
+      )}
+      {tab === 'eventos' && (
+        <EventosManager items={eventos} canCreate={canCreateEvento} />
       )}
       {tab === 'grupos' && (
         <GruposManager items={grupos} canCreate={canCreateGrupo} />

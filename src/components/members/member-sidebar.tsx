@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Search, Menu, X, BookOpen,
-  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane, Briefcase, Users2,
+  PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane, Briefcase, Users2, Luggage, CalendarDays,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -20,7 +20,8 @@ type NavLabels = Record<string, string>
 
 const DEFAULT_NAV_LABELS: NavLabels = {
   home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
-  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', grupos: 'Grupos',
+  marketing: 'Marketing', famtours: 'Famtours', eventos: 'Eventos',
+  aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', grupos: 'Grupos',
   podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
 }
 
@@ -30,7 +31,7 @@ function parseNavLabels(json: string): NavLabels {
 }
 
 function parseMemberNavOrder(json: string): string[] {
-  const DEFAULT = ['home', 'cursos', 'treinamentos', 'marketing', 'aereo', 'comercial', 'grupos', 'podviajar', 'comunidade', 'documentos', 'configuracoes']
+  const DEFAULT = ['home', 'cursos', 'treinamentos', 'marketing', 'famtours', 'eventos', 'aereo', 'comercial', 'grupos', 'podviajar', 'comunidade', 'documentos', 'configuracoes']
   try {
     const parsed = JSON.parse(json)
     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -84,6 +85,8 @@ const MEMBER_NAV_MAP: Record<string, { href: string; icon: React.ComponentType<{
   cursos:        { href: '/dashboard/cursos',        icon: GraduationCap, exact: false },
   treinamentos:  { href: '/dashboard/treinamentos',  icon: BookOpen,      exact: false },
   marketing:     { href: '/dashboard/marketing',     icon: Megaphone,     exact: false },
+  famtours:      { href: '/dashboard/famtours',      icon: Luggage,       exact: false },
+  eventos:       { href: '/dashboard/eventos',       icon: CalendarDays,  exact: false },
   aereo:         { href: '/dashboard/aereo',         icon: Plane,         exact: false, conditional: 'aereo'      },
   comercial:     { href: '/dashboard/comercial',     icon: Briefcase,     exact: false, conditional: 'comercial'  },
   grupos:        { href: '/dashboard/grupos',        icon: Users2,        exact: false, conditional: 'grupos'     },

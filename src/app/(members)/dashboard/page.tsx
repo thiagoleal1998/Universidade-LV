@@ -7,6 +7,7 @@ import { getMyTrainingAccessContext } from '@/app/actions/training-access'
 import { getMyFamtourAccessContext, requestFamtourAccess } from '@/app/actions/famtour-access'
 import { isAccessLocked } from '@/lib/access-lock'
 import { RequestAccessButton } from '@/components/members/request-access-button'
+import { TripCard } from '@/components/members/trip-card'
 import { buttonVariants } from '@/components/ui/button'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import { WinnersCarousel } from '@/components/members/winners-carousel'
@@ -15,7 +16,7 @@ import {
   Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
   MessageCircle, ExternalLink, Newspaper, Globe,
   TrendingUp, CheckCircle2, Trophy, Star, Headphones,
-  MapPin, Calendar, Luggage,
+  MapPin, Calendar, Luggage, CalendarDays,
 } from 'lucide-react'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
@@ -385,6 +386,7 @@ export default async function DashboardPage() {
     trainingAccessCtx,
     { data: famtoursData },
     famtourAccessCtx,
+    { data: eventosData },
   ] = await Promise.all([
     isAdmin || accessibleCourseIds.length > 0
       ? coursesQuery
@@ -401,10 +403,15 @@ export default async function DashboardPage() {
     getMyTrainingAccessContext(),
     adminClient
       .from('famtours')
-      .select('id, title, description, cover_url, url, start_date, end_date, exclusive_ufs')
+      .select('id, slug, title, description, cover_url, url, start_date, end_date, exclusive_ufs')
       .eq('is_active', true)
       .order('start_date', { ascending: true, nullsFirst: false }),
     getMyFamtourAccessContext(),
+    adminClient
+      .from('eventos')
+      .select('id, slug, title, description, cover_url, url, start_date, end_date')
+      .eq('is_active', true)
+      .order('start_date', { ascending: true, nullsFirst: false }),
   ])
 
   const courses = (coursesData ?? []) as CourseWithModules[]
@@ -479,9 +486,10 @@ export default async function DashboardPage() {
     (c) => c.status === 'em_andamento' || c.status === 'proxima' || c.vencedores.length > 0,
   )
 
-  // Famtours — esconde viagens já encerradas
+  // Famtours/Eventos — esconde viagens/eventos já encerrados
   const todayStr = new Date().toISOString().slice(0, 10)
   const famtours = (famtoursData ?? []).filter((f) => (f.end_date ?? f.start_date ?? '9999-99-99') >= todayStr)
+  const eventos = (eventosData ?? []).filter((e) => (e.end_date ?? e.start_date ?? '9999-99-99') >= todayStr)
 
   // TamoJunto
   type TamojuntoSection = { active: boolean; title: string; description: string; url: string; image_url: string; button_text: string; badge: string }
@@ -829,66 +837,50 @@ export default async function DashboardPage() {
                 {famtours.map((f) => {
                   const requestStatus = famtourAccessCtx.requestsByFamtourId[f.id] ?? 'none'
                   const locked = isAccessLocked(f, famtourAccessCtx.uf, requestStatus)
-                  const cover = f.cover_url ? (
-                    <img src={f.cover_url} alt={f.title} className="w-full aspect-video object-cover" />
-                  ) : (
-                    <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
-                      <Luggage className="w-8 h-8 text-muted-foreground/40" />
-                    </div>
-                  )
-                  // Exclusivo sem acesso liberado: nunca navega pro link real
-                  // (nem UF batendo nem solicitação aprovada) — mesma regra
-                  // de "não vaza conteúdo real" já aplicada ao treinamento.
-                  if (locked) {
-                    return (
-                      <div key={f.id} className="block rounded-2xl border border-amber-500/30 overflow-hidden bg-card">
-                        {cover}
-                        <div className="p-4 space-y-2">
-                          <p className="font-semibold text-foreground text-sm leading-snug">{f.title}</p>
-                          {(f.start_date || f.end_date) && (
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Calendar className="w-3 h-3 shrink-0" />
-                              {formatFamtourPeriod(f.start_date, f.end_date)}
-                            </span>
-                          )}
-                          {f.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">{f.description}</p>
-                          )}
-                          <RequestAccessButton
-                            onRequest={requestFamtourAccess.bind(null, f.id)}
-                            exclusiveUfs={f.exclusive_ufs}
-                            status={requestStatus}
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
                   return (
-                    <a
+                    <TripCard
                       key={f.id}
-                      href={f.url || undefined}
-                      target={f.url ? '_blank' : undefined}
-                      rel={f.url ? 'noreferrer' : undefined}
-                      className="group block rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all"
-                    >
-                      {cover}
-                      <div className="p-4">
-                        <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
-                          {f.title}
-                        </p>
-                        {(f.start_date || f.end_date) && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Calendar className="w-3 h-3 shrink-0" />
-                            {formatFamtourPeriod(f.start_date, f.end_date)}
-                          </span>
-                        )}
-                        {f.description && (
-                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{f.description}</p>
-                        )}
-                      </div>
-                    </a>
+                      href={`/dashboard/famtours/${f.slug ?? f.id}`}
+                      title={f.title}
+                      coverUrl={f.cover_url}
+                      description={f.description}
+                      period={formatFamtourPeriod(f.start_date, f.end_date)}
+                      fallbackIcon={<Luggage className="w-8 h-8 text-muted-foreground/40" />}
+                      locked={locked}
+                      lockedContent={
+                        <RequestAccessButton
+                          onRequest={requestFamtourAccess.bind(null, f.id)}
+                          exclusiveUfs={f.exclusive_ufs}
+                          status={requestStatus}
+                        />
+                      }
+                    />
                   )
                 })}
+              </div>
+            </section></>
+          )}
+
+          {/* ── Eventos ── */}
+          {eventos.length > 0 && (
+            <><hr className="border-border/50" /><section>
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarDays className="w-4 h-4 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">Eventos</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {eventos.map((e) => (
+                  <TripCard
+                    key={e.id}
+                    href={`/dashboard/eventos/${e.slug ?? e.id}`}
+                    title={e.title}
+                    coverUrl={e.cover_url}
+                    description={e.description}
+                    period={formatFamtourPeriod(e.start_date, e.end_date)}
+                    fallbackIcon={<CalendarDays className="w-8 h-8 text-muted-foreground/40" />}
+                  />
+                ))}
               </div>
             </section></>
           )}

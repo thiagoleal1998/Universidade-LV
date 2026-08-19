@@ -3,7 +3,7 @@
 // Admin → Membros → Áreas de Colaborador (tabela collaborator_areas).
 // Client-safe: sem imports de servidor.
 
-export const CAPABILITIES = ['courses', 'trainings', 'marketing', 'comercial', 'aereo', 'famtours', 'grupos'] as const
+export const CAPABILITIES = ['courses', 'trainings', 'marketing', 'comercial', 'aereo', 'famtours', 'eventos', 'grupos'] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
 export const CAPABILITY_LABELS: Record<Capability, string> = {
@@ -13,10 +13,11 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   comercial: 'Condições Comerciais',
   aereo: 'Bloqueios Aéreos',
   famtours: 'Famtours',
+  eventos: 'Eventos',
   grupos: 'Grupos',
 }
 
-export const MARKETING_CAPABILITIES: Capability[] = ['trainings', 'marketing', 'comercial', 'aereo', 'famtours', 'grupos']
+export const MARKETING_CAPABILITIES: Capability[] = ['trainings', 'marketing', 'comercial', 'aereo', 'famtours', 'eventos', 'grupos']
 
 // Categoria de marketing_items → capacidade exigida para mexer nela.
 // Premiação/PodViajar gravam settings globais e ficam admin-only (não mapeiam

@@ -137,6 +137,8 @@ const ALL_MEMBER_NAV_ITEMS = [
   { key: 'cursos',        defaultLabel: 'Meus cursos',           conditional: false },
   { key: 'treinamentos',  defaultLabel: 'Treinamentos',          conditional: false },
   { key: 'marketing',     defaultLabel: 'Marketing',             conditional: false },
+  { key: 'famtours',      defaultLabel: 'Famtours',              conditional: false },
+  { key: 'eventos',       defaultLabel: 'Eventos',               conditional: false },
   { key: 'aereo',         defaultLabel: 'Bloqueios Aéreos',      conditional: true  },
   { key: 'comercial',     defaultLabel: 'Condições Comerciais',  conditional: true  },
   { key: 'grupos',        defaultLabel: 'Grupos',                conditional: true  },
@@ -148,7 +150,8 @@ const ALL_MEMBER_NAV_ITEMS = [
 
 const DEFAULT_MEMBER_NAV_LABELS_FULL: Record<string, string> = {
   home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
-  marketing: 'Marketing', aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', grupos: 'Grupos',
+  marketing: 'Marketing', famtours: 'Famtours', eventos: 'Eventos',
+  aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', grupos: 'Grupos',
   podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
 }
 
