@@ -664,7 +664,20 @@ export function MemberMarketingView({
     items.some((i) => i.category === sub.key)
   )
 
-  const [activeKey, setActiveKey] = useState(sections[0]?.key ?? '')
+  // Mesmo raciocínio, um nível acima: uma aba principal ("Links Úteis", por
+  // exemplo) só aparece se tiver pelo menos 1 item — sem isso, clicar nela só
+  // levava a "Nenhum link disponível". Pra uma aba do tipo 'visual' ("Materiais
+  // Visuais"), um item pode estar categorizado direto em `s.key` (material
+  // genérico, fora de qualquer sub-aba) OU numa das sub-abas — as duas contam
+  // como "tem conteúdo".
+  const availableSections = sections.filter((s) => {
+    if (s.type === 'visual') {
+      return items.some((i) => i.category === s.key || VISUAL_SUBSECTIONS.some((sub) => sub.key === i.category))
+    }
+    return items.some((i) => i.category === s.key)
+  })
+
+  const [activeKey, setActiveKey] = useState(availableSections[0]?.key ?? sections[0]?.key ?? '')
   const [visualSubTab, setVisualSubTab] = useState(
     availableVisualSubsections[0]?.key ?? VISUAL_SUBSECTIONS[0].key
   )
@@ -675,7 +688,7 @@ export function MemberMarketingView({
   const effectiveCategory = isVisual ? visualSubTab : activeKey
   const activeItems = items.filter((i) => i.category === effectiveCategory)
 
-  if (sections.length === 0) {
+  if (sections.length === 0 || availableSections.length === 0) {
     return (
       <div className="text-center py-16 bg-card border rounded-xl">
         <p className="text-muted-foreground">Nenhum material disponível ainda.</p>
@@ -685,9 +698,9 @@ export function MemberMarketingView({
 
   return (
     <div className="relative">
-      {/* Tabs principais */}
+      {/* Tabs principais — só as que têm pelo menos 1 item */}
       <div className="flex flex-wrap gap-1 border-b border-border mb-0">
-        {sections.map((s) => {
+        {availableSections.map((s) => {
           const Icon = CATEGORY_ICON[s.type] ?? FileText
           return (
             <button
