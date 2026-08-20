@@ -214,6 +214,20 @@ const PERIOD_THEMES: { match: string[]; theme: PeriodTheme; coldTheme?: PeriodTh
   },
 ]
 
+// Banner genérico pra qualquer período "Feriado ..." sem tema específico
+// acima — o nome do feriado muda a cada data cadastrada (Corpus Christi,
+// Finados, Consciência Negra, Dia das Crianças, etc., cada um criado como um
+// `marketing_periods` de nome livre pelo admin) e não faz sentido cadastrar
+// um tema novo no código toda vez que um feriado novo é criado. Sem esse
+// fallback, só "Férias de Janeiro"/"Férias de Julho" (que têm tema
+// específico abaixo) ganhavam destaque acima do card — qualquer feriado
+// comum ficava só com o badge pequeno de período, sem chamar atenção.
+const GENERIC_HOLIDAY_THEME: Omit<PeriodTheme, 'label'> = {
+  emoji: '🎉',
+  bannerClass: 'bg-gradient-to-r from-rose-500 to-orange-400 text-white',
+  borderClass: 'border-rose-400 ring-1 ring-rose-300',
+}
+
 function getSpecialPeriodTheme(periodName: string | undefined, itemTitle?: string | null, itemDescription?: string | null, itemContent?: string | null, productName?: string | null): PeriodTheme | null {
   if (!periodName) return null
   const lower = periodName.toLowerCase().trim()
@@ -225,6 +239,9 @@ function getSpecialPeriodTheme(periodName: string | undefined, itemTitle?: strin
       }
       return theme
     }
+  }
+  if (lower.includes('feriado')) {
+    return { ...GENERIC_HOLIDAY_THEME, label: periodName.toUpperCase() }
   }
   return null
 }
