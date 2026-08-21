@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export function ImageLightbox({
@@ -29,7 +30,7 @@ export function ImageLightbox({
 
   if (!current) return null
 
-  return (
+  const lightbox = (
     // z-[10000], não z-[9999]: empatar com o sino de notificações
     // (`notification-bell.tsx`, também z-[9999]) deixava a ordem de pintura
     // decidida pela posição no DOM — hoje este lightbox é renderizado dentro
@@ -79,4 +80,18 @@ export function ImageLightbox({
       />
     </div>
   )
+
+  // Bug real corrigido: quando chamado de dentro do modal de um chamado de
+  // Feedback (`feedback-panel.tsx`), este componente era renderizado como
+  // filho comum de `DialogContent` — que é `fixed` + `translate(-50%,-50%)`
+  // pra centralizar (`dialog.tsx`). Um ancestral com `transform` vira o
+  // "containing block" de qualquer descendente `fixed` (regra do CSS), então
+  // o `inset-0` deste lightbox passava a resolver contra a CAIXA PEQUENA do
+  // modal, não a viewport inteira — a imagem "vazava" pra fora do modal e
+  // ficava atrás dele. `z-index` maior não resolve isso (não é uma disputa
+  // de z-index, é containing block errado). Portal direto pro `document.body`
+  // — mesmo padrão já usado no painel do sino (`notification-bell.tsx`) —
+  // sempre resolve `fixed` contra a viewport de verdade, não importa de
+  // dentro de qual Dialog/card o lightbox foi aberto.
+  return typeof document !== 'undefined' ? createPortal(lightbox, document.body) : null
 }
