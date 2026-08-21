@@ -168,7 +168,14 @@ function ItemForm({
 }) {
   const [url, setUrl] = useState(defaultValues?.url ?? '')
   const [audience, setAudience] = useState(defaultValues?.audience ?? '')
-  const [scope, setScope] = useState(defaultValues?.scope ?? '')
+  // Oferta já existente sem Âmbito próprio herda do produto já salvo nela —
+  // cobre o caso de uma oferta antiga cujo produto só ganhou o âmbito DEPOIS
+  // (a oferta em si nunca passou pelo handleProductChange, que só dispara
+  // numa TROCA de seleção, não ao simplesmente abrir o formulário de edição).
+  // Nunca sobrescreve um Âmbito que o admin já tinha escolhido de propósito.
+  const [scope, setScope] = useState(
+    defaultValues?.scope || products.find((p) => p.id === defaultValues?.product_id)?.scope || ''
+  )
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
   const [periodId, setPeriodId] = useState(defaultValues?.period_id ?? '')
   const [travelPeriod, setTravelPeriod] = useState(defaultValues?.travel_period ?? '')
