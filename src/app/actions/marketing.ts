@@ -29,6 +29,11 @@ function validateItemUrl(category: MarketingCategory, url: string): { error: str
 export type MarketingProduct = {
   id: string
   name: string
+  // Nacional/Internacional — definido uma vez no produto (hotel/parceiro),
+  // pra oferta que o referencia herdar o âmbito automaticamente em vez do
+  // admin escolher os dois manualmente toda vez. Nullable: produto antigo
+  // sem segmentação continua exigindo escolha manual na oferta.
+  scope: string | null
   created_at: string
 }
 
@@ -44,26 +49,26 @@ export async function getMarketingProducts(): Promise<MarketingProduct[]> {
   return (data ?? []) as MarketingProduct[]
 }
 
-export async function createMarketingProduct(name: string) {
+export async function createMarketingProduct(name: string, scope?: string) {
   const auth = await requireAdmin()
   if ('error' in auth) return { error: auth.error }
 
   const adminClient = createAdminClient()
   if (!name.trim()) return { error: 'Nome obrigatório' }
-  const { error } = await adminClient.from('marketing_products').insert({ name: name.trim() })
+  const { error } = await adminClient.from('marketing_products').insert({ name: name.trim(), scope: scope || null })
   if (error) return { error: error.message }
   logActivity(auth, { action: 'create', entityType: 'produto_marketing', entityLabel: name.trim() })
   revalidatePath('/admin/marketing')
   return { success: true }
 }
 
-export async function updateMarketingProduct(id: string, name: string) {
+export async function updateMarketingProduct(id: string, name: string, scope?: string) {
   const auth = await requireAdmin()
   if ('error' in auth) return { error: auth.error }
 
   const adminClient = createAdminClient()
   if (!name.trim()) return { error: 'Nome obrigatório' }
-  const { error } = await adminClient.from('marketing_products').update({ name: name.trim() }).eq('id', id)
+  const { error } = await adminClient.from('marketing_products').update({ name: name.trim(), scope: scope || null }).eq('id', id)
   if (error) return { error: error.message }
   logActivity(auth, { action: 'update', entityType: 'produto_marketing', entityId: id, entityLabel: name.trim() })
   revalidatePath('/admin/marketing')

@@ -180,6 +180,17 @@ function ItemForm({
   const fileRef = useRef<HTMLInputElement>(null)
   const statusRef = useRef<ItemStatus>(defaultValues?.status ?? 'published')
 
+  // Escolher um produto com âmbito já cadastrado (Admin → Gerenciar Produtos)
+  // preenche o Âmbito sozinho — evita o admin ter que marcar Nacional/
+  // Internacional de novo toda vez, já que isso não muda por oferta, só por
+  // produto. Continua editável manualmente depois (produto sem âmbito
+  // cadastrado, ou oferta sem produto, exigem escolha manual como antes).
+  function handleProductChange(id: string) {
+    setProductId(id)
+    const product = products.find((p) => p.id === id)
+    if (product?.scope) setScope(product.scope)
+  }
+
   function toggleTag(id: string) {
     setAllowedTagIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id])
   }
@@ -370,12 +381,12 @@ function ItemForm({
             <Label className="text-xs text-muted-foreground">Produto / Hotel</Label>
             <select
               value={productId ?? ''}
-              onChange={(e) => setProductId(e.target.value)}
+              onChange={(e) => handleProductChange(e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="">— Nenhum —</option>
               {products.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>{p.name}{p.scope ? ` (${p.scope})` : ''}</option>
               ))}
             </select>
           </div>
@@ -888,8 +899,10 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [newProduct, setNewProduct] = useState('')
+  const [newScope, setNewScope] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
+  const [editingScope, setEditingScope] = useState('')
   const [isAdding, startAdd] = useTransition()
   const [isSaving, startSave] = useTransition()
   const [isDeleting, startDelete] = useTransition()
@@ -897,20 +910,21 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
   function handleAdd() {
     if (!newProduct.trim()) return
     startAdd(async () => {
-      const r = await createMarketingProduct(newProduct)
+      const r = await createMarketingProduct(newProduct, newScope || undefined)
       if (r?.error) toast.error(r.error)
-      else { toast.success('Produto adicionado!'); setNewProduct(''); router.refresh() }
+      else { toast.success('Produto adicionado!'); setNewProduct(''); setNewScope(''); router.refresh() }
     })
   }
 
   function startEdit(p: MarketingProduct) {
     setEditingId(p.id)
     setEditingName(p.name)
+    setEditingScope(p.scope ?? '')
   }
 
   function handleSave(id: string) {
     startSave(async () => {
-      const r = await updateMarketingProduct(id, editingName)
+      const r = await updateMarketingProduct(id, editingName, editingScope || undefined)
       if (r?.error) toast.error(r.error)
       else { toast.success('Produto atualizado!'); setEditingId(null); router.refresh() }
     })
@@ -937,36 +951,47 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
       </button>
       {open && (
         <div className="mt-2 bg-muted/40 border rounded-lg p-4 space-y-3">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               value={newProduct}
               onChange={(e) => setNewProduct(e.target.value)}
               placeholder="Nome do produto"
-              className="flex-1"
+              className="flex-1 min-w-[160px]"
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
             />
+            <div className="flex gap-1.5">
+              <AudiencePill value="Nacional" label="Nacional" active={newScope === 'Nacional'} onClick={() => setNewScope((s) => s === 'Nacional' ? '' : 'Nacional')} />
+              <AudiencePill value="Internacional" label="Internacional" active={newScope === 'Internacional'} onClick={() => setNewScope((s) => s === 'Internacional' ? '' : 'Internacional')} />
+            </div>
             <Button type="button" size="sm" onClick={handleAdd} disabled={isAdding || !newProduct.trim()}>
               {isAdding ? <Spinner className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Marcar Nacional/Internacional aqui preenche o âmbito da oferta automaticamente ao escolher este produto.
+          </p>
           {products.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nenhum produto cadastrado.</p>
           ) : (
             <div className="space-y-1.5">
               {products.map((p) => (
-                <div key={p.id} className="flex items-center gap-2 bg-card rounded-md px-3 py-2">
+                <div key={p.id} className="flex flex-wrap items-center gap-2 bg-card rounded-md px-3 py-2">
                   {editingId === p.id ? (
                     <>
                       <Input
                         value={editingName}
                         onChange={(e) => setEditingName(e.target.value)}
-                        className="flex-1 h-7 text-sm"
+                        className="flex-1 min-w-[140px] h-7 text-sm"
                         autoFocus
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleSave(p.id)
                           if (e.key === 'Escape') setEditingId(null)
                         }}
                       />
+                      <div className="flex gap-1.5">
+                        <AudiencePill value="Nacional" label="Nacional" active={editingScope === 'Nacional'} onClick={() => setEditingScope((s) => s === 'Nacional' ? '' : 'Nacional')} />
+                        <AudiencePill value="Internacional" label="Internacional" active={editingScope === 'Internacional'} onClick={() => setEditingScope((s) => s === 'Internacional' ? '' : 'Internacional')} />
+                      </div>
                       <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={() => handleSave(p.id)} disabled={isSaving}>
                         {isSaving ? <Spinner className="w-3 h-3" /> : 'Salvar'}
                       </Button>
@@ -977,6 +1002,7 @@ function ProductsManager({ products }: { products: MarketingProduct[] }) {
                   ) : (
                     <>
                       <span className="text-sm flex-1">{p.name}</span>
+                      {p.scope && <ItemTag color={p.scope === 'Nacional' ? 'green' : 'blue'}>{p.scope}</ItemTag>}
                       <Button
                         type="button" variant="ghost" size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-foreground"

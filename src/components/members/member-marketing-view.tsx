@@ -223,7 +223,7 @@ const PERIOD_THEMES: { match: string[]; theme: PeriodTheme; coldTheme?: PeriodTh
 // específico abaixo) ganhavam destaque acima do card — qualquer feriado
 // comum ficava só com o badge pequeno de período, sem chamar atenção.
 const GENERIC_HOLIDAY_THEME: Omit<PeriodTheme, 'label'> = {
-  emoji: '🎉',
+  emoji: '🌴',
   bannerClass: 'bg-gradient-to-r from-rose-500 to-orange-400 text-white',
   borderClass: 'border-rose-400 ring-1 ring-rose-300',
 }
