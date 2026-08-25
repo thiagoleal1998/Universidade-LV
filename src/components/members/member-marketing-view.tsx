@@ -567,8 +567,15 @@ function OfertasDiariasLayout({ items, products, periods, hideB2BBadge, onOpen }
       {/* Nacional e Internacional empilham no celular/tablet (cada um com seu
           próprio grid responsivo) e ficam lado a lado só a partir de `lg` —
           antes disso era um único grid-cols-4 fixo, sem nenhum breakpoint,
-          que esmagava 4 colunas estreitas em qualquer tela de celular. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-4">
+          que esmagava 4 colunas estreitas em qualquer tela de celular.
+          Gap horizontal entre as duas seções (`lg:gap-x-12`) é bem maior que
+          o gap interno entre cards de uma mesma seção (`gap-3` no
+          OfertaSection) — antes os dois usavam praticamente o mesmo valor
+          (`lg:gap-4` vs `gap-3`), então o card final de Nacional e o
+          primeiro de Internacional ficavam colados como se fossem parte do
+          mesmo grupo, confundindo visualmente onde uma seção terminava e a
+          outra começava. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-x-12 lg:gap-y-6">
         <OfertaSection label="Nacional" dotClass="bg-green-500" items={nacional} products={products} periods={periods} hideB2BBadge={hideB2BBadge} onOpen={onOpen} />
         <OfertaSection label="Internacional" dotClass="bg-blue-500" items={internacional} products={products} periods={periods} hideB2BBadge={hideB2BBadge} onOpen={onOpen} />
       </div>
