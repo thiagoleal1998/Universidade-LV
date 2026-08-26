@@ -6,7 +6,7 @@ import { requireAdmin, requireCapability, requireContentAccess, type AdminContex
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
-import { rdNewTraining } from '@/lib/rdstation'
+import { rdNewTraining, rdTrainingReplay } from '@/lib/rdstation'
 import { parseExclusiveUfs } from '@/lib/access-lock'
 
 // Guard de posse: colaborador só mexe em treinamento da própria área.
@@ -78,7 +78,15 @@ async function notifyMembers(payload: {
   const emails = (usersData?.users ?? [])
     .filter((u) => memberIds.has(u.id) && u.email)
     .map((u) => u.email!)
-  rdNewTraining(emails, payload.notifTitle, payload.body, link)
+  // Bug real corrigido: os dois casos (novo treinamento vs. virou replay) já
+  // tinham `notifType`/título/corpo distintos pro sino, mas o e-mail sempre
+  // disparava o mesmo evento `rdNewTraining` — o membro recebia o e-mail de
+  // "novo treinamento" mesmo quando o treinamento só tinha virado replay.
+  if (payload.notifType === 'training_replay') {
+    rdTrainingReplay(emails, payload.notifTitle, payload.body, link)
+  } else {
+    rdNewTraining(emails, payload.notifTitle, payload.body, link)
+  }
 
   return { notified: members.length }
 }

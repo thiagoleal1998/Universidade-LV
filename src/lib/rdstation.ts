@@ -13,6 +13,7 @@ const RD_EVENTS = {
   comunicado: 'universidade-lv-comunicado',
   conteudo_publicado: 'universidade-lv-conteudo-publicado',
   treinamento_novo: 'universidade-lv-treinamento-novo',
+  treinamento_replay: 'universidade-lv-treinamento-replay',
   perfil_atualizado: 'universidade-lv-perfil-atualizado',
   admin_cadastro_pendente: 'universidade-lv-admin-cadastro-pendente',
   admin_feedback_novo: 'universidade-lv-admin-feedback-novo',
@@ -178,6 +179,19 @@ export async function rdCourseContentPublished(emails: string[], title: string, 
 export async function rdNewTraining(emails: string[], title: string, body: string, link: string) {
   for (const email of emails) {
     await sendConversion(RD_EVENTS.treinamento_novo, email, { cf_titulo: title, cf_corpo: body, cf_link: link })
+  }
+}
+
+// Evento PRÓPRIO pro caso "treinamento virou replay" — antes reaproveitava
+// RD_EVENTS.treinamento_novo (mesma Automação de "treinamento novo" na RD
+// Station), então o e-mail sempre saía com o texto de "novo treinamento",
+// mesmo com cf_titulo/cf_corpo corretos — o assunto/corpo fixo configurado
+// na Automação não distinguia os dois casos. Precisa de Automação própria
+// na RD Station (identificador `universidade-lv-treinamento-replay`), mesmo
+// padrão já usado pra separar chamado aberto/em andamento/resolvido.
+export async function rdTrainingReplay(emails: string[], title: string, body: string, link: string) {
+  for (const email of emails) {
+    await sendConversion(RD_EVENTS.treinamento_replay, email, { cf_titulo: title, cf_corpo: body, cf_link: link })
   }
 }
 
