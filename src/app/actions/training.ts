@@ -109,8 +109,15 @@ async function notifyTrainingReplay(item: { id: string; title: string; exclusive
     id: item.id,
     title: item.title,
     notifType: 'training_replay',
-    notifTitle: 'Treinamento disponivel como replay',
-    body: item.title,
+    // Bug real corrigido: notifTitle era um texto genérico fixo ("Treinamento
+    // disponivel como replay"), sem o nome do treinamento — vira `cf_titulo`
+    // na RD Station, e a Automação usa esse campo no ASSUNTO do e-mail
+    // (ex.: "Novo Treinamento {{cf_titulo}}"), então o e-mail saía sem
+    // identificar QUAL treinamento (ex.: "Novo Treinamento Treinamento
+    // disponivel como replay", sem "Uruguai" em lugar nenhum do assunto).
+    // Agora o nome entra no título — tanto pro sino quanto pro e-mail.
+    notifTitle: `Replay disponível: ${item.title}`,
+    body: 'Assista quando quiser, direto na plataforma.',
     exclusiveUfs: item.exclusive_ufs,
   })
 }
