@@ -108,7 +108,13 @@ export function TripMediaSections({
                     {t.author_role && <p className="text-xs text-muted-foreground">{t.author_role}</p>}
                   </div>
                 </div>
-                {t.content && <p className="text-sm text-muted-foreground leading-relaxed">&quot;{t.content}&quot;</p>}
+                {/* whitespace-pre-wrap: o Textarea de depoimento (admin) deixa o
+                    autor quebrar linha/separar parágrafos com Enter, mas HTML
+                    colapsa `\n` num espaço só por padrão — sem isso, o texto
+                    saía inteiro grudado numa linha só, diferente do que foi
+                    digitado no painel. Mesma correção já aplicada em texto
+                    livre de tarefa de aula. */}
+                {t.content && <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">&quot;{t.content}&quot;</p>}
               </div>
             ))}
           </div>
