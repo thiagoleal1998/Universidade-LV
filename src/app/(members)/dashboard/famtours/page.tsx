@@ -32,8 +32,9 @@ export default async function FamtoursListPage() {
     getMyFamtourAccessContext(),
   ])
 
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const famtours = (famtoursData ?? []).filter((f) => (f.end_date ?? f.start_date ?? '9999-99-99') >= todayStr)
+  // Famtour com data passada continua visível de propósito — ver mesma nota
+  // no dashboard/page.tsx.
+  const famtours = famtoursData ?? []
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">

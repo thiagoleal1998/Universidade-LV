@@ -33,12 +33,6 @@ export async function requireEventoAccess(id: string): Promise<AdminContext | { 
   return requireContentAccess('eventos', item.owner_area_id)
 }
 
-// Compara strings 'YYYY-MM-DD' — formato de DATE do Postgres/input date,
-// ordena corretamente como string sem precisar converter pra Date/fuso.
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 export async function createEvento(formData: FormData) {
   const ctx = await requireCapability('eventos')
   if ('error' in ctx) return { error: ctx.error }
@@ -46,11 +40,11 @@ export async function createEvento(formData: FormData) {
   const title = ((formData.get('title') as string) ?? '').trim()
   if (!title) return { error: 'Informe o nome do evento.' }
 
+  // Data passada é permitida de propósito — o admin também cadastra eventos
+  // que já aconteceram (não só futuros), pra divulgar depoimentos/galeria
+  // de um evento já realizado. Mesma decisão de Famtours.
   const startDate = (formData.get('start_date') as string) || null
   const endDate = (formData.get('end_date') as string) || null
-  const today = todayIsoDate()
-  if (startDate && startDate < today) return { error: 'A data de início não pode ser uma data que já passou.' }
-  if (endDate && endDate < today) return { error: 'A data de fim não pode ser uma data que já passou.' }
 
   const adminClient = createAdminClient()
 
@@ -95,17 +89,9 @@ export async function updateEvento(id: string, formData: FormData) {
     .eq('id', id)
     .single()
 
+  // Data passada é permitida de propósito — ver mesma nota em createEvento.
   const startDate = (formData.get('start_date') as string) || null
   const endDate = (formData.get('end_date') as string) || null
-  const today = todayIsoDate()
-  // Só bloqueia data passada quando ela está sendo MUDADA pra uma data
-  // passada — um evento que já aconteceu continua editável em outros campos.
-  if (startDate && startDate < today && startDate !== prev?.start_date) {
-    return { error: 'A data de início não pode ser uma data que já passou.' }
-  }
-  if (endDate && endDate < today && endDate !== prev?.end_date) {
-    return { error: 'A data de fim não pode ser uma data que já passou.' }
-  }
 
   const after = {
     title,

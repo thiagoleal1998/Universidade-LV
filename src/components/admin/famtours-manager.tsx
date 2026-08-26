@@ -30,10 +30,6 @@ import { UF_NAMES } from '@/lib/estado-flag'
 
 const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function formatPeriod(start: string | null, end: string | null): string {
   if (!start) return ''
   const fmt = (iso: string) => {
@@ -217,16 +213,13 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
               <Textarea id="famtour-description" name="description" rows={2} defaultValue={editing?.description ?? ''} placeholder="Breve descrição da viagem..." className="mt-1.5 resize-none" />
             </div>
 
-            {/* `min` trava data passada só pra valor NOVO — se o famtour em
-                edição já tinha uma data passada (viagem já rolou), o próprio
-                valor atual continua válido pro navegador, senão salvar
-                qualquer outro campo desse famtour ficaria impossível. */}
+            {/* Sem `min` de propósito — data passada é permitida (famtour que
+                já aconteceu, cadastrado depois pra divulgar galeria/depoimentos). */}
             <div>
               <Label htmlFor="famtour-start">Data de início</Label>
               <Input
                 id="famtour-start" name="start_date" type="date"
                 defaultValue={editing?.start_date ?? ''}
-                min={editing?.start_date && editing.start_date < todayIso() ? editing.start_date : todayIso()}
                 className="mt-1.5"
               />
             </div>
@@ -235,7 +228,6 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
               <Input
                 id="famtour-end" name="end_date" type="date"
                 defaultValue={editing?.end_date ?? ''}
-                min={editing?.end_date && editing.end_date < todayIso() ? editing.end_date : todayIso()}
                 className="mt-1.5"
               />
             </div>

@@ -486,10 +486,11 @@ export default async function DashboardPage() {
     (c) => c.status === 'em_andamento' || c.status === 'proxima' || c.vencedores.length > 0,
   )
 
-  // Famtours/Eventos — esconde viagens/eventos já encerrados
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const famtours = (famtoursData ?? []).filter((f) => (f.end_date ?? f.start_date ?? '9999-99-99') >= todayStr)
-  const eventos = (eventosData ?? []).filter((e) => (e.end_date ?? e.start_date ?? '9999-99-99') >= todayStr)
+  // Famtours/Eventos com data passada continuam visíveis de propósito — o
+  // admin também cadastra viagens/eventos já realizados, pra divulgar
+  // galeria/depoimentos de algo que já aconteceu, não só o que está por vir.
+  const famtours = famtoursData ?? []
+  const eventos = eventosData ?? []
 
   // TamoJunto
   type TamojuntoSection = { active: boolean; title: string; description: string; url: string; image_url: string; button_text: string; badge: string }

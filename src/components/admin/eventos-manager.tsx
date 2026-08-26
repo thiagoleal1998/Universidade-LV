@@ -25,10 +25,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function formatPeriod(start: string | null, end: string | null): string {
   if (!start) return ''
   const fmt = (iso: string) => {
@@ -188,16 +184,13 @@ export function EventosManager({ items, canCreate = true }: { items: EventoWithE
               <Textarea id="evento-description" name="description" rows={2} defaultValue={editing?.description ?? ''} placeholder="Breve descrição do evento..." className="mt-1.5 resize-none" />
             </div>
 
-            {/* `min` trava data passada só pra valor NOVO — se o evento em
-                edição já tinha uma data passada (evento já aconteceu), o
-                próprio valor atual continua válido pro navegador, senão
-                salvar qualquer outro campo desse evento ficaria impossível. */}
+            {/* Sem `min` de propósito — data passada é permitida (evento que
+                já aconteceu, cadastrado depois pra divulgar galeria/depoimentos). */}
             <div>
               <Label htmlFor="evento-start">Data de início</Label>
               <Input
                 id="evento-start" name="start_date" type="date"
                 defaultValue={editing?.start_date ?? ''}
-                min={editing?.start_date && editing.start_date < todayIso() ? editing.start_date : todayIso()}
                 className="mt-1.5"
               />
             </div>
@@ -206,7 +199,6 @@ export function EventosManager({ items, canCreate = true }: { items: EventoWithE
               <Input
                 id="evento-end" name="end_date" type="date"
                 defaultValue={editing?.end_date ?? ''}
-                min={editing?.end_date && editing.end_date < todayIso() ? editing.end_date : todayIso()}
                 className="mt-1.5"
               />
             </div>

@@ -26,8 +26,9 @@ export default async function EventosListPage() {
     .eq('is_active', true)
     .order('start_date', { ascending: true, nullsFirst: false })
 
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const eventos = (eventosData ?? []).filter((e) => (e.end_date ?? e.start_date ?? '9999-99-99') >= todayStr)
+  // Evento com data passada continua visível de propósito — ver mesma nota
+  // no dashboard/page.tsx.
+  const eventos = eventosData ?? []
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">

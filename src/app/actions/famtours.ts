@@ -40,12 +40,6 @@ export async function requireFamtourAccess(id: string): Promise<AdminContext | {
   return requireContentAccess('famtours', item.owner_area_id)
 }
 
-// Compara strings 'YYYY-MM-DD' — formato de DATE do Postgres/input date,
-// ordena corretamente como string sem precisar converter pra Date/fuso.
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 export async function createFamtour(formData: FormData) {
   const ctx = await requireCapability('famtours')
   if ('error' in ctx) return { error: ctx.error }
@@ -53,14 +47,11 @@ export async function createFamtour(formData: FormData) {
   const title = ((formData.get('title') as string) ?? '').trim()
   if (!title) return { error: 'Informe o nome/destino do famtour.' }
 
+  // Data passada é permitida de propósito — o admin também cadastra
+  // famtours que já aconteceram (não só viagens futuras/em andamento),
+  // pra divulgar depoimentos/galeria de uma viagem já realizada.
   const startDate = (formData.get('start_date') as string) || null
   const endDate = (formData.get('end_date') as string) || null
-  const today = todayIsoDate()
-  // Famtour novo nunca deveria nascer com data no passado — o `min` do
-  // input já bloqueia isso na UI, mas quem chama a action direto (ou
-  // desabilita JS) precisa da mesma regra aplicada no servidor.
-  if (startDate && startDate < today) return { error: 'A data de início não pode ser uma data que já passou.' }
-  if (endDate && endDate < today) return { error: 'A data de fim não pode ser uma data que já passou.' }
 
   const adminClient = createAdminClient()
   const exclusiveUfs = parseExclusiveUfs(formData.get('exclusive_ufs') as string | null)
@@ -107,18 +98,9 @@ export async function updateFamtour(id: string, formData: FormData) {
     .eq('id', id)
     .single()
 
+  // Data passada é permitida de propósito — ver mesma nota em createFamtour.
   const startDate = (formData.get('start_date') as string) || null
   const endDate = (formData.get('end_date') as string) || null
-  const today = todayIsoDate()
-  // Só bloqueia data passada quando ela está sendo MUDADA pra uma data
-  // passada — um famtour que já aconteceu (start_date antigo, sem tocar
-  // nele) continua editável em outros campos sem exigir apagar a viagem.
-  if (startDate && startDate < today && startDate !== prev?.start_date) {
-    return { error: 'A data de início não pode ser uma data que já passou.' }
-  }
-  if (endDate && endDate < today && endDate !== prev?.end_date) {
-    return { error: 'A data de fim não pode ser uma data que já passou.' }
-  }
 
   const after = {
     title,
