@@ -29,15 +29,15 @@ export function TripCard({
     return (
       <div className="block rounded-2xl border border-amber-500/30 overflow-hidden bg-card">
         {cover}
-        <div className="p-4 space-y-2">
+        <div className="p-5 space-y-2.5">
           <p className="font-semibold text-foreground text-sm leading-snug">{title}</p>
           {period && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Calendar className="w-3 h-3 shrink-0" />
               {period}
             </span>
           )}
-          {description && <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>}
+          {description && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{description}</p>}
           {lockedContent}
         </div>
       </div>
@@ -47,15 +47,18 @@ export function TripCard({
   return (
     <Link href={href} className="group block rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all">
       {cover}
-      <div className="p-4">
+      {/* `p-5 space-y-2` (antes `p-4` sem nenhum space-y, só margens ad-hoc
+          `mt-1`/`mt-1.5` entre título/período/descrição) — o texto ficava
+          praticamente colado, sem respiro nenhum entre as linhas. */}
+      <div className="p-5 space-y-2">
         <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">{title}</p>
         {period && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Calendar className="w-3 h-3 shrink-0" />
             {period}
           </span>
         )}
-        {description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{description}</p>}
+        {description && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{description}</p>}
       </div>
     </Link>
   )

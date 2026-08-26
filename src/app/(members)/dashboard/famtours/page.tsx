@@ -49,7 +49,7 @@ export default async function FamtoursListPage() {
           <p className="text-muted-foreground font-medium">Nenhum famtour disponível no momento.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {famtours.map((f) => {
             const requestStatus = accessCtx.requestsByFamtourId[f.id] ?? 'none'
             const locked = isAccessLocked(f, accessCtx.uf, requestStatus)

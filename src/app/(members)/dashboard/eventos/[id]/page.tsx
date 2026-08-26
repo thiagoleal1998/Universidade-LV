@@ -67,7 +67,7 @@ export default async function EventoDetailPage({ params }: { params: Promise<{ i
       </div>
 
       <div className="space-y-6">
-        <div className="space-y-2">
+        <div className="space-y-3">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">{item.title}</h1>
           {(item.start_date || item.end_date) && (
             <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
