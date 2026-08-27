@@ -165,9 +165,33 @@ async function checkNotionIntegration() {
 }
 
 // ── 5. Status externo dos provedores ────────────────────────────────────
+// Achado real (v1.133.1): a checagem do HostGator falhou uma vez com
+// "fetch failed" (erro de rede genérico do Node, sem HTTP nenhum envolvido)
+// depois de ~60 execuções seguidas OK — reproduzido na hora direto da VPS
+// (mesmo `fetch`) e voltou a funcionar normalmente, então não era o
+// HostGator fora do ar nem um bug daqui: só uma instabilidade pontual de
+// rede alcançando um site de terceiro (o domínio do status resolve via
+// Cloudflare em IPv6, mais sujeito a esse tipo de soluço). Mesma classe de
+// falha transitória já resolvida com retry em `sendConversion`
+// (`src/lib/rdstation.ts`) — replicado aqui pras duas checagens de status
+// externo, que são justamente as que dependem de alcançar rede de terceiro
+// sem controle nenhum sobre a estabilidade dela.
+async function fetchWithRetry(url, attempts = 2, delayMs = 1500) {
+  let lastErr
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fetch(url)
+    } catch (err) {
+      lastErr = err
+      if (i < attempts) await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
+  throw lastErr
+}
+
 async function checkRdStationStatusPage() {
   try {
-    const res = await fetch('https://status.rdstation.com/api/v2/status.json')
+    const res = await fetchWithRetry('https://status.rdstation.com/api/v2/status.json')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = await res.json()
     const indicator = json?.status?.indicator ?? 'unknown'
@@ -190,7 +214,7 @@ async function checkRdStationStatusPage() {
 // dar falso-negativo.
 async function checkHostgatorStatusPage() {
   try {
-    const res = await fetch('https://status.hostgator.com.br/')
+    const res = await fetchWithRetry('https://status.hostgator.com.br/')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const html = await res.text()
     const bodyMatch = html.match(/<body[\s\S]*?(?=<footer)/)
