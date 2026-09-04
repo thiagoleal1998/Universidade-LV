@@ -23,6 +23,7 @@ import { Pencil, Trash2, BookOpen, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { UF_NAMES } from '@/lib/estado-flag'
+import { formatCnpj } from '@/lib/cnpj'
 
 const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
@@ -43,6 +44,9 @@ type Member = {
   linkedin_url?: string | null
   uf?: string | null
   city?: string | null
+  company?: string | null
+  cnpj?: string | null
+  job_title?: string | null
   tagIds?: string[]
   courseIds?: string[]
 }
@@ -67,6 +71,7 @@ export function EditMemberDialog({
   const [selectedRole, setSelectedRole] = useState<Member['role']>(member.role)
   const [selectedAreaId, setSelectedAreaId] = useState<string>(member.collaborator_area_id ?? '')
   const [bioValue, setBioValue] = useState(member.bio ?? '')
+  const [cnpjValue, setCnpjValue] = useState(member.cnpj ?? '')
   const [showPasswordField, setShowPasswordField] = useState(false)
   const [newPasswordValue, setNewPasswordValue] = useState('')
 
@@ -115,6 +120,9 @@ export function EditMemberDialog({
         linkedin_url: data.get('linkedin_url') as string,
         uf: data.get('uf') as string,
         city: data.get('city') as string,
+        company: data.get('company') as string,
+        cnpj: cnpjValue,
+        job_title: data.get('job_title') as string,
         tagIds: selectedTagIds,
         courseIds: selectedCourseIds,
       })
@@ -171,6 +179,26 @@ export function EditMemberDialog({
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" defaultValue={member.email} placeholder="email@exemplo.com" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="company">Nome da Agência</Label>
+              <Input id="company" name="company" defaultValue={member.company ?? ''} placeholder="Nome da agência de viagens" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cnpj">CNPJ</Label>
+              <Input
+                id="cnpj"
+                name="cnpj"
+                value={cnpjValue}
+                onChange={(e) => setCnpjValue(formatCnpj(e.target.value))}
+                placeholder="00.000.000/0000-00"
+                inputMode="numeric"
+                maxLength={18}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="job_title">Cargo</Label>
+              <Input id="job_title" name="job_title" defaultValue={member.job_title ?? ''} placeholder="Cargo do membro" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="uf">Estado (UF)</Label>

@@ -7,6 +7,7 @@ import { rdMemberApproved, rdMemberRejected, syncLeadProfile, rdGrantMarketingCo
 import { requireAdmin } from '@/lib/authz'
 import { logActivity } from '@/lib/activity-log'
 import { assignMemberTags } from '@/app/actions/tags'
+import { isValidCnpjFormat } from '@/lib/cnpj'
 
 // Dispara a sincronização de lead da RD Station (cursos/tags/empresa/cargo)
 // uma única vez, depois que o cliente já rodou toda a sequência de actions
@@ -66,6 +67,9 @@ export async function updateMember(
     linkedin_url?: string
     uf?: string
     city?: string
+    company?: string
+    cnpj?: string
+    job_title?: string
   }
 ) {
   const authz = await requireAdmin()
@@ -76,6 +80,10 @@ export async function updateMember(
 
   if (data.role === 'collaborator' && !data.collaborator_area_id) {
     return { error: 'Escolha a área do colaborador.' }
+  }
+
+  if (data.cnpj && !isValidCnpjFormat(data.cnpj)) {
+    return { error: 'CNPJ inválido (14 dígitos).' }
   }
 
   // Atualiza email e senha no auth (via admin API).
@@ -123,6 +131,9 @@ export async function updateMember(
       ...(data.linkedin_url !== undefined ? { linkedin_url: data.linkedin_url } : {}),
       ...(data.uf !== undefined ? { uf: data.uf.toUpperCase() } : {}),
       ...(data.city !== undefined ? { city: data.city } : {}),
+      ...(data.company !== undefined ? { company: data.company } : {}),
+      ...(data.cnpj !== undefined ? { cnpj: data.cnpj } : {}),
+      ...(data.job_title !== undefined ? { job_title: data.job_title } : {}),
     })
     .eq('id', userId)
 
@@ -138,6 +149,9 @@ export async function updateMember(
   if (data.linkedin_url !== undefined) changed.push('linkedin')
   if (data.uf !== undefined) changed.push('UF')
   if (data.city !== undefined) changed.push('cidade')
+  if (data.company !== undefined) changed.push('agência')
+  if (data.cnpj !== undefined) changed.push('CNPJ')
+  if (data.job_title !== undefined) changed.push('cargo')
   logActivity(authz, { action: 'update', entityType: 'membro', entityId: userId, entityLabel: data.full_name, detail: changed.length > 0 ? `alterou: ${changed.join(', ')}` : undefined })
   // Sem syncLeadProfile aqui de propósito — updateMember é sempre chamado
   // em sequência com assignMemberTags/assignMemberCourses (EditMemberDialog);
@@ -179,6 +193,9 @@ export async function saveMemberAll(
     linkedin_url?: string
     uf?: string
     city?: string
+    company?: string
+    cnpj?: string
+    job_title?: string
     tagIds: string[]
     courseIds: string[]
   }
@@ -197,6 +214,9 @@ export async function saveMemberAll(
     linkedin_url: data.linkedin_url,
     uf: data.uf,
     city: data.city,
+    company: data.company,
+    cnpj: data.cnpj,
+    job_title: data.job_title,
   })
   if (memberResult?.error) return { error: memberResult.error }
 

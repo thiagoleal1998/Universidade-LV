@@ -34,6 +34,9 @@ export type MemberWithEmail = {
   linkedin_url?: string | null
   uf?: string | null
   city?: string | null
+  company?: string | null
+  cnpj?: string | null
+  job_title?: string | null
   tagIds?: string[]
   courseIds?: string[]
   isOnline?: boolean
