@@ -13,6 +13,7 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { getTurnstileToken } from '@/lib/turnstile-client'
 import { UF_NAMES } from '@/lib/estado-flag'
 import { formatCnpj } from '@/lib/cnpj'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
@@ -24,12 +25,14 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
   // login-form.tsx (`pending` do useActionState não reflete essa fase).
   const [isVerifying, setIsVerifying] = useState(false)
   const [cnpjValue, setCnpjValue] = useState('')
+  const [ufValue, setUfValue] = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (isVerifying || pending) return
     setIsVerifying(true)
     const formData = new FormData(e.currentTarget)
+    formData.set('uf', ufValue)
     const token = await getTurnstileToken('register')
     formData.set('captcha_token', token ?? '')
     startTransition(() => { action(formData) })
@@ -94,18 +97,16 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="uf">Estado (UF)</Label>
-                <select
-                  id="uf"
-                  name="uf"
-                  required
-                  defaultValue=""
-                  className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="" disabled>Selecione</option>
-                  {UF_OPTIONS.map(([sigla, nome]) => (
-                    <option key={sigla} value={sigla}>{nome}</option>
-                  ))}
-                </select>
+                <Select value={ufValue} onValueChange={(v) => setUfValue(v ?? '')}>
+                  <SelectTrigger id="uf" className="w-full">
+                    <SelectValue>{(v: string) => v ? UF_NAMES[v] : 'Selecione'}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UF_OPTIONS.map(([sigla, nome]) => (
+                      <SelectItem key={sigla} value={sigla}>{nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">
