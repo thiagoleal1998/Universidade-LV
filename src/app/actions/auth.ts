@@ -7,6 +7,7 @@ import { rdWelcomeOnRegister, rdAdminNewMemberPending, rdPasswordReset } from '@
 import { notifyAllAdmins } from '@/app/actions/notifications'
 import { verifyTurnstile } from '@/lib/turnstile'
 import { UF_NAMES } from '@/lib/estado-flag'
+import { isValidCnpjFormat } from '@/lib/cnpj'
 
 const CAPTCHA_ERROR = 'Não foi possível verificar que você não é um robô. Recarregue a página e tente novamente.'
 
@@ -115,9 +116,13 @@ export async function register(_state: unknown, formData: FormData) {
   const password = formData.get('password') as string
   const uf = ((formData.get('uf') as string) || '').trim().toUpperCase()
   const city = ((formData.get('city') as string) || '').trim()
+  const company = ((formData.get('company') as string) || '').trim()
+  const cnpj = ((formData.get('cnpj') as string) || '').trim()
 
   if (!uf || !UF_NAMES[uf]) return { error: 'Selecione um estado (UF) válido.' }
   if (!city) return { error: 'Informe sua cidade.' }
+  if (!company) return { error: 'Informe o nome da agência.' }
+  if (!isValidCnpjFormat(cnpj)) return { error: 'Informe um CNPJ válido (14 dígitos).' }
 
   const adminClient = createAdminClient()
 
@@ -137,7 +142,7 @@ export async function register(_state: unknown, formData: FormData) {
 
   // Deixa conta inativa até o admin aprovar
   if (data.user) {
-    await adminClient.from('profiles').update({ active: false, full_name, uf, city }).eq('id', data.user.id)
+    await adminClient.from('profiles').update({ active: false, full_name, uf, city, company, cnpj }).eq('id', data.user.id)
     rdAdminNewMemberPending(full_name, email)
     // Aguardado de propósito (LV-0766): sendConversion agora tenta 2x e loga
     // qualquer falha — esperar aqui garante que o cadastro só "termina" depois

@@ -26,6 +26,7 @@ type Props = {
   linkedinUrl: string
   uf?: string
   city?: string
+  cnpj?: string
   bio?: string
   showBio?: boolean
   totalTimeSeconds: number
@@ -88,7 +89,7 @@ export function ProfileTabs(props: Props) {
    Tab 1: Perfil
 ───────────────────────────────────────────────────────── */
 
-function PerfilTab({ userId, fullName, email, avatarUrl, company, jobTitle, linkedinUrl, uf, city, bio, showBio }: Props) {
+function PerfilTab({ userId, fullName, email, avatarUrl, company, jobTitle, linkedinUrl, uf, city, cnpj, bio, showBio }: Props) {
   return (
     <ProfileFormCompact
       userId={userId}
@@ -100,6 +101,7 @@ function PerfilTab({ userId, fullName, email, avatarUrl, company, jobTitle, link
       linkedinUrl={linkedinUrl}
       uf={uf}
       city={city}
+      cnpj={cnpj}
       bio={bio}
       showBio={showBio}
     />

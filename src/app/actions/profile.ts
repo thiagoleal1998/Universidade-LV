@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
 import { syncLeadProfile } from '@/lib/rdstation'
 import { UF_NAMES } from '@/lib/estado-flag'
+import { isValidCnpjFormat } from '@/lib/cnpj'
 
 export async function uploadAvatar(formData: FormData) {
   const file = formData.get('avatar') as File
@@ -50,20 +51,22 @@ export async function updateProfile(formData: FormData) {
   const linkedin_url = ((formData.get('linkedin_url') as string) ?? '').trim()
   const uf = ((formData.get('uf') as string) ?? '').trim().toUpperCase()
   const city = ((formData.get('city') as string) ?? '').trim()
+  const cnpj = ((formData.get('cnpj') as string) ?? '').trim()
   const bio = (formData.get('bio') as string) ?? ''
 
   if (linkedin_url) {
     try { new URL(linkedin_url) } catch { return { error: 'Link do LinkedIn inválido. Cole uma URL completa (https://...).' } }
   }
-  // uf é opcional aqui (membro já cadastrado pode deixar em branco) — só
-  // valida se algo foi selecionado, diferente do cadastro novo (register()),
-  // onde é obrigatório.
+  // uf/cnpj são opcionais aqui (membro já cadastrado pode deixar em branco) —
+  // só validam formato se algo foi preenchido, diferente do cadastro novo
+  // (register()), onde os dois são obrigatórios.
   if (uf && !UF_NAMES[uf]) return { error: 'UF inválida.' }
+  if (cnpj && !isValidCnpjFormat(cnpj)) return { error: 'CNPJ inválido (14 dígitos).' }
 
   const adminClient = createAdminClient()
   const { error } = await adminClient
     .from('profiles')
-    .update({ full_name, company, job_title, linkedin_url, uf, city, bio })
+    .update({ full_name, company, job_title, linkedin_url, uf, city, cnpj, bio })
     .eq('id', user.id)
 
   if (error) return { error: error.message }

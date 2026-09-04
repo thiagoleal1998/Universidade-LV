@@ -12,6 +12,7 @@ import type { Settings } from '@/lib/settings'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { getTurnstileToken } from '@/lib/turnstile-client'
 import { UF_NAMES } from '@/lib/estado-flag'
+import { formatCnpj } from '@/lib/cnpj'
 
 const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
@@ -22,6 +23,7 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
   // Cobre a espera pelo token do Turnstile — ver mesmo comentário em
   // login-form.tsx (`pending` do useActionState não reflete essa fase).
   const [isVerifying, setIsVerifying] = useState(false)
+  const [cnpjValue, setCnpjValue] = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -67,6 +69,26 @@ export function RegisterForm({ settings, messages }: { settings: Settings; messa
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" placeholder="seu@email.com" required autoComplete="email" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="company">Nome da Agência</Label>
+              <Input id="company" name="company" type="text" placeholder="Nome da sua agência de viagens" required />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cnpj">CNPJ</Label>
+              <Input
+                id="cnpj"
+                name="cnpj"
+                type="text"
+                inputMode="numeric"
+                placeholder="00.000.000/0000-00"
+                required
+                value={cnpjValue}
+                onChange={(e) => setCnpjValue(formatCnpj(e.target.value))}
+                maxLength={18}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

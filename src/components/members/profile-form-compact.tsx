@@ -11,6 +11,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { toast } from 'sonner'
 import { Camera, Loader2, KeyRound } from 'lucide-react'
 import { UF_NAMES } from '@/lib/estado-flag'
+import { formatCnpj } from '@/lib/cnpj'
 
 const UF_OPTIONS = Object.entries(UF_NAMES).sort((a, b) => a[1].localeCompare(b[1]))
 
@@ -24,11 +25,12 @@ type Props = {
   linkedinUrl: string
   uf?: string
   city?: string
+  cnpj?: string
   bio?: string
   showBio?: boolean
 }
 
-export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTitle, linkedinUrl, uf = '', city = '', bio = '', showBio = false }: Props) {
+export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTitle, linkedinUrl, uf = '', city = '', cnpj = '', bio = '', showBio = false }: Props) {
   const [currentAvatar, setCurrentAvatar] = useState(avatarUrl)
   const [nameValue, setNameValue] = useState(fullName)
   const [companyValue, setCompanyValue] = useState(company)
@@ -36,6 +38,7 @@ export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTit
   const [linkedinValue, setLinkedinValue] = useState(linkedinUrl)
   const [ufValue, setUfValue] = useState(uf)
   const [cityValue, setCityValue] = useState(city)
+  const [cnpjValue, setCnpjValue] = useState(cnpj)
   const [bioValue, setBioValue] = useState(bio)
   const [isUploading, startUpload] = useTransition()
   const [isSaving, startSave] = useTransition()
@@ -69,6 +72,7 @@ export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTit
     fd.append('linkedin_url', linkedinValue)
     fd.append('uf', ufValue)
     fd.append('city', cityValue)
+    fd.append('cnpj', cnpjValue)
     fd.append('bio', bioValue)
     startSave(async () => {
       const r = await updateProfile(fd)
@@ -140,12 +144,24 @@ export function ProfileFormCompact({ fullName, email, avatarUrl, company, jobTit
                 <Input id="email" value={email} readOnly disabled className="mt-1 opacity-60" />
               </div>
               <div>
-                <Label htmlFor="company" className="text-xs text-muted-foreground">Empresa</Label>
+                <Label htmlFor="company" className="text-xs text-muted-foreground">Nome da Agência</Label>
                 <Input
                   id="company"
                   value={companyValue}
                   onChange={(e) => setCompanyValue(e.target.value)}
-                  placeholder="Nome da agência/empresa"
+                  placeholder="Nome da sua agência de viagens"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="cnpj" className="text-xs text-muted-foreground">CNPJ</Label>
+                <Input
+                  id="cnpj"
+                  value={cnpjValue}
+                  onChange={(e) => setCnpjValue(formatCnpj(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  inputMode="numeric"
+                  maxLength={18}
                   className="mt-1"
                 />
               </div>

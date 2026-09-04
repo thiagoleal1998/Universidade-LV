@@ -20,7 +20,7 @@ export default async function AdminPerfilPage() {
   ] = await Promise.all([
     supabase
       .from('profiles')
-      .select('full_name, avatar_url, created_at, company, job_title, linkedin_url, uf, city, total_time_seconds, bio')
+      .select('full_name, avatar_url, created_at, company, job_title, linkedin_url, uf, city, cnpj, total_time_seconds, bio')
       .eq('id', user!.id)
       .single(),
 
@@ -44,7 +44,7 @@ export default async function AdminPerfilPage() {
       .eq('user_id', user!.id),
   ])
 
-  const profile = profileData as { full_name: string; avatar_url: string; created_at: string; company: string; job_title: string; linkedin_url: string; uf: string; city: string; total_time_seconds: number | null; bio: string } | null
+  const profile = profileData as { full_name: string; avatar_url: string; created_at: string; company: string; job_title: string; linkedin_url: string; uf: string; city: string; cnpj: string; total_time_seconds: number | null; bio: string } | null
   const completedSet = new Set((progressData ?? []).map((p) => p.lesson_id))
 
   type CourseRow = {
@@ -103,6 +103,7 @@ export default async function AdminPerfilPage() {
         linkedinUrl={profile?.linkedin_url ?? ''}
         uf={profile?.uf ?? ''}
         city={profile?.city ?? ''}
+        cnpj={profile?.cnpj ?? ''}
         bio={profile?.bio ?? ''}
         showBio
         totalTimeSeconds={profile?.total_time_seconds ?? 0}
