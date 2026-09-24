@@ -8,48 +8,57 @@ import { PlayCircle, ExternalLink, ImageIcon, MessageSquareQuote } from 'lucide-
 type Photo = { id: string; url: string; caption: string }
 type Testimonial = { id: string; author_name: string; author_role: string; photo_url: string; content: string }
 
-// Vídeo + depoimentos — idêntico entre a página de detalhe de
-// Famtour e a de Evento (só o que decide SE esse componente renderiza muda
-// entre os dois: famtour esconde tudo isso quando travado por UF, evento
-// nunca esconde). A galeria mora em TripGallery (abaixo), porque a página a
-// posiciona AO LADO da capa, não na sequência destes blocos.
-export function TripMediaSections({
-  videoUrl, testimonials,
-}: {
-  videoUrl: string | null
-  testimonials: Testimonial[]
-}) {
+export function TripVideo({ videoUrl, className }: { videoUrl: string | null; className?: string }) {
   const embed = getVideoEmbed(videoUrl)
+  if (!videoUrl) return null
+
+  if (!embed) {
+    return (
+      <div className={className}>
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-colors"
+        >
+          <PlayCircle className="w-4 h-4" />
+          Assistir vídeo
+          <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+        </a>
+      </div>
+    )
+  }
+
+  // Shorts/Reels são retrato: proporção 9:16 com largura limitada (senão a
+  // caixa ficaria altíssima). O embed do Instagram traz cabeçalho/legenda
+  // dentro do próprio iframe, então ganha um pouco mais de altura.
+  const frameClass = embed.type === 'instagram'
+    ? 'w-full max-w-[400px] mx-auto h-[640px]'
+    : embed.vertical
+      ? 'w-full max-w-[340px] mx-auto aspect-[9/16]'
+      : 'w-full aspect-video'
 
   return (
-    <>
-      {videoUrl && (
-        <div className="space-y-2">
-          {embed ? (
-            <div className="rounded-xl overflow-hidden border border-border aspect-video">
-              <iframe
-                src={embed.embedUrl}
-                title="Vídeo"
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          ) : (
-            <a
-              href={videoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-colors"
-            >
-              <PlayCircle className="w-4 h-4" />
-              Assistir vídeo
-              <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-            </a>
-          )}
-        </div>
-      )}
+    <div className={className}>
+      <div className={`rounded-xl overflow-hidden border border-border bg-black/5 ${frameClass}`}>
+        <iframe
+          src={embed.embedUrl}
+          title="Vídeo"
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  )
+}
 
+// Depoimentos — idêntico entre a página de detalhe de Famtour e a de Evento.
+// Vídeo e galeria moram em TripVideo/TripGallery, porque a página os posiciona
+// AO LADO da capa, não na sequência deste bloco.
+export function TripMediaSections({ testimonials }: { testimonials: Testimonial[] }) {
+  return (
+    <>
       {testimonials.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
