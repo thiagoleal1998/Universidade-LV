@@ -8,18 +8,17 @@ import { PlayCircle, ExternalLink, ImageIcon, MessageSquareQuote } from 'lucide-
 type Photo = { id: string; url: string; caption: string }
 type Testimonial = { id: string; author_name: string; author_role: string; photo_url: string; content: string }
 
-// Vídeo + galeria + depoimentos — idêntico entre a página de detalhe de
+// Vídeo + depoimentos — idêntico entre a página de detalhe de
 // Famtour e a de Evento (só o que decide SE esse componente renderiza muda
 // entre os dois: famtour esconde tudo isso quando travado por UF, evento
-// nunca esconde). Client component só por causa do estado do lightbox.
+// nunca esconde). A galeria mora em TripGallery (abaixo), porque a página a
+// posiciona AO LADO da capa, não na sequência destes blocos.
 export function TripMediaSections({
-  videoUrl, photos, testimonials,
+  videoUrl, testimonials,
 }: {
   videoUrl: string | null
-  photos: Photo[]
   testimonials: Testimonial[]
 }) {
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const embed = getVideoEmbed(videoUrl)
 
   return (
@@ -49,40 +48,6 @@ export function TripMediaSections({
             </a>
           )}
         </div>
-      )}
-
-      {photos.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Galeria de fotos</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {photos.map((photo, i) => (
-              <button
-                key={photo.id}
-                type="button"
-                onClick={() => setLightboxIndex(i)}
-                className="relative rounded-lg overflow-hidden border border-border bg-muted/30 group"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={photo.caption || 'Foto da galeria'} className="w-full aspect-square object-cover group-hover:opacity-90 transition-opacity" />
-                {photo.caption && (
-                  <p className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-1 line-clamp-1 text-left">{photo.caption}</p>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {lightboxIndex !== null && (
-        <ImageLightbox
-          images={photos}
-          index={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-          onNavigate={setLightboxIndex}
-        />
       )}
 
       {testimonials.length > 0 && (
@@ -121,5 +86,44 @@ export function TripMediaSections({
         </div>
       )}
     </>
+  )
+}
+
+export function TripGallery({ photos, className }: { photos: Photo[]; className?: string }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  if (photos.length === 0) return null
+
+  return (
+    <div className={`space-y-3 ${className ?? ''}`}>
+      <div className="flex items-center gap-2">
+        <ImageIcon className="w-4 h-4 text-muted-foreground" />
+        <p className="text-sm font-semibold text-foreground">Galeria de fotos</p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3">
+        {photos.map((photo, i) => (
+          <button
+            key={photo.id}
+            type="button"
+            onClick={() => setLightboxIndex(i)}
+            className="relative rounded-lg overflow-hidden border border-border bg-muted/30 group"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo.url} alt={photo.caption || 'Foto da galeria'} className="w-full aspect-square object-cover group-hover:opacity-90 transition-opacity" />
+            {photo.caption && (
+              <p className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-1 line-clamp-1 text-left">{photo.caption}</p>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={photos}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
+    </div>
   )
 }

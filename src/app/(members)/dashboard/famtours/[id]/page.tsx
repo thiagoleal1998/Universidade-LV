@@ -6,7 +6,7 @@ import { isUuid } from '@/lib/slug'
 import { getMyFamtourAccessContext, requestFamtourAccess } from '@/app/actions/famtour-access'
 import { isAccessLocked } from '@/lib/access-lock'
 import { RequestAccessButton } from '@/components/members/request-access-button'
-import { TripMediaSections } from '@/components/members/trip-media-sections'
+import { TripMediaSections, TripGallery } from '@/components/members/trip-media-sections'
 import { ArrowLeft, ExternalLink, Calendar, Luggage } from 'lucide-react'
 
 function formatPeriod(start: string | null, end: string | null): string {
@@ -53,9 +53,10 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
   const testimonials = (item.testimonials ?? [])
     .slice()
     .sort((a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index)
+  const showGallery = !locked && photos.length > 0
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl">
+    <div className={`p-4 md:p-8 ${showGallery ? 'max-w-6xl' : 'max-w-3xl'}`}>
       <Link
         href="/dashboard/famtours"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
@@ -64,7 +65,11 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
         Voltar para Famtours
       </Link>
 
-      <div className="relative rounded-2xl overflow-hidden mb-6 bg-muted">
+      {/* Com galeria: em telas largas ela fica AO LADO da capa, ocupando a coluna
+          direita inteira (row-span-2, numa linha `1fr` pra não esticar a capa).
+          Em telas estreitas empilha: capa, galeria, texto. */}
+      <div className={showGallery ? 'grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] lg:gap-x-8' : 'space-y-6'}>
+      <div className="relative rounded-2xl overflow-hidden bg-muted lg:col-start-1 lg:row-start-1">
         {item.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.cover_url} alt={item.title} className="w-full aspect-video object-cover" />
@@ -75,7 +80,9 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
         )}
       </div>
 
-      <div className="space-y-6">
+      {showGallery && <TripGallery photos={photos} className="lg:col-start-2 lg:row-start-1 lg:row-span-2" />}
+
+      <div className="space-y-6 lg:col-start-1 lg:row-start-2">
         <div className="space-y-3">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">{item.title}</h1>
           {(item.start_date || item.end_date) && (
@@ -111,9 +118,10 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
               </a>
             )}
 
-            <TripMediaSections videoUrl={item.video_url} photos={photos} testimonials={testimonials} />
+            <TripMediaSections videoUrl={item.video_url} testimonials={testimonials} />
           </>
         )}
+      </div>
       </div>
     </div>
   )
