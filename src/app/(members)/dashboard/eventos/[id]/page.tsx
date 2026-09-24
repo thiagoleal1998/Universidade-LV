@@ -58,7 +58,7 @@ export default async function EventoDetailPage({ params }: { params: Promise<{ i
 
       {/* Mesma disposição da página de Famtour: galeria ao lado da capa em
           telas largas, empilhada (capa, galeria, texto) nas estreitas. */}
-      <div className={showSide ? 'grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] lg:gap-x-8' : 'space-y-6'}>
+      <div className={showSide ? 'grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] lg:gap-x-8' : 'space-y-6'}>
       <div className="relative rounded-2xl overflow-hidden bg-muted lg:col-start-1 lg:row-start-1">
         {item.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -77,7 +77,7 @@ export default async function EventoDetailPage({ params }: { params: Promise<{ i
         </div>
       )}
 
-      <div className="space-y-6 lg:col-start-1 lg:row-start-2">
+      <div className="space-y-6 min-w-0 lg:col-start-1 lg:row-start-2">
         <div className="space-y-3">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">{item.title}</h1>
           {(item.start_date || item.end_date) && (
