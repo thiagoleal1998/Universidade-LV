@@ -72,6 +72,7 @@ function slideText(collapsed: boolean, maxW = 180): CSSProperties {
   return {
     overflow: 'hidden',
     whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
     maxWidth: collapsed ? 0 : maxW,
     opacity: collapsed ? 0 : 1,
     transition: collapsed
@@ -199,7 +200,7 @@ function SidebarContent({
               key={href}
               href={href}
               onClick={onClose}
-              title={collapsed ? label : undefined}
+              title={label}
               className={cn(
                 'flex items-center rounded-lg font-semibold transition-colors',
                 collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-sm',
