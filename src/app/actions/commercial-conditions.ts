@@ -24,6 +24,7 @@ export type CommercialCondition = {
   cover_url: string
   logo_url: string
   logo_bg_color: string
+  highlight_text: string
   url: string
   is_active: boolean
   expires_at: string | null
@@ -53,6 +54,7 @@ export async function createCommercialCondition(formData: FormData) {
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     logo_url: ((formData.get('logo_url') as string) ?? '').trim(),
     logo_bg_color: resolveLogoBgColor((formData.get('logo_bg_color') as string) ?? ''),
+    highlight_text: ((formData.get('highlight_text') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
@@ -77,7 +79,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('commercial_conditions')
-    .select('title, description, cover_url, logo_url, logo_bg_color, url, is_active, expires_at')
+    .select('title, description, cover_url, logo_url, logo_bg_color, highlight_text, url, is_active, expires_at')
     .eq('id', id)
     .single()
 
@@ -87,6 +89,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     logo_url: ((formData.get('logo_url') as string) ?? '').trim(),
     logo_bg_color: resolveLogoBgColor((formData.get('logo_bg_color') as string) ?? ''),
+    highlight_text: ((formData.get('highlight_text') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
@@ -95,7 +98,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   if (error) return { error: error.message }
 
   const changed = diffFields(prev ?? {}, after, {
-    title: 'título', description: 'descrição', cover_url: 'capa', logo_url: 'logo', logo_bg_color: 'cor de fundo da logo', url: 'link', is_active: 'ativação', expires_at: 'validade',
+    title: 'título', description: 'descrição', cover_url: 'capa', logo_url: 'logo', logo_bg_color: 'cor de fundo da logo', highlight_text: 'destaque', url: 'link', is_active: 'ativação', expires_at: 'validade',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'condicao_comercial', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })

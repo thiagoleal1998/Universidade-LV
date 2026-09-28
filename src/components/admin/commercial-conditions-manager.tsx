@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
+import { HighlightBadge } from '@/components/ui/highlight-badge'
 import { toRichHtml } from '@/lib/legacy-rich-text'
 import { toast } from 'sonner'
 import { Plus, Trash2, Pencil, X, Upload, ImageIcon, TrendingUp, ExternalLink } from 'lucide-react'
@@ -233,6 +234,18 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
               </div>
             </div>
 
+            {/* Texto de destaque — badge livre no canto inferior direito da
+                capa (a logo fica no canto oposto, superior esquerdo). Campo
+                de texto simples, sem preview dedicado — o resultado final já
+                aparece no próprio card da lista logo abaixo. */}
+            <div className="md:col-span-2">
+              <Label htmlFor="cc-highlight">Texto de destaque sobre a capa (opcional)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                Aparece como uma etiqueta no canto inferior direito da imagem — ex.: <strong>7x6</strong>, <strong>30% OFF</strong>.
+              </p>
+              <Input id="cc-highlight" name="highlight_text" defaultValue={editing?.highlight_text ?? ''} placeholder="Ex.: 7x6" maxLength={20} className="max-w-xs" />
+            </div>
+
             {/* Logo do hotel/parceiro — separada da capa de propósito: a capa
                 é a foto do destino, a logo é o brasão da marca, exibida
                 pequena por cima da capa (mesmo padrão de Corrida de Vendas). */}
@@ -344,6 +357,9 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                     className="absolute top-2 left-2 max-w-[110px] px-2 py-1.5"
                     imgClassName="h-6 w-auto max-w-full"
                   />
+                )}
+                {item.highlight_text && (
+                  <HighlightBadge text={item.highlight_text} className="absolute bottom-2 right-2" />
                 )}
               </div>
               <div className="p-4 space-y-1.5">

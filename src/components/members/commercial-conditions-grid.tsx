@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LogoChip } from '@/components/ui/logo-chip'
+import { HighlightBadge } from '@/components/ui/highlight-badge'
 import { toRichHtml } from '@/lib/legacy-rich-text'
 import { Briefcase, ExternalLink, Calendar } from 'lucide-react'
 
@@ -13,6 +14,7 @@ type Condition = {
   cover_url: string | null
   logo_url: string | null
   logo_bg_color: string | null
+  highlight_text: string | null
   url: string | null
   expires_at: string | null
 }
@@ -55,6 +57,9 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                   imgClassName="h-6 w-auto max-w-full"
                 />
               )}
+              {c.highlight_text && (
+                <HighlightBadge text={c.highlight_text} className="absolute bottom-2 right-2" />
+              )}
             </div>
             <div className="p-4">
               <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
@@ -75,14 +80,14 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
         <DialogContent className="max-h-[85vh] flex flex-col sm:max-w-lg">
           {open && (
             <>
-              {(open.cover_url || open.logo_url) && (
+              {(open.cover_url || open.logo_url || open.highlight_text) && (
                 <div className="relative">
                   {open.cover_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={open.cover_url} alt={open.title} referrerPolicy="no-referrer" className="w-full aspect-video object-cover rounded-lg" />
                   ) : (
-                    // Sem capa, mas com logo: mostra a logo sozinha num fundo
-                    // neutro em vez de escondê-la — mesmo comportamento do card.
+                    // Sem capa, mas com logo/destaque: mostra num fundo neutro
+                    // em vez de escondê-los — mesmo comportamento do card.
                     <div className="w-full aspect-video bg-muted/40 rounded-lg flex items-center justify-center" />
                   )}
                   {open.logo_url && (
@@ -92,6 +97,9 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                       className="absolute top-2 left-2 max-w-[130px] px-2.5 py-2"
                       imgClassName="h-7 w-auto max-w-full"
                     />
+                  )}
+                  {open.highlight_text && (
+                    <HighlightBadge text={open.highlight_text} className="absolute bottom-2 right-2 text-sm px-2.5 py-1.5" />
                   )}
                 </div>
               )}
