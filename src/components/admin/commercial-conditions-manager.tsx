@@ -16,11 +16,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { ColorPicker } from '@/components/ui/color-picker'
+import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
 import { toast } from 'sonner'
 import { Plus, Trash2, Pencil, X, Upload, ImageIcon, TrendingUp, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type CommercialConditionWithEdit = CommercialCondition & { canEdit?: boolean }
+
+const LOGO_BG_PRESETS = ['#ffffff', '#000000', '#0f172a', '#3b82f6', '#22c55e', '#f59e0b']
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
@@ -35,6 +39,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoBgColor, setLogoBgColor] = useState(DEFAULT_LOGO_BG)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -46,6 +51,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     setCoverFile(null)
     setLogoPreview(null)
     setLogoFile(null)
+    setLogoBgColor(DEFAULT_LOGO_BG)
   }
 
   function handleEdit(item: CommercialCondition) {
@@ -54,6 +60,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     setCoverFile(null)
     setLogoPreview(item.logo_url || null)
     setLogoFile(null)
+    setLogoBgColor(item.logo_bg_color || DEFAULT_LOGO_BG)
     setShowForm(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -222,14 +229,15 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
             <div className="md:col-span-2">
               <Label>Logo do hotel/parceiro (opcional)</Label>
               <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                Aparece pequena, por cima da imagem de capa. Recomendado: fundo transparente (PNG)
+                Aparece dentro de um quadrado colorido, por cima da imagem de capa — escolha a cor de fundo abaixo pra combinar com a logo (útil quando ela é clara/branca e some direto sobre a foto).
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <div
                   className={cn(
-                    'relative w-24 h-24 rounded-xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-primary/50 transition-colors',
+                    'relative w-24 h-24 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-primary/50 transition-colors',
                     logoPreview && 'border-solid border-border'
                   )}
+                  style={logoPreview ? { backgroundColor: logoBgColor } : undefined}
                   onClick={() => logoInputRef.current?.click()}
                 >
                   {logoPreview ? (
@@ -241,7 +249,9 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                       </div>
                     </>
                   ) : (
-                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                    <div className="flex items-center justify-center w-full h-full bg-muted/30 text-muted-foreground">
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
                   )}
                 </div>
                 <div className="flex flex-col justify-center gap-2 flex-1">
@@ -264,6 +274,13 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                     placeholder="https://..."
                     className="h-8 text-sm"
                   />
+                  <div className="pt-1">
+                    <Label className="text-xs text-muted-foreground">Cor de fundo do quadrado</Label>
+                    <div className="mt-1.5">
+                      <ColorPicker color={logoBgColor} onChange={setLogoBgColor} presets={LOGO_BG_PRESETS} swatchSize="w-5 h-5" />
+                    </div>
+                  </div>
+                  <input type="hidden" name="logo_bg_color" value={logoBgColor} />
                 </div>
               </div>
             </div>
@@ -311,8 +328,12 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                   </div>
                 )}
                 {item.logo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.logo_url} alt="Logo" referrerPolicy="no-referrer" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
+                  <LogoChip
+                    logoUrl={item.logo_url}
+                    bgColor={item.logo_bg_color}
+                    className="absolute top-2 left-2 max-w-[110px] px-2 py-1.5"
+                    imgClassName="h-6 w-auto max-w-full"
+                  />
                 )}
               </div>
               <div className="p-4 space-y-1.5">

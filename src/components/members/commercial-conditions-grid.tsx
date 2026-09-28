@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { LogoChip } from '@/components/ui/logo-chip'
 import { Briefcase, ExternalLink, Calendar } from 'lucide-react'
 
 type Condition = {
@@ -10,6 +11,7 @@ type Condition = {
   description: string | null
   cover_url: string | null
   logo_url: string | null
+  logo_bg_color: string | null
   url: string | null
   expires_at: string | null
 }
@@ -45,8 +47,12 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                 </div>
               )}
               {c.logo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.logo_url} alt="" referrerPolicy="no-referrer" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
+                <LogoChip
+                  logoUrl={c.logo_url}
+                  bgColor={c.logo_bg_color ?? ''}
+                  className="absolute top-2 left-2 max-w-[110px] px-2 py-1.5"
+                  imgClassName="h-6 w-auto max-w-full"
+                />
               )}
             </div>
             <div className="p-4">
@@ -79,8 +85,12 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                     <div className="w-full aspect-video bg-muted/40 rounded-lg flex items-center justify-center" />
                   )}
                   {open.logo_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={open.logo_url} alt="" referrerPolicy="no-referrer" className="absolute top-2 left-2 h-10 w-auto max-w-[120px] object-contain drop-shadow" />
+                    <LogoChip
+                      logoUrl={open.logo_url}
+                      bgColor={open.logo_bg_color ?? ''}
+                      className="absolute top-2 left-2 max-w-[130px] px-2.5 py-2"
+                      imgClassName="h-7 w-auto max-w-full"
+                    />
                   )}
                 </div>
               )}
