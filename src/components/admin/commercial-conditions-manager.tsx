@@ -180,7 +180,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                   {coverPreview ? (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={coverPreview} alt="Preview" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
                         <Upload className="w-5 h-5 text-white" />
                       </div>
@@ -235,7 +235,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                   {logoPreview ? (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={logoPreview} alt="Preview da logo" className="w-full h-full object-contain p-2" />
+                      <img src={logoPreview} alt="Preview da logo" referrerPolicy="no-referrer" className="w-full h-full object-contain p-2" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
                         <Upload className="w-4 h-4 text-white" />
                       </div>
@@ -304,7 +304,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
               <div className="relative">
                 {item.cover_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.cover_url} alt={item.title} className="w-full aspect-video object-cover" />
+                  <img src={item.cover_url} alt={item.title} referrerPolicy="no-referrer" className="w-full aspect-video object-cover" />
                 ) : (
                   <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
                     <TrendingUp className="w-8 h-8 text-muted-foreground/40" />
@@ -312,7 +312,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                 )}
                 {item.logo_url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.logo_url} alt="Logo" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
+                  <img src={item.logo_url} alt="Logo" referrerPolicy="no-referrer" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
                 )}
               </div>
               <div className="p-4 space-y-1.5">

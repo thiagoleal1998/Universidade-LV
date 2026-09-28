@@ -38,7 +38,7 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
             <div className="relative">
               {c.cover_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.cover_url} alt={c.title} className="w-full aspect-video object-cover" />
+                <img src={c.cover_url} alt={c.title} referrerPolicy="no-referrer" className="w-full aspect-video object-cover" />
               ) : (
                 <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
                   <Briefcase className="w-8 h-8 text-muted-foreground/40" />
@@ -46,7 +46,7 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
               )}
               {c.logo_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.logo_url} alt="" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
+                <img src={c.logo_url} alt="" referrerPolicy="no-referrer" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
               )}
             </div>
             <div className="p-4">
@@ -72,7 +72,7 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                 <div className="relative">
                   {open.cover_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={open.cover_url} alt={open.title} className="w-full aspect-video object-cover rounded-lg" />
+                    <img src={open.cover_url} alt={open.title} referrerPolicy="no-referrer" className="w-full aspect-video object-cover rounded-lg" />
                   ) : (
                     // Sem capa, mas com logo: mostra a logo sozinha num fundo
                     // neutro em vez de escondê-la — mesmo comportamento do card.
@@ -80,7 +80,7 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                   )}
                   {open.logo_url && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={open.logo_url} alt="" className="absolute top-2 left-2 h-10 w-auto max-w-[120px] object-contain drop-shadow" />
+                    <img src={open.logo_url} alt="" referrerPolicy="no-referrer" className="absolute top-2 left-2 h-10 w-auto max-w-[120px] object-contain drop-shadow" />
                   )}
                 </div>
               )}
