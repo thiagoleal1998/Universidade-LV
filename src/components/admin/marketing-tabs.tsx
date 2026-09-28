@@ -9,6 +9,7 @@ import { FamtoursManager } from '@/components/admin/famtours-manager'
 import { EventosManager } from '@/components/admin/eventos-manager'
 import { GruposManager } from '@/components/admin/grupos-manager'
 import { CommercialConditionsManager } from '@/components/admin/commercial-conditions-manager'
+import { CommercialBannerManager } from '@/components/admin/commercial-banner-manager'
 import { TamoJuntoWinnersManager } from '@/components/admin/tamojunto-winners-manager'
 import { PodviajarManager } from '@/components/admin/podviajar-manager'
 import { CorridaVendasManager } from '@/components/admin/corrida-vendas-manager'
@@ -106,6 +107,7 @@ export function MarketingTabs({
   tamojuntoWinnersRaw = '{}',
   podviajarRaw = '{}',
   corridaVendasRaw = '{}',
+  commercialBannerRaw = '{}',
   canCreateTraining = true,
   canCreateFamtour = true,
   canCreateEvento = true,
@@ -129,6 +131,7 @@ export function MarketingTabs({
   tamojuntoWinnersRaw?: string
   podviajarRaw?: string
   corridaVendasRaw?: string
+  commercialBannerRaw?: string
   canCreateTraining?: boolean
   canCreateFamtour?: boolean
   canCreateEvento?: boolean
@@ -209,7 +212,10 @@ export function MarketingTabs({
           </div>
 
           {comercialSubTab === 'condicoes' && (
-            <CommercialConditionsManager items={commercialConditions} canCreate={canCreateComercial} />
+            <>
+              <CommercialBannerManager raw={commercialBannerRaw} canEdit={canCreateComercial} />
+              <CommercialConditionsManager items={commercialConditions} canCreate={canCreateComercial} />
+            </>
           )}
           {comercialSubTab === 'corrida' && (
             <CorridaVendasManager raw={corridaVendasRaw} canEdit={canEditMarketingSettings} />

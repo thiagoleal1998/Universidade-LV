@@ -49,3 +49,16 @@ export async function saveCorridaVendas(formData: FormData) {
   if ('success' in result) logActivity(authz,{ action: 'update', entityType: 'premiacao', entityLabel: 'Corrida de Vendas' })
   return result
 }
+
+// Guard `comercial` (não `marketing` como os 3 acima) — o banner só aparece
+// na aba Comercial → Condições Comerciais, então segue a capacidade daquela
+// aba especificamente, não a mais ampla usada pelos settings de Marketing.
+export async function saveCommercialBanner(formData: FormData) {
+  const authz = await requireCapability('comercial')
+  if ('error' in authz) return { error: authz.error }
+
+  const value = (formData.get('commercial_banner') as string) || '{}'
+  const result = await upsertSetting('commercial_banner', value)
+  if ('success' in result) logActivity(authz, { action: 'update', entityType: 'condicao_comercial', entityLabel: 'Banner de campanha' })
+  return result
+}

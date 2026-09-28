@@ -437,6 +437,15 @@ export default async function ComercialPage({
   const commercialConditions = (conditionsData ?? []).filter((c) => !c.expires_at || c.expires_at >= todayStr)
   const allCorridas = parseList(settings.corrida_vendas)
 
+  // Banner de campanha — separado dos cards de `commercial_conditions` de
+  // propósito, mesma peça só configurada em Admin → Comercial → Condições
+  // Comerciais → "Banner de campanha".
+  let commercialBanner: { active: boolean; image_url: string; url: string } | null = null
+  try {
+    const parsed = JSON.parse(settings.commercial_banner)
+    if (parsed?.active && parsed?.image_url) commercialBanner = parsed
+  } catch {}
+
   const subtabData = SUBTABS.find((s) => s.key === activeSubtab)!
   const filteredCorridas = allCorridas.filter(subtabData.filter)
 
@@ -461,16 +470,37 @@ export default async function ComercialPage({
 
       {/* Condições Comerciais */}
       {activeTab === 'comercial' && (
-        commercialConditions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-3 text-muted-foreground p-8">
-            <Briefcase className="w-10 h-10 opacity-30" />
-            <p className="text-sm">Nenhuma condição comercial disponível no momento.</p>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+          {commercialBanner && (
+            commercialBanner.url ? (
+              <a href={commercialBanner.url} target="_blank" rel="noreferrer" className="block max-w-5xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={commercialBanner.image_url}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="w-full h-40 sm:h-48 md:h-56 object-cover rounded-2xl hover:opacity-95 transition-opacity"
+                />
+              </a>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={commercialBanner.image_url}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="w-full h-40 sm:h-48 md:h-56 object-cover rounded-2xl max-w-5xl"
+              />
+            )
+          )}
+          {commercialConditions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-3 text-muted-foreground">
+              <Briefcase className="w-10 h-10 opacity-30" />
+              <p className="text-sm">Nenhuma condição comercial disponível no momento.</p>
+            </div>
+          ) : (
             <CommercialConditionsGrid items={commercialConditions} />
-          </div>
-        )
+          )}
+        </div>
       )}
 
       {/* Corrida de vendas */}

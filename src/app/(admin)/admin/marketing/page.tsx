@@ -159,6 +159,7 @@ export default async function MarketingPage() {
         tamojuntoWinnersRaw={settings.tamojunto_winners}
         podviajarRaw={settings.podviajar}
         corridaVendasRaw={settings.corrida_vendas}
+        commercialBannerRaw={settings.commercial_banner}
         canCreateTraining={canEditTraining}
         canCreateFamtour={canEditFamtour}
         canCreateEvento={canEditEvento}

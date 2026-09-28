@@ -112,6 +112,8 @@ export type Settings = {
   podviajar: string
   // Corrida de vendas
   corrida_vendas: string
+  // Banner de campanha (Comercial → Condições Comerciais)
+  commercial_banner: string
   // SEO
   seo_title: string
   seo_description: string
@@ -202,6 +204,10 @@ const DEFAULTS = {
     episodes: [],
   }),
   corrida_vendas: JSON.stringify([]),
+  // Banner grande, acima da grade de cards, pra campanhas em destaque —
+  // separado de `commercial_conditions` (não é um "card" da grade, é um
+  // banner só, sem título/descrição/validade).
+  commercial_banner: JSON.stringify({ active: false, image_url: '', url: '' }),
   landing_hero_title: 'Capacitação exclusiva para agentes de viagem',
   landing_hero_subtitle: 'Treinamentos ao vivo, cursos completos, comunidade e certificados — tudo que você precisa para se destacar no mercado.',
   landing_hero_image_url: '',
@@ -368,6 +374,7 @@ export async function getSettings(): Promise<Settings> {
       tamojunto_winners: map.tamojunto_winners ?? DEFAULTS.tamojunto_winners,
       podviajar: map.podviajar ?? DEFAULTS.podviajar,
       corrida_vendas: map.corrida_vendas ?? DEFAULTS.corrida_vendas,
+      commercial_banner: map.commercial_banner ?? DEFAULTS.commercial_banner,
       landing_hero_title: map.landing_hero_title ?? DEFAULTS.landing_hero_title,
       landing_hero_subtitle: map.landing_hero_subtitle ?? DEFAULTS.landing_hero_subtitle,
       landing_hero_image_url: map.landing_hero_image_url ?? DEFAULTS.landing_hero_image_url,
