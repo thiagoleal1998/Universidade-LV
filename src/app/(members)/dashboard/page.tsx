@@ -10,7 +10,7 @@ import { RequestAccessButton } from '@/components/members/request-access-button'
 import { TripCard } from '@/components/members/trip-card'
 import { buttonVariants } from '@/components/ui/button'
 import { LiveCountdown } from '@/components/members/live-countdown'
-import { WinnersCarousel } from '@/components/members/winners-carousel'
+import { TamojuntoWinnersSection } from '@/components/members/tamojunto-winners-section'
 import {
   ChevronRight, BookOpen, PlayCircle, ArrowRight,
   Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
@@ -515,7 +515,6 @@ export default async function DashboardPage() {
       tamojuntoWinners = { active: true, title: parsed.title ?? 'Vencedores do Mês', badge: parsed.badge ?? '', months }
     }
   } catch {}
-  const currentWinnersMonth = tamojuntoWinners?.months?.[0] ?? null
 
   // PodViajar
   type PodEpisode = { title: string; description: string; url: string; date: string; cover_url: string; duration: string }
@@ -888,32 +887,9 @@ export default async function DashboardPage() {
 
           {/* ── Vencedores TamoJunto LV ── */}
           {tamojuntoWinners && (
-            <><hr className="border-border/50" /><section className="rounded-2xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-yellow-400/5 to-orange-400/5">
-              <div className="p-5 sm:p-6">
-                {/* Cabeçalho */}
-                <div className="flex flex-wrap items-center gap-3 mb-5">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-amber-500" />
-                    <h2 className="text-base font-bold text-foreground">{tamojuntoWinners.title}</h2>
-                  </div>
-                  {tamojuntoWinners.badge && (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/15 border border-amber-500/25 rounded-full px-3 py-1">
-                      {tamojuntoWinners.badge}
-                    </span>
-                  )}
-                  {currentWinnersMonth?.month && (
-                    <span className="text-xs font-semibold text-muted-foreground border border-border/60 bg-background/50 rounded-full px-3 py-1">
-                      {currentWinnersMonth.month}
-                    </span>
-                  )}
-                </div>
-
-                {/* Carrossel de regiões */}
-                <WinnersCarousel
-                  regions={(currentWinnersMonth?.regions ?? []).filter((r) => r.agency1 || r.agency2)}
-                />
-              </div>
-            </section></>
+            <><hr className="border-border/50" />
+            <TamojuntoWinnersSection title={tamojuntoWinners.title} badge={tamojuntoWinners.badge} months={tamojuntoWinners.months} />
+            </>
           )}
 
           {/* ── TamoJuntoLV ── */}
