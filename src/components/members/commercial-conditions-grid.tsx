@@ -9,6 +9,7 @@ type Condition = {
   title: string
   description: string | null
   cover_url: string | null
+  logo_url: string | null
   url: string | null
   expires_at: string | null
 }
@@ -34,14 +35,20 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
             onClick={() => setOpenId(c.id)}
             className="group block text-left rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all"
           >
-            {c.cover_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={c.cover_url} alt={c.title} className="w-full aspect-video object-cover" />
-            ) : (
-              <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
-                <Briefcase className="w-8 h-8 text-muted-foreground/40" />
-              </div>
-            )}
+            <div className="relative">
+              {c.cover_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.cover_url} alt={c.title} className="w-full aspect-video object-cover" />
+              ) : (
+                <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
+                  <Briefcase className="w-8 h-8 text-muted-foreground/40" />
+                </div>
+              )}
+              {c.logo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.logo_url} alt="" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
+              )}
+            </div>
             <div className="p-4">
               <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
                 {c.title}
@@ -61,9 +68,21 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
         <DialogContent className="max-h-[85vh] flex flex-col sm:max-w-lg">
           {open && (
             <>
-              {open.cover_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={open.cover_url} alt={open.title} className="w-full aspect-video object-cover rounded-lg" />
+              {(open.cover_url || open.logo_url) && (
+                <div className="relative">
+                  {open.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={open.cover_url} alt={open.title} className="w-full aspect-video object-cover rounded-lg" />
+                  ) : (
+                    // Sem capa, mas com logo: mostra a logo sozinha num fundo
+                    // neutro em vez de escondê-la — mesmo comportamento do card.
+                    <div className="w-full aspect-video bg-muted/40 rounded-lg flex items-center justify-center" />
+                  )}
+                  {open.logo_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={open.logo_url} alt="" className="absolute top-2 left-2 h-10 w-auto max-w-[120px] object-contain drop-shadow" />
+                  )}
+                </div>
               )}
               <DialogHeader>
                 <DialogTitle>{open.title}</DialogTitle>

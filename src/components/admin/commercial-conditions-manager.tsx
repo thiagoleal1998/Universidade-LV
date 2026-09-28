@@ -3,7 +3,8 @@
 import { useState, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  createCommercialCondition, updateCommercialCondition, deleteCommercialCondition, toggleCommercialConditionActive, uploadCommercialConditionCover,
+  createCommercialCondition, updateCommercialCondition, deleteCommercialCondition, toggleCommercialConditionActive,
+  uploadCommercialConditionCover, uploadCommercialConditionLogo,
   type CommercialCondition,
 } from '@/app/actions/commercial-conditions'
 import { Button } from '@/components/ui/button'
@@ -32,7 +33,10 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
   const [isPending, startTransition] = useTransition()
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
   function resetForm() {
@@ -40,12 +44,16 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     setEditing(null)
     setCoverPreview(null)
     setCoverFile(null)
+    setLogoPreview(null)
+    setLogoFile(null)
   }
 
   function handleEdit(item: CommercialCondition) {
     setEditing(item)
     setCoverPreview(item.cover_url || null)
     setCoverFile(null)
+    setLogoPreview(item.logo_url || null)
+    setLogoFile(null)
     setShowForm(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -65,6 +73,18 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     setCoverPreview(URL.createObjectURL(file))
   }
 
+  function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx. 8MB). Escolha uma foto menor ou comprima antes de enviar.')
+      e.target.value = ''
+      return
+    }
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
@@ -74,6 +94,11 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
           const upload = await uploadCommercialConditionCover(coverFile)
           if (upload.error) { toast.error(upload.error); return }
           fd.set('cover_url', upload.url ?? '')
+        }
+        if (logoFile) {
+          const upload = await uploadCommercialConditionLogo(logoFile)
+          if (upload.error) { toast.error(upload.error); return }
+          fd.set('logo_url', upload.url ?? '')
         }
         const result = editing ? await updateCommercialCondition(editing.id, fd) : await createCommercialCondition(fd)
         if (result?.error) toast.error(result.error)
@@ -191,6 +216,58 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
               </div>
             </div>
 
+            {/* Logo do hotel/parceiro — separada da capa de propósito: a capa
+                é a foto do destino, a logo é o brasão da marca, exibida
+                pequena por cima da capa (mesmo padrão de Corrida de Vendas). */}
+            <div className="md:col-span-2">
+              <Label>Logo do hotel/parceiro (opcional)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                Aparece pequena, por cima da imagem de capa. Recomendado: fundo transparente (PNG)
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div
+                  className={cn(
+                    'relative w-24 h-24 rounded-xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-primary/50 transition-colors',
+                    logoPreview && 'border-solid border-border'
+                  )}
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  {logoPreview ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={logoPreview} alt="Preview da logo" className="w-full h-full object-contain p-2" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload className="w-4 h-4 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex flex-col justify-center gap-2 flex-1">
+                  <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleLogoFileChange} className="hidden" />
+                  <Button type="button" variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} className="gap-2 w-fit">
+                    <Upload className="w-4 h-4" />
+                    {logoPreview ? 'Trocar logo' : 'Selecionar logo'}
+                  </Button>
+                  {logoPreview && (
+                    <button type="button" onClick={() => { setLogoPreview(null); setLogoFile(null) }} className="text-xs text-muted-foreground hover:text-red-500 transition-colors text-left">
+                      Remover logo
+                    </button>
+                  )}
+                  <p className="text-xs text-muted-foreground">Ou cole uma URL:</p>
+                  <Input
+                    name="logo_url"
+                    type="url"
+                    value={logoFile ? '' : (logoPreview ?? '')}
+                    onChange={(e) => { setLogoFile(null); setLogoPreview(e.target.value || null) }}
+                    placeholder="https://..."
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 md:col-span-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="is_active" value="true" defaultChecked={editing ? editing.is_active : true} className="w-4 h-4 accent-primary" />
@@ -224,14 +301,20 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {items.map((item) => (
             <div key={item.id} className={cn('rounded-xl border border-border bg-card overflow-hidden', !item.is_active && 'opacity-60')}>
-              {item.cover_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.cover_url} alt={item.title} className="w-full aspect-video object-cover" />
-              ) : (
-                <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
-                  <TrendingUp className="w-8 h-8 text-muted-foreground/40" />
-                </div>
-              )}
+              <div className="relative">
+                {item.cover_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.cover_url} alt={item.title} className="w-full aspect-video object-cover" />
+                ) : (
+                  <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
+                    <TrendingUp className="w-8 h-8 text-muted-foreground/40" />
+                  </div>
+                )}
+                {item.logo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.logo_url} alt="Logo" className="absolute top-2 left-2 h-9 w-auto max-w-[100px] object-contain drop-shadow" />
+                )}
+              </div>
               <div className="p-4 space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-semibold text-foreground leading-snug">{item.title}</p>

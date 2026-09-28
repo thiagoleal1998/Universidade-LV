@@ -11,6 +11,7 @@ export type CommercialCondition = {
   title: string
   description: string
   cover_url: string
+  logo_url: string
   url: string
   is_active: boolean
   expires_at: string | null
@@ -38,6 +39,7 @@ export async function createCommercialCondition(formData: FormData) {
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
+    logo_url: ((formData.get('logo_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
@@ -62,7 +64,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('commercial_conditions')
-    .select('title, description, cover_url, url, is_active, expires_at')
+    .select('title, description, cover_url, logo_url, url, is_active, expires_at')
     .eq('id', id)
     .single()
 
@@ -70,6 +72,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
+    logo_url: ((formData.get('logo_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
@@ -78,7 +81,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   if (error) return { error: error.message }
 
   const changed = diffFields(prev ?? {}, after, {
-    title: 'título', description: 'descrição', cover_url: 'capa', url: 'link', is_active: 'ativação', expires_at: 'validade',
+    title: 'título', description: 'descrição', cover_url: 'capa', logo_url: 'logo', url: 'link', is_active: 'ativação', expires_at: 'validade',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'condicao_comercial', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })
@@ -126,8 +129,39 @@ export async function uploadCommercialConditionCover(file: File) {
   if ('error' in ctx) return { error: ctx.error }
 
   const adminClient = createAdminClient()
-  const webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  let webpFile: File
+  try {
+    // sharp (dentro de toWebP) lança exceção síncrona/rejeitada pra imagem
+    // corrompida/malformada — sem o try/catch, isso derruba a Server Action
+    // inteira em vez de virar um toast de erro normal (mesma classe de bug
+    // já corrigida em uploadFamtourCover/uploadTrainingCover/uploadMarketingFile).
+    webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar esta imagem — ela pode estar corrompida ou num formato inesperado.' }
+  }
   const path = `commercial-condition-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
+
+  const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: 'image/webp' })
+  if (error) return { error: error.message }
+
+  const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)
+  return { success: true, url: publicUrl }
+}
+
+// Logo do hotel/parceiro — separada da capa (foto ilustrativa): resize menor
+// (400px), já que é exibida pequena por cima da capa, nunca em tela cheia.
+export async function uploadCommercialConditionLogo(file: File) {
+  const ctx = await requireCapability('comercial')
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  let webpFile: File
+  try {
+    webpFile = await toWebP(file, { maxWidth: 400, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar esta imagem — ela pode estar corrompida ou num formato inesperado.' }
+  }
+  const path = `commercial-condition-logos/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
 
   const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: 'image/webp' })
   if (error) return { error: error.message }
