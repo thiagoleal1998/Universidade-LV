@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { detectEstadoBR, estadoFlagUrl } from '@/lib/estado-flag'
 import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
+import { CommercialConditionsGrid } from '@/components/members/commercial-conditions-grid'
 
 export const metadata = { title: 'Condições Comerciais' }
 
@@ -467,39 +468,7 @@ export default async function ComercialPage({
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
-              {commercialConditions.map((c) => (
-                <a
-                  key={c.id}
-                  href={c.url || undefined}
-                  target={c.url ? '_blank' : undefined}
-                  rel={c.url ? 'noreferrer' : undefined}
-                  className="group block rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-all"
-                >
-                  {c.cover_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.cover_url} alt={c.title} className="w-full aspect-video object-cover" />
-                  ) : (
-                    <div className="w-full aspect-video bg-muted/40 flex items-center justify-center">
-                      <Briefcase className="w-8 h-8 text-muted-foreground/40" />
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
-                      {c.title}
-                    </p>
-                    {c.description && (
-                      <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>
-                    )}
-                    {c.url && (
-                      <span className="flex items-center gap-1 text-xs text-primary mt-2">
-                        <ExternalLink className="w-3 h-3" /> Saber mais
-                      </span>
-                    )}
-                  </div>
-                </a>
-              ))}
-            </div>
+            <CommercialConditionsGrid items={commercialConditions} />
           </div>
         )
       )}
