@@ -324,10 +324,21 @@ export default async function TreinamentosPage() {
 
   const linkItems = allItems.filter((i) => i.type === 'link')
 
-  const replayItems = allItems.filter(
-    (i) => i.type === 'replay' ||
-      (i.type === 'live' && i.live_at && new Date(i.live_at).getTime() <= now - TWO_HOURS)
-  )
+  // Mais recente primeiro — pedido do usuário ("publiquei o Vila Galé por
+  // último, ele deve aparecer primeiro"). `order_index` é reorder MANUAL do
+  // admin (mesmo mecanismo de curso/módulo), não data de publicação; itens
+  // novos entram no fim dele, então usá-lo aqui deixava o replay mais recente
+  // sempre por último. `live_at ?? created_at`: treinamento que nasceu "ao
+  // vivo" e virou replay sozinho (2h depois do horário) usa a data real da
+  // sessão; replay carregado direto (sem `live_at`, campo só existe pro tipo
+  // "live") usa a data de criação — as duas são a melhor aproximação de
+  // "quando isso ficou disponível" que a tabela guarda hoje.
+  const replayItems = allItems
+    .filter(
+      (i) => i.type === 'replay' ||
+        (i.type === 'live' && i.live_at && new Date(i.live_at).getTime() <= now - TWO_HOURS)
+    )
+    .sort((a, b) => new Date(b.live_at ?? b.created_at).getTime() - new Date(a.live_at ?? a.created_at).getTime())
 
   try { await checkAndNotifyExpiredLive(allItems) } catch {}
 
