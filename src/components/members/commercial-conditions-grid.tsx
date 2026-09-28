@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LogoChip } from '@/components/ui/logo-chip'
+import { toRichHtml } from '@/lib/legacy-rich-text'
 import { Briefcase, ExternalLink, Calendar } from 'lucide-react'
 
 type Condition = {
@@ -59,8 +60,8 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
               <p className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors">
                 {c.title}
               </p>
-              {c.description && (
-                <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>
+              {c.description && c.description !== '<p></p>' && (
+                <div className="rich-text text-xs text-muted-foreground mt-1.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: toRichHtml(c.description) }} />
               )}
               <span className="flex items-center gap-1 text-xs text-primary mt-2">
                 Ver condições
@@ -98,8 +99,8 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                 <DialogTitle>{open.title}</DialogTitle>
               </DialogHeader>
               <div className="overflow-y-auto pr-1 space-y-4">
-                {open.description && (
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{open.description}</p>
+                {open.description && open.description !== '<p></p>' && (
+                  <div className="rich-text text-sm text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: toRichHtml(open.description) }} />
                 )}
                 {open.expires_at && (
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Spinner } from '@/components/ui/spinner'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
+import { toRichHtml } from '@/lib/legacy-rich-text'
 import { toast } from 'sonner'
 import { Plus, Trash2, Pencil, X, Upload, ImageIcon, TrendingUp, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
   const [editing, setEditing] = useState<CommercialCondition | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [descriptionValue, setDescriptionValue] = useState('')
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -47,6 +49,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
   function resetForm() {
     setShowForm(false)
     setEditing(null)
+    setDescriptionValue('')
     setCoverPreview(null)
     setCoverFile(null)
     setLogoPreview(null)
@@ -56,6 +59,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
 
   function handleEdit(item: CommercialCondition) {
     setEditing(item)
+    setDescriptionValue(toRichHtml(item.description ?? ''))
     setCoverPreview(item.cover_url || null)
     setCoverFile(null)
     setLogoPreview(item.logo_url || null)
@@ -95,6 +99,10 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
+    // RichTextEditor não é um input nativo — o HTML não entra sozinho no
+    // FormData acima (mesmo motivo de cover_url/logo_url serem sobrescritos
+    // manualmente depois de um upload).
+    fd.set('description', descriptionValue)
     startTransition(async () => {
       try {
         if (coverFile) {
@@ -154,7 +162,9 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
 
             <div className="md:col-span-2">
               <Label htmlFor="cc-description">Descrição</Label>
-              <Textarea id="cc-description" name="description" rows={3} defaultValue={editing?.description ?? ''} placeholder="Detalhes da condição comercial..." className="mt-1.5 resize-none" />
+              <div className="mt-1.5">
+                <RichTextEditor content={descriptionValue} onChange={setDescriptionValue} />
+              </div>
             </div>
 
             <div className="md:col-span-2">
@@ -348,7 +358,9 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                     {!item.is_active && <span className="text-[10px] uppercase font-semibold text-amber-500 bg-amber-500/10 rounded px-1.5 py-0.5">Rascunho</span>}
                   </div>
                 </div>
-                {item.description && <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>}
+                {item.description && item.description !== '<p></p>' && (
+                  <div className="rich-text text-sm text-muted-foreground line-clamp-2" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
+                )}
                 {item.expires_at && (
                   <p className={cn('text-xs', item.expires_at < todayIsoDate() ? 'text-red-500' : 'text-muted-foreground')}>
                     Válido até {new Date(item.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
