@@ -478,7 +478,7 @@ export default async function ComercialPage({
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {commercialBanner && (
             <>
-              <Link href="/dashboard/comercial/campanha" className="group block max-w-5xl mx-auto relative rounded-2xl overflow-hidden">
+              <Link href="/dashboard/comercial/campanha" className="group block relative rounded-2xl overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={commercialBanner.image_url}
