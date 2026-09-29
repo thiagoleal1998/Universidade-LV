@@ -60,33 +60,22 @@ export default async function CampanhaComercialPage() {
           <p className="text-sm">Nenhuma condição cadastrada para esta campanha ainda.</p>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[520px] text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-muted-foreground text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 font-semibold w-16">Logo</th>
-                <th className="px-4 py-3 font-semibold">Parceiro</th>
-                <th className="px-4 py-3 font-semibold">Condição especial</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {items.map((item) => (
-                <tr key={item.id} className="align-top">
-                  <td className="px-4 py-3">
-                    {item.logo_url ? (
-                      <LogoChip logoUrl={item.logo_url} bgColor={DEFAULT_LOGO_BG} className="w-11 h-11" imgClassName="w-full h-full p-1.5" />
-                    ) : (
-                      <div className="w-11 h-11 rounded-lg bg-muted/40 flex items-center justify-center">
-                        <Briefcase className="w-4 h-4 text-muted-foreground/50" />
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">{item.partner_name}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-pre-wrap">{item.condition_text}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {items.map((item) => (
+            <div key={item.id} className="bg-card border border-border rounded-xl p-4 flex gap-4 items-start">
+              {item.logo_url ? (
+                <LogoChip logoUrl={item.logo_url} bgColor={DEFAULT_LOGO_BG} className="w-20 h-20 shrink-0" imgClassName="w-full h-full p-2.5" />
+              ) : (
+                <div className="w-20 h-20 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-7 h-7 text-muted-foreground/50" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1 pt-1">
+                <p className="font-semibold text-foreground">{item.partner_name}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">{item.condition_text}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
