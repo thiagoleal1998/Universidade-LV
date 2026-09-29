@@ -42,6 +42,28 @@ function extractInstagram(url: string): { kind: string; code: string } | null {
   return { kind: m[1] === 'reels' ? 'reel' : m[1], code: m[2] }
 }
 
+// Lista de links de vídeo vinda do formulário admin (JSON stringificado de
+// um array, mesmo padrão de parseExclusiveUfs em access-lock.ts) — Famtour e
+// Evento passaram de 1 vídeo pra vários. Entrada inválida (JSON quebrado, não
+// é array) cai em lista vazia; cada item é aparado e precisa parsear como URL
+// de verdade — um link mal formado nessa lista é descartado em silêncio (não
+// bloqueia salvar os demais campos do formulário), não gera erro pro admin.
+export function parseVideoUrls(raw: string | null): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    if (!Array.isArray(arr)) return []
+    return arr
+      .map((v) => String(v).trim())
+      .filter((v) => {
+        if (!v) return false
+        try { new URL(v); return true } catch { return false }
+      })
+  } catch {
+    return []
+  }
+}
+
 export function getVideoEmbed(url: string | null | undefined): VideoEmbed | null {
   if (!url) return null
   const yt = extractYouTubeId(url)

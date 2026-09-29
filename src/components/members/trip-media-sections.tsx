@@ -9,24 +9,23 @@ import { PlayCircle, ExternalLink, ImageIcon, MessageSquareQuote, ChevronLeft, C
 type Photo = { id: string; url: string; caption: string }
 type Testimonial = { id: string; author_name: string; author_role: string; photo_url: string; content: string }
 
-export function TripVideo({ videoUrl, className }: { videoUrl: string | null; className?: string }) {
+// Um vídeo — mesma renderização de antes, só extraída pra ser chamada em
+// loop por TripVideo (que agora recebe uma LISTA de links, não mais um só).
+function SingleVideo({ videoUrl }: { videoUrl: string }) {
   const embed = getVideoEmbed(videoUrl)
-  if (!videoUrl) return null
 
   if (!embed) {
     return (
-      <div className={className}>
-        <a
-          href={videoUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-colors"
-        >
-          <PlayCircle className="w-4 h-4" />
-          Assistir vídeo
-          <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-        </a>
-      </div>
+      <a
+        href={videoUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-colors"
+      >
+        <PlayCircle className="w-4 h-4" />
+        Assistir vídeo
+        <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+      </a>
     )
   }
 
@@ -40,16 +39,26 @@ export function TripVideo({ videoUrl, className }: { videoUrl: string | null; cl
       : 'w-full aspect-video'
 
   return (
-    <div className={className}>
-      <div className={`rounded-xl overflow-hidden border border-border bg-black/5 ${frameClass}`}>
-        <iframe
-          src={embed.embedUrl}
-          title="Vídeo"
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      </div>
+    <div className={`rounded-xl overflow-hidden border border-border bg-black/5 ${frameClass}`}>
+      <iframe
+        src={embed.embedUrl}
+        title="Vídeo"
+        className="w-full h-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  )
+}
+
+// Famtour/Evento passaram a aceitar vários vídeos (era 1 link só) — cada um
+// renderiza empilhado, mesmo tratamento por vídeo de antes (embed quando
+// reconhecido, botão "Assistir vídeo" quando não).
+export function TripVideo({ videoUrls, className }: { videoUrls: string[]; className?: string }) {
+  if (videoUrls.length === 0) return null
+  return (
+    <div className={`space-y-4 ${className ?? ''}`}>
+      {videoUrls.map((url, i) => <SingleVideo key={i} videoUrl={url} />)}
     </div>
   )
 }

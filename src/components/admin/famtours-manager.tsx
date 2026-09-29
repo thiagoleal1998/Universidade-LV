@@ -4,7 +4,7 @@ import { useState, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   createFamtour, updateFamtour, deleteFamtour, toggleFamtourActive, uploadFamtourCover,
-  uploadFamtourGalleryPhoto, deleteFamtourGalleryPhoto,
+  uploadFamtourGalleryPhoto, updateFamtourGalleryPhoto, deleteFamtourGalleryPhoto,
   createFamtourTestimonial, updateFamtourTestimonial, deleteFamtourTestimonial, uploadFamtourTestimonialPhoto,
   type Famtour, type FamtourPhoto, type FamtourTestimonial,
 } from '@/app/actions/famtours'
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Spinner } from '@/components/ui/spinner'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -23,7 +24,7 @@ import {
 import { toast } from 'sonner'
 import {
   Plus, Trash2, Pencil, X, Upload, ImageIcon, Luggage, ExternalLink, Calendar, Crop,
-  MapPin, Users, ChevronDown, ChevronUp, Check, Video, MessageSquareQuote,
+  MapPin, Users, ChevronDown, ChevronUp, Check, Video, MessageSquareQuote, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { UF_NAMES } from '@/lib/estado-flag'
@@ -58,6 +59,8 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [selectedUfs, setSelectedUfs] = useState<string[]>([])
+  const [videoUrls, setVideoUrls] = useState<string[]>([])
+  const [extraContent, setExtraContent] = useState('')
   const [accessExpandedId, setAccessExpandedId] = useState<string | null>(null)
   // Cópia local de galeria/depoimentos — atualizada otimisticamente a cada
   // upload/criação/exclusão, em vez de depender de `editing` (que é só uma
@@ -80,6 +83,8 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
     setCoverPreview(null)
     setCoverFile(null)
     setSelectedUfs([])
+    setVideoUrls([])
+    setExtraContent('')
     setGalleryPhotos([])
     setTestimonials([])
   }
@@ -89,6 +94,8 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
     setCoverPreview(item.cover_url || null)
     setCoverFile(null)
     setSelectedUfs(item.exclusive_ufs ?? [])
+    setVideoUrls(item.video_urls ?? [])
+    setExtraContent(item.extra_content ?? '')
     setGalleryPhotos(item.photos ?? [])
     setTestimonials(item.testimonials ?? [])
     setShowForm(true)
@@ -97,6 +104,14 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
 
   function toggleUf(sigla: string) {
     setSelectedUfs((prev) => prev.includes(sigla) ? prev.filter((u) => u !== sigla) : [...prev, sigla])
+  }
+
+  function updateVideoUrl(index: number, value: string) {
+    setVideoUrls((prev) => prev.map((v, i) => i === index ? value : v))
+  }
+
+  function removeVideoUrl(index: number) {
+    setVideoUrls((prev) => prev.filter((_, i) => i !== index))
   }
 
   function handleResolveAccess(requestId: string, famtourId: string, approve: boolean) {
@@ -155,6 +170,9 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     fd.set('exclusive_ufs', JSON.stringify(selectedUfs))
+    fd.set('video_urls', JSON.stringify(videoUrls.map((v) => v.trim()).filter(Boolean)))
+    // RichTextEditor não é input nativo — o HTML não entra sozinho no FormData.
+    fd.set('extra_content', extraContent)
     startTransition(async () => {
       try {
         if (coverFile) {
@@ -238,11 +256,37 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
             </div>
 
             <div className="md:col-span-2">
-              <Label htmlFor="famtour-video" className="flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> Link de vídeo (YouTube, Vimeo, Instagram...)</Label>
+              <Label className="flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> Vídeos (YouTube, Vimeo, Instagram...)</Label>
               <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
-                YouTube e Vimeo aparecem embutidos na página do famtour; qualquer outro link vira um botão &quot;Assistir vídeo&quot;.
+                YouTube e Vimeo aparecem embutidos na página do famtour; qualquer outro link vira um botão &quot;Assistir vídeo&quot;. Pode adicionar mais de um.
               </p>
-              <Input id="famtour-video" name="video_url" type="url" defaultValue={editing?.video_url ?? ''} placeholder="https://..." className="mt-1.5" />
+              <div className="space-y-2">
+                {videoUrls.map((url, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      type="url"
+                      value={url}
+                      onChange={(e) => updateVideoUrl(i, e.target.value)}
+                      placeholder="https://..."
+                      className="flex-1"
+                    />
+                    <button type="button" onClick={() => removeVideoUrl(i)} className="text-muted-foreground hover:text-red-500 transition-colors p-1.5 shrink-0" title="Remover">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => setVideoUrls((prev) => [...prev, ''])} className="gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar vídeo
+                </Button>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <Label className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Texto adicional (opcional)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
+                Aparece na página do famtour, abaixo da descrição breve — use pra mais detalhes, itinerário, etc.
+              </p>
+              <RichTextEditor content={extraContent} onChange={setExtraContent} />
             </div>
 
             {/* Cover */}
@@ -522,36 +566,69 @@ function FamtourGallerySection({
   onPhotosChange: (photos: FamtourPhotoWithUrl[]) => void
 }) {
   const [caption, setCaption] = useState('')
-  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
+  const [adjustPhoto, setAdjustPhoto] = useState<FamtourPhotoWithUrl | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  // Múltiplos arquivos de uma vez — a legenda digitada, se houver, não faz
+  // sentido repetida em N fotos diferentes, então só se aplica quando é UM
+  // arquivo só (mesmo comportamento de antes); em lote, cada foto sobe sem
+  // legenda (o admin pode editar isso depois, se um dia existir essa ação).
+  // Upload é sequencial (`for...of` + `await`), nunca Promise.all — chamar
+  // várias Server Actions juntas nunca resolve no cliente (bug documentado
+  // desta versão do Next.js).
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('Imagem muito grande (máx. 8MB). Escolha uma foto menor ou comprima antes de enviar.')
+    if (files.length === 0) return
+
+    const oversized = files.filter((f) => f.size > 8 * 1024 * 1024)
+    if (oversized.length > 0) {
+      toast.error(`${oversized.length === files.length ? 'Imagem' : `${oversized.length} imagem(ns)`} muito grande (máx. 8MB) — escolha fotos menores.`)
       return
     }
-    setIsUploading(true)
-    try {
-      const result = await uploadFamtourGalleryPhoto(famtourId, file, caption.trim())
-      if (result.error) toast.error(result.error)
-      else if (result.data) {
-        onPhotosChange([...photos, result.data as FamtourPhotoWithUrl])
-        setCaption('')
-        toast.success('Foto adicionada à galeria!')
+
+    const singleCaption = files.length === 1 ? caption.trim() : ''
+    setUploadProgress({ done: 0, total: files.length })
+    const uploaded: FamtourPhotoWithUrl[] = []
+    for (const file of files) {
+      try {
+        const result = await uploadFamtourGalleryPhoto(famtourId, file, singleCaption)
+        if (result.error) toast.error(result.error)
+        else if (result.data) uploaded.push(result.data as FamtourPhotoWithUrl)
+      } catch {
+        toast.error('Não foi possível enviar uma das fotos. Tente novamente com uma imagem menor.')
       }
-    } catch {
-      toast.error('Não foi possível enviar a foto. Tente novamente com uma imagem menor.')
+      setUploadProgress((p) => p ? { ...p, done: p.done + 1 } : null)
     }
-    setIsUploading(false)
+    if (uploaded.length > 0) {
+      onPhotosChange([...photos, ...uploaded])
+      setCaption('')
+      toast.success(uploaded.length === 1 ? 'Foto adicionada à galeria!' : `${uploaded.length} fotos adicionadas à galeria!`)
+    }
+    setUploadProgress(null)
   }
 
   async function handleDelete(photo: FamtourPhotoWithUrl) {
     const result = await deleteFamtourGalleryPhoto(photo.id, photo.storage_path, famtourId)
     if (result.error) toast.error(result.error)
     else { onPhotosChange(photos.filter((p) => p.id !== photo.id)); toast.success('Foto removida.') }
+  }
+
+  async function handleAdjustConfirm(blob: Blob) {
+    if (!adjustPhoto) return
+    try {
+      const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' })
+      const result = await updateFamtourGalleryPhoto(adjustPhoto.id, famtourId, file)
+      if (result.error) toast.error(result.error)
+      else if (result.url) {
+        onPhotosChange(photos.map((p) => p.id === adjustPhoto.id ? { ...p, url: result.url as string } : p))
+        toast.success('Foto ajustada!')
+      }
+    } catch {
+      toast.error('Não foi possível ajustar a foto. Tente novamente.')
+    }
+    setAdjustPhoto(null)
   }
 
   return (
@@ -570,14 +647,24 @@ function FamtourGallerySection({
               {photo.caption && (
                 <p className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-1 line-clamp-1">{photo.caption}</p>
               )}
-              <button
-                type="button"
-                onClick={() => handleDelete(photo)}
-                className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                title="Excluir foto"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => setAdjustPhoto(photo)}
+                  className="p-1 rounded-full bg-black/60 text-white hover:bg-black/80"
+                  title="Ajustar foto"
+                >
+                  <Crop className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(photo)}
+                  className="p-1 rounded-full bg-black/60 text-white hover:bg-red-500"
+                  title="Excluir foto"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -587,15 +674,25 @@ function FamtourGallerySection({
         <Input
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="Legenda da foto (opcional)"
+          placeholder="Legenda da foto (só se enviar uma de cada vez)"
           className="h-8 text-sm sm:max-w-xs"
         />
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFile} className="hidden" />
-        <Button type="button" variant="outline" size="sm" disabled={isUploading} onClick={() => fileRef.current?.click()} className="gap-1.5">
-          {isUploading ? <Spinner className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
-          {isUploading ? 'Enviando...' : 'Adicionar foto'}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={handleFiles} className="hidden" />
+        <Button type="button" variant="outline" size="sm" disabled={!!uploadProgress} onClick={() => fileRef.current?.click()} className="gap-1.5">
+          {uploadProgress ? <Spinner className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
+          {uploadProgress ? `Enviando ${uploadProgress.done + 1} de ${uploadProgress.total}...` : 'Adicionar fotos'}
         </Button>
       </div>
+      <p className="text-xs text-muted-foreground">Pode selecionar várias fotos de uma vez. Passe o mouse sobre uma foto já enviada pra ajustar o enquadramento ou excluir.</p>
+
+      <ImageCropModal
+        imageSrc={adjustPhoto?.url ?? null}
+        onClose={() => setAdjustPhoto(null)}
+        onConfirm={handleAdjustConfirm}
+        title="Ajustar foto da galeria"
+        aspect={1}
+        cropShape="rect"
+      />
     </div>
   )
 }

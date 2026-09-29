@@ -5,15 +5,17 @@ import { requireCapability, requireContentAccess, type AdminContext } from '@/li
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
+import { parseVideoUrls } from '@/lib/video'
 import { generateUniqueSlug } from '@/lib/slug'
 
 export type Evento = {
   id: string
   title: string
   description: string
+  extra_content: string
   cover_url: string
   url: string
-  video_url: string | null
+  video_urls: string[]
   start_date: string | null
   end_date: string | null
   is_active: boolean
@@ -57,9 +59,10 @@ export async function createEvento(formData: FormData) {
   const { data: inserted, error } = await adminClient.from('eventos').insert({
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
+    extra_content: ((formData.get('extra_content') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
-    video_url: ((formData.get('video_url') as string) ?? '').trim() || null,
+    video_urls: parseVideoUrls(formData.get('video_urls') as string | null),
     start_date: startDate,
     end_date: endDate,
     is_active: formData.get('is_active') === 'true',
@@ -85,7 +88,7 @@ export async function updateEvento(id: string, formData: FormData) {
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('eventos')
-    .select('title, description, cover_url, url, video_url, start_date, end_date, is_active, slug')
+    .select('title, description, extra_content, cover_url, url, video_urls, start_date, end_date, is_active, slug')
     .eq('id', id)
     .single()
 
@@ -96,9 +99,10 @@ export async function updateEvento(id: string, formData: FormData) {
   const after = {
     title,
     description: ((formData.get('description') as string) ?? '').trim(),
+    extra_content: ((formData.get('extra_content') as string) ?? '').trim(),
     cover_url: ((formData.get('cover_url') as string) ?? '').trim(),
     url: ((formData.get('url') as string) ?? '').trim(),
-    video_url: ((formData.get('video_url') as string) ?? '').trim() || null,
+    video_urls: parseVideoUrls(formData.get('video_urls') as string | null),
     start_date: startDate,
     end_date: endDate,
     is_active: formData.get('is_active') === 'true',
@@ -107,7 +111,7 @@ export async function updateEvento(id: string, formData: FormData) {
   if (error) return { error: error.message }
 
   const changed = diffFields(prev ?? {}, after, {
-    title: 'título', description: 'descrição', cover_url: 'capa', url: 'link', video_url: 'vídeo',
+    title: 'título', description: 'descrição', extra_content: 'texto adicional', cover_url: 'capa', url: 'link', video_urls: 'vídeos',
     start_date: 'data de início', end_date: 'data de fim', is_active: 'ativação',
   })
   if (changed.length > 0) {
@@ -229,6 +233,43 @@ export async function uploadEventoGalleryPhoto(eventoId: string, file: File, cap
 
   const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)
   return { success: true, data: { ...inserted, url: publicUrl } }
+}
+
+// "Ajustar" uma foto já enviada — mesmo racional de updateFamtourGalleryPhoto:
+// sobe um arquivo novo (nunca reaproveita o storage_path antigo, senão a URL
+// pública teria uma janela apontando pro arquivo já removido).
+export async function updateEventoGalleryPhoto(photoId: string, eventoId: string, file: File) {
+  const ctx = await requireEventoAccess(eventoId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const { data: photo } = await adminClient.from('evento_photos').select('storage_path').eq('id', photoId).eq('evento_id', eventoId).single()
+  if (!photo) return { error: 'Foto não encontrada.' }
+
+  let webpFile: File
+  try {
+    webpFile = await toWebP(file, { maxWidth: 1200, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar esta imagem — ela pode estar corrompida ou num formato inesperado.' }
+  }
+  const path = `evento-gallery/${eventoId}/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
+
+  const { error: uploadError } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: webpFile.type })
+  if (uploadError) return { error: uploadError.message }
+
+  const { error: dbError } = await adminClient.from('evento_photos').update({ storage_path: path }).eq('id', photoId)
+  if (dbError) return { error: dbError.message }
+
+  await adminClient.storage.from('marketing-files').remove([photo.storage_path])
+
+  logActivity(ctx, { action: 'update', entityType: 'evento', entityId: eventoId, entityLabel: eventoId, detail: 'ajustou foto da galeria' })
+
+  revalidatePath('/admin/marketing')
+  const { data: item } = await adminClient.from('eventos').select('slug').eq('id', eventoId).single()
+  revalidatePath(`/dashboard/eventos/${item?.slug ?? eventoId}`)
+
+  const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)
+  return { success: true, url: publicUrl }
 }
 
 export async function deleteEventoGalleryPhoto(photoId: string, storagePath: string, eventoId: string) {

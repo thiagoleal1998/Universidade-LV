@@ -53,7 +53,8 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
   const testimonials = (item.testimonials ?? [])
     .slice()
     .sort((a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index)
-  const showSide = !locked && (photos.length > 0 || !!item.video_url)
+  const videoUrls: string[] = item.video_urls ?? []
+  const showSide = !locked && (photos.length > 0 || videoUrls.length > 0)
 
   return (
     <div className={`p-4 md:p-8 ${showSide ? 'max-w-6xl' : 'max-w-3xl'}`}>
@@ -82,7 +83,7 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
 
       {showSide && (
         <div className="space-y-6 lg:col-start-2 lg:row-start-1 lg:row-span-2">
-          <TripVideo videoUrl={item.video_url} />
+          <TripVideo videoUrls={videoUrls} />
           <TripGallery photos={photos} />
         </div>
       )}
@@ -98,6 +99,9 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
           )}
           {item.description && (
             <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+          )}
+          {item.extra_content && item.extra_content !== '<p></p>' && (
+            <div className="rich-text text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.extra_content }} />
           )}
         </div>
 
