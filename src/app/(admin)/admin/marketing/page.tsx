@@ -33,6 +33,7 @@ export default async function MarketingPage() {
   const [
     { data }, settings, { data: trainingData }, products, periods, { data: tagsData },
     { data: famtoursData }, { data: eventosData }, { data: gruposData }, { data: commercialConditionsData },
+    { data: commercialBannerItemsData },
     { data: accessRequestsData }, { data: famtourAccessRequestsData },
   ] = await Promise.all([
     db.from('marketing_items').select('*').order('order_index'),
@@ -45,6 +46,7 @@ export default async function MarketingPage() {
     db.from('eventos').select('*, photos:evento_photos(*), testimonials:evento_testimonials(*)').order('start_date', { ascending: true, nullsFirst: false }),
     db.from('grupos').select('*').order('start_date', { ascending: true, nullsFirst: false }),
     db.from('commercial_conditions').select('*').order('created_at', { ascending: false }),
+    db.from('commercial_banner_items').select('*').order('order_index'),
     // training_access_requests tem DUAS FKs pra profiles (member_id e
     // resolved_by) — sem qualificar qual delas, o PostgREST recusa o embed
     // com erro de ambiguidade (PGRST201), retornando null em silêncio pro
@@ -153,6 +155,7 @@ export default async function MarketingPage() {
         eventos={eventosWithEdit}
         grupos={gruposWithEdit}
         commercialConditions={commercialConditionsWithEdit}
+        commercialBannerItems={commercialBannerItemsData ?? []}
         products={products}
         periods={periods}
         tags={tagsData ?? []}

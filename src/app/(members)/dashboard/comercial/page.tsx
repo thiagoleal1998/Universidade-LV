@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import {
   Briefcase, Trophy, MapPin, Globe, Gift, ScrollText,
-  Paperclip, ExternalLink, Clock, PlayCircle, CheckCircle2, Award, Calendar,
+  Paperclip, ExternalLink, Clock, PlayCircle, CheckCircle2, Award, Calendar, ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -439,11 +439,15 @@ export default async function ComercialPage({
 
   // Banner de campanha — separado dos cards de `commercial_conditions` de
   // propósito, mesma peça só configurada em Admin → Comercial → Condições
-  // Comerciais → "Banner de campanha".
-  let commercialBanner: { active: boolean; image_url: string; url: string } | null = null
+  // Comerciais → "Banner de campanha". Clicar sempre leva pra
+  // /dashboard/comercial/campanha (planilha de parceiros), nunca mais um
+  // link externo configurável.
+  let commercialBanner: { active: boolean; image_url: string; image_position: number } | null = null
   try {
     const parsed = JSON.parse(settings.commercial_banner)
-    if (parsed?.active && parsed?.image_url) commercialBanner = parsed
+    if (parsed?.active && parsed?.image_url) {
+      commercialBanner = { active: true, image_url: parsed.image_url, image_position: typeof parsed?.image_position === 'number' ? parsed.image_position : 50 }
+    }
   } catch {}
 
   const subtabData = SUBTABS.find((s) => s.key === activeSubtab)!
@@ -472,25 +476,20 @@ export default async function ComercialPage({
       {activeTab === 'comercial' && (
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {commercialBanner && (
-            commercialBanner.url ? (
-              <a href={commercialBanner.url} target="_blank" rel="noreferrer" className="block max-w-5xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={commercialBanner.image_url}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                  className="w-full h-40 sm:h-48 md:h-56 object-cover rounded-2xl hover:opacity-95 transition-opacity"
-                />
-              </a>
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
+            <Link href="/dashboard/comercial/campanha" className="group block max-w-5xl relative rounded-2xl overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={commercialBanner.image_url}
                 alt=""
                 referrerPolicy="no-referrer"
-                className="w-full h-40 sm:h-48 md:h-56 object-cover rounded-2xl max-w-5xl"
+                className="w-full h-40 sm:h-48 md:h-56 object-cover group-hover:opacity-95 transition-opacity"
+                style={{ objectPosition: `center ${commercialBanner.image_position}%` }}
               />
-            )
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold">
+                Clique e veja as condições especiais
+                <ChevronRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </Link>
           )}
           {commercialConditions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-3 text-muted-foreground">

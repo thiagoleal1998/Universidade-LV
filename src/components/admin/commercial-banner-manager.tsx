@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
-import { Megaphone, Upload, ImageIcon, Lock } from 'lucide-react'
+import { Megaphone, Upload, ImageIcon, Lock, MoveVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Banner = { active: boolean; image_url: string; url: string }
+type Banner = { active: boolean; image_url: string; image_position: number }
 
 function parse(raw: string): Banner {
   try {
@@ -20,10 +20,10 @@ function parse(raw: string): Banner {
     return {
       active: p?.active === true,
       image_url: typeof p?.image_url === 'string' ? p.image_url : '',
-      url: typeof p?.url === 'string' ? p.url : '',
+      image_position: typeof p?.image_position === 'number' ? p.image_position : 50,
     }
   } catch {
-    return { active: false, image_url: '', url: '' }
+    return { active: false, image_url: '', image_position: 50 }
   }
 }
 
@@ -121,7 +121,13 @@ export function CommercialBannerManager({ raw, canEdit = true }: { raw: string; 
               {imagePreview ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imagePreview} alt="Preview do banner" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                  <img
+                    src={imagePreview}
+                    alt="Preview do banner"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                    style={{ objectPosition: `center ${data.image_position}%` }}
+                  />
                   <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Upload className="w-5 h-5 text-white" />
                   </div>
@@ -156,17 +162,34 @@ export function CommercialBannerManager({ raw, canEdit = true }: { raw: string; 
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="cb-url">Link ao clicar (opcional)</Label>
-          <Input
-            id="cb-url"
-            type="url"
-            value={data.url}
-            onChange={(e) => setData((d) => ({ ...d, url: e.target.value }))}
-            placeholder="https://..."
-            className="mt-1.5 max-w-sm"
-          />
-        </div>
+        {imagePreview && (
+          <div>
+            <Label htmlFor="cb-position" className="flex items-center gap-1.5">
+              <MoveVertical className="w-3.5 h-3.5" />
+              Posição vertical da foto
+            </Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+              Ajuste se a foto ficar cortada errado no topo ou na base da faixa.
+            </p>
+            <div className="flex items-center gap-3 max-w-sm">
+              <span className="text-xs text-muted-foreground shrink-0">Topo</span>
+              <input
+                id="cb-position"
+                type="range"
+                min={0}
+                max={100}
+                value={data.image_position}
+                onChange={(e) => setData((d) => ({ ...d, image_position: Number(e.target.value) }))}
+                className="w-full accent-primary"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">Base</span>
+            </div>
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          Ao clicar no banner, o aluno é levado para uma página com a lista de parceiros e condições especiais da campanha — configure os parceiros no bloco abaixo.
+        </p>
 
         <div className="flex justify-end pt-1">
           <Button type="submit" disabled={isPending} className="gap-2">

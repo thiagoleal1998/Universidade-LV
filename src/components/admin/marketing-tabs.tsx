@@ -10,6 +10,7 @@ import { EventosManager } from '@/components/admin/eventos-manager'
 import { GruposManager } from '@/components/admin/grupos-manager'
 import { CommercialConditionsManager } from '@/components/admin/commercial-conditions-manager'
 import { CommercialBannerManager } from '@/components/admin/commercial-banner-manager'
+import { CommercialBannerItemsManager } from '@/components/admin/commercial-banner-items-manager'
 import { TamoJuntoWinnersManager } from '@/components/admin/tamojunto-winners-manager'
 import { PodviajarManager } from '@/components/admin/podviajar-manager'
 import { CorridaVendasManager } from '@/components/admin/corrida-vendas-manager'
@@ -19,6 +20,7 @@ import type { Famtour } from '@/app/actions/famtours'
 import type { Evento } from '@/app/actions/eventos'
 import type { Grupo } from '@/app/actions/grupos'
 import type { CommercialCondition } from '@/app/actions/commercial-conditions'
+import type { CommercialBannerItem } from '@/app/actions/commercial-banner-items'
 import type { MarketingProduct, MarketingPeriod } from '@/app/actions/marketing'
 import type { Tag } from '@/components/admin/marketing-manager'
 import type { Capability } from '@/lib/capabilities'
@@ -101,6 +103,7 @@ export function MarketingTabs({
   eventos = [],
   grupos = [],
   commercialConditions = [],
+  commercialBannerItems = [],
   products = [],
   periods = [],
   tags = [],
@@ -125,6 +128,7 @@ export function MarketingTabs({
   eventos?: (Evento & { canEdit?: boolean })[]
   grupos?: (Grupo & { canEdit?: boolean })[]
   commercialConditions?: (CommercialCondition & { canEdit?: boolean })[]
+  commercialBannerItems?: CommercialBannerItem[]
   products?: MarketingProduct[]
   periods?: MarketingPeriod[]
   tags?: Tag[]
@@ -214,6 +218,7 @@ export function MarketingTabs({
           {comercialSubTab === 'condicoes' && (
             <>
               <CommercialBannerManager raw={commercialBannerRaw} canEdit={canCreateComercial} />
+              <CommercialBannerItemsManager items={commercialBannerItems} canEdit={canCreateComercial} />
               <CommercialConditionsManager items={commercialConditions} canCreate={canCreateComercial} />
             </>
           )}
