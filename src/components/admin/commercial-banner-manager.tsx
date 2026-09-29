@@ -7,12 +7,13 @@ import { uploadMarketingFile } from '@/app/actions/marketing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
-import { Megaphone, Upload, ImageIcon, Lock, MoveVertical } from 'lucide-react'
+import { Megaphone, Upload, ImageIcon, Lock, MoveVertical, Leaf } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Banner = { active: boolean; image_url: string; image_position: number }
+type Banner = { active: boolean; image_url: string; image_position: number; lv_conditions: string }
 
 function parse(raw: string): Banner {
   try {
@@ -21,9 +22,10 @@ function parse(raw: string): Banner {
       active: p?.active === true,
       image_url: typeof p?.image_url === 'string' ? p.image_url : '',
       image_position: typeof p?.image_position === 'number' ? p.image_position : 50,
+      lv_conditions: typeof p?.lv_conditions === 'string' ? p.lv_conditions : '',
     }
   } catch {
-    return { active: false, image_url: '', image_position: 50 }
+    return { active: false, image_url: '', image_position: 50, lv_conditions: '' }
   }
 }
 
@@ -190,6 +192,24 @@ export function CommercialBannerManager({ raw, canEdit = true }: { raw: string; 
         <p className="text-xs text-muted-foreground">
           Ao clicar no banner, o aluno é levado para uma página com a lista de parceiros e condições especiais da campanha — configure os parceiros no bloco abaixo.
         </p>
+
+        <div>
+          <Label htmlFor="cb-lv-conditions" className="flex items-center gap-1.5">
+            <Leaf className="w-3.5 h-3.5" />
+            Condições Litoral Verde (opcional)
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            Aparece num espaço próprio, em destaque, na página que abre ao clicar no banner — separado da lista de parceiros.
+          </p>
+          <Textarea
+            id="cb-lv-conditions"
+            value={data.lv_conditions}
+            onChange={(e) => setData((d) => ({ ...d, lv_conditions: e.target.value }))}
+            placeholder="Ex.: Reservas feitas até 30/11 garantem tarifa promocional..."
+            className="resize-none"
+            rows={3}
+          />
+        </div>
 
         <div className="flex justify-end pt-1">
           <Button type="submit" disabled={isPending} className="gap-2">

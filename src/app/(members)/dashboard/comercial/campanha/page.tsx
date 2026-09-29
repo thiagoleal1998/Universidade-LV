@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ArrowLeft, Megaphone, Briefcase } from 'lucide-react'
+import { getSettings } from '@/lib/settings'
+import { ArrowLeft, Megaphone, Briefcase, Leaf } from 'lucide-react'
 import Link from 'next/link'
 import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
 
@@ -11,12 +12,24 @@ export const metadata = { title: 'Condições especiais da campanha' }
 // separada de `commercial_conditions` de propósito (decisão do usuário).
 export default async function CampanhaComercialPage() {
   const adminClient = createAdminClient()
-  const { data } = await adminClient
-    .from('commercial_banner_items')
-    .select('id, partner_name, condition_text, logo_url')
-    .order('order_index')
+  const [{ data }, settings] = await Promise.all([
+    adminClient
+      .from('commercial_banner_items')
+      .select('id, partner_name, condition_text, logo_url')
+      .order('order_index'),
+    getSettings(),
+  ])
 
   const items = data ?? []
+
+  // Espaço próprio pras condições da própria Litoral Verde (não é um
+  // "parceiro" — é a operadora), separado da lista de parceiros de propósito.
+  // Mesmo blob JSON do banner (`settings.commercial_banner`), sem tabela nova.
+  let lvConditions = ''
+  try {
+    const parsed = JSON.parse(settings.commercial_banner)
+    if (typeof parsed?.lv_conditions === 'string') lvConditions = parsed.lv_conditions.trim()
+  } catch {}
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
@@ -30,6 +43,16 @@ export default async function CampanhaComercialPage() {
           <h1 className="text-xl font-bold text-foreground">Condições especiais da campanha</h1>
         </div>
       </div>
+
+      {lvConditions && (
+        <div className="bg-primary/5 border border-primary/30 rounded-xl p-5 space-y-2">
+          <div className="flex items-center gap-2">
+            <Leaf className="w-4 h-4 text-primary" />
+            <h2 className="font-semibold text-foreground">Condições Litoral Verde</h2>
+          </div>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lvConditions}</p>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center min-h-[240px] gap-3 text-muted-foreground border border-dashed rounded-xl">
