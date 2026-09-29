@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { Calendar } from 'lucide-react'
+import { Calendar, ChevronRight } from 'lucide-react'
 
 // Card usado tanto na home (seções Famtours/Eventos) quanto nas páginas de
 // lista (/dashboard/famtours, /dashboard/eventos) — evita tríplicar o mesmo
@@ -59,6 +59,10 @@ export function TripCard({
           </span>
         )}
         {description && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{description}</p>}
+        <span className="flex items-center gap-1 text-xs text-primary font-medium mt-2">
+          Saiba mais
+          <ChevronRight className="w-3 h-3 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </span>
       </div>
     </Link>
   )
