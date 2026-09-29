@@ -477,7 +477,7 @@ Famtours · Eventos · Grupos · Condições Comerciais · Presença ("online ag
 ## Banner de campanha sem `max-w-5xl` — pedido do usuário pra deixar mais largo (v1.145.2)
 
 - **`max-w-5xl` foi removido do `<Link>` do banner** (`dashboard/comercial/page.tsx`) — antes ele tinha a MESMA largura da grade de cards abaixo (`CommercialConditionsGrid` também é `max-w-5xl`), e o usuário achou pequeno, pedindo pra deixar maior (mandou print com um retângulo vermelho marcando até onde deveria ir). Removido o cap, o banner agora ocupa 100% da largura disponível na coluna de conteúdo — mais largo que a grade abaixo dele de propósito (padrão comum de "hero largo, conteúdo contido"), não é bug/inconsistência.
-- **Altura não foi mexida** (`h-40 sm:h-48 md:h-56`) — o pedido foi só sobre largura; se algum dia a proporção parecer esticada demais numa tela muito larga, revisar a altura como pedido separado.
+- **Altura ajustada em seguida (v1.145.3)**: o usuário pediu pra "aumentar pra baixo também" — sem mexer na altura, a faixa ficou desproporcionalmente baixa/esticada depois de virar full-width (a imagem recomendada é 1600×400, ~4:1, e a largura cresceu bem mais que a altura). `h-40 sm:h-48 md:h-56` → `h-48 sm:h-64 md:h-72 lg:h-80` (192px→320px no desktop largo, ganhou também o breakpoint `lg` que não existia). Verificado com screenshot em 3 larguras (1600px/1024px/375px) — proporção ficou mais próxima da imagem original em todas.
 
 ## Lista de parceiros da campanha virou cards, não tabela (v1.145.1)
 

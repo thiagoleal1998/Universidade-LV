@@ -484,7 +484,7 @@ export default async function ComercialPage({
                   src={commercialBanner.image_url}
                   alt=""
                   referrerPolicy="no-referrer"
-                  className="w-full h-40 sm:h-48 md:h-56 object-cover group-hover:opacity-95 transition-opacity"
+                  className="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover group-hover:opacity-95 transition-opacity"
                   style={{ objectPosition: `center ${commercialBanner.image_position}%` }}
                 />
                 <div
