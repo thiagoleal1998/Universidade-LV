@@ -46,7 +46,11 @@ export async function createCommercialBannerItem(formData: FormData) {
 
   logActivity(ctx, { action: 'create', entityType: 'condicao_comercial', entityId: inserted?.id, entityLabel: `Campanha: ${partnerName}` })
   revalidateAll()
-  return { success: true }
+  // Devolve o id real pro cliente substituir o item otimista (id `temp-…`) —
+  // sem isso, editar/reordenar/excluir esse item na mesma sessão (sem dar
+  // reload) chamaria a action com o id falso e afetaria 0 linhas em silêncio
+  // (bug real encontrado testando, mesmo padrão pré-existente em FaqManager).
+  return { success: true, id: inserted?.id }
 }
 
 export async function updateCommercialBannerItem(id: string, formData: FormData) {

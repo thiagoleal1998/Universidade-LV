@@ -31,8 +31,12 @@ export function CommercialBannerItemsManager({ items: initialItems, canEdit = tr
       if (result?.error) { toast.error(result.error); return }
       toast.success('Parceiro adicionado!')
       setShowAdd(false)
+      // Usa o id REAL devolvido pela action — um id temporário local faria
+      // qualquer edição/reorder/exclusão seguinte (sem reload) chamar a
+      // action com um id que não existe no banco, afetando 0 linhas em
+      // silêncio (bug real encontrado testando).
       setItems((prev) => [...prev, {
-        id: `temp-${Date.now()}`,
+        id: result.id ?? `temp-${Date.now()}`,
         partner_name: (formData.get('partner_name') as string) ?? '',
         condition_text: (formData.get('condition_text') as string) ?? '',
         logo_url: (formData.get('logo_url') as string) ?? '',
