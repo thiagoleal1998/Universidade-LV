@@ -83,8 +83,8 @@ export default async function FamtourDetailPage({ params }: { params: Promise<{ 
 
       {showSide && (
         <div className="space-y-6 lg:col-start-2 lg:row-start-1 lg:row-span-2">
-          <TripVideo videoUrls={videoUrls} />
           <TripGallery photos={photos} />
+          <TripVideo videoUrls={videoUrls} />
         </div>
       )}
 
