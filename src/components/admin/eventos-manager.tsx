@@ -255,9 +255,9 @@ export function EventosManager({ items, canCreate = true }: { items: EventoWithE
             <div className="md:col-span-2">
               <Label className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Texto adicional (opcional)</Label>
               <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
-                Aparece na página do evento, abaixo da descrição breve — use pra mais detalhes, programação, etc.
+                Aparece na página do evento, abaixo da descrição breve — use pra mais detalhes, programação, etc. Colar um link de vídeo (YouTube/Vimeo/Instagram) sozinho numa linha vira um vídeo embutido.
               </p>
-              <RichTextEditor content={extraContent} onChange={setExtraContent} />
+              <RichTextEditor content={extraContent} onChange={setExtraContent} videoEmbeds />
             </div>
 
             {/* Cover */}

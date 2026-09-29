@@ -284,9 +284,9 @@ export function FamtoursManager({ items, canCreate = true }: { items: FamtourWit
             <div className="md:col-span-2">
               <Label className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Texto adicional (opcional)</Label>
               <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
-                Aparece na página do famtour, abaixo da descrição breve — use pra mais detalhes, itinerário, etc.
+                Aparece na página do famtour, abaixo da descrição breve — use pra mais detalhes, itinerário, etc. Colar um link de vídeo (YouTube/Vimeo/Instagram) sozinho numa linha vira um vídeo embutido.
               </p>
-              <RichTextEditor content={extraContent} onChange={setExtraContent} />
+              <RichTextEditor content={extraContent} onChange={setExtraContent} videoEmbeds />
             </div>
 
             {/* Cover */}

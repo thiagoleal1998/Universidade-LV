@@ -270,6 +270,43 @@ ul[data-type='taskList'] li[data-checked='true'] > div {
   text-decoration: line-through;
 }
 
+/* ── Embed de vídeo dentro do corpo de texto rico ──
+   Mesmo racional dos blocos de destaque acima: seletor de atributo, fora de
+   `.rich-text`, pra valer tanto dentro do editor (.ProseMirror) quanto na
+   página final renderizada via dangerouslySetInnerHTML. */
+.rich-text-video-embed {
+  margin: 1rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+.rich-text-video-embed iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+/* Shorts/Reels são retrato — mesma proporção 9:16 já usada em TripVideo,
+   largura limitada pra não ficar gigantesca dentro do corpo de texto. */
+.rich-text-video-embed[data-vertical='true'] {
+  max-width: 340px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.rich-text-video-embed[data-vertical='true'] iframe {
+  aspect-ratio: 9 / 16;
+}
+/* O embed do Instagram já traz cabeçalho/legenda dentro do próprio iframe —
+   ganha altura fixa maior em vez de aspect-ratio, mesmo valor de TripVideo. */
+.rich-text-video-embed[data-embed-type='instagram'] {
+  max-width: 400px;
+}
+.rich-text-video-embed[data-embed-type='instagram'] iframe {
+  aspect-ratio: auto;
+  height: 640px;
+}
+
 /* ── Formato Manual interativo (leitura contínua) ──
    Usada JUNTO com `.rich-text` (className="rich-text manual-content"),
    só sobrescrevendo o que a leitura longa exige. `.rich-text` continua

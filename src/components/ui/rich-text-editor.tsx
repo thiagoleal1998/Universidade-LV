@@ -8,6 +8,8 @@ import TiptapImage from '@tiptap/extension-image'
 import Underline from '@tiptap/extension-underline'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { Callout, type CalloutVariant } from '@/components/ui/rich-text-callout'
+import { VideoEmbed } from '@/components/ui/rich-text-video-embed'
+import { getVideoEmbed } from '@/lib/video'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
@@ -41,6 +43,21 @@ interface RichTextEditorProps {
   // em silêncio pelo `sanitizeRichText` (isomorphic-dompurify) do lado do
   // servidor — bloco sumiria sem aviso nenhum pro autor.
   blocks?: boolean
+  // Colar um link de vídeo (YouTube/Vimeo/Instagram) SOZINHO no corpo do
+  // texto vira um embed de verdade, não um link autolinkado sem preview.
+  // Desligado por padrão pelo mesmo motivo de `blocks`: escopo pedido pelo
+  // usuário foi só o "Texto adicional" de Famtour/Evento, não todo editor
+  // rico do projeto.
+  videoEmbeds?: boolean
+}
+
+// Só converte quando o clipboard inteiro é (depois de aparar espaços) um
+// único token sem espaço/quebra de linha — evita "sequestrar" uma URL que
+// apareça no meio de uma frase colada maior.
+function extractStandaloneVideoUrl(text: string) {
+  const trimmed = text.trim()
+  if (!trimmed || trimmed.length > 300 || /\s/.test(trimmed)) return null
+  return getVideoEmbed(trimmed) ? trimmed : null
 }
 
 // Tags que o editor de fato entende — tudo fora daqui é "desembrulhado" (o
@@ -64,13 +81,13 @@ const PASTE_ALLOWED_ATTRS: Record<string, string[]> = {
 // discrimina o tipo do bloco precisa sobreviver ao parse do paste.
 function isRichBlock(el: Element): boolean {
   return (
-    (el.tagName === 'DIV' && el.hasAttribute('data-callout')) ||
+    (el.tagName === 'DIV' && (el.hasAttribute('data-callout') || el.hasAttribute('data-video-embed'))) ||
     (el.tagName === 'UL' && el.getAttribute('data-type') === 'taskList') ||
     (el.tagName === 'LI' && el.getAttribute('data-type') === 'taskItem')
   )
 }
 const BLOCK_ALLOWED_ATTRS: Record<string, string[]> = {
-  DIV: ['data-callout'],
+  DIV: ['data-callout', 'data-video-embed', 'data-video-url', 'data-embed-type', 'data-vertical'],
   UL: ['data-type'],
   LI: ['data-type', 'data-checked'],
 }
@@ -101,7 +118,11 @@ function sanitizePastedHtml(html: string): string {
           Array.from(el.attributes).forEach((attr) => {
             if (!keep.has(attr.name)) el.removeAttribute(attr.name)
           })
-          clean(el)
+          // O embed de vídeo é atômico (um <iframe> só, sem conteúdo editável
+          // dentro) — limpar recursivamente removeria o iframe (não está em
+          // PASTE_ALLOWED_TAGS nem passa em isRichBlock sozinho), quebrando o
+          // embed ao colar um trecho que já contém um.
+          if (!el.hasAttribute('data-video-embed')) clean(el)
         }
       } else if (child.nodeType !== Node.TEXT_NODE) {
         child.remove() // comentários, etc.
@@ -113,7 +134,7 @@ function sanitizePastedHtml(html: string): string {
   return doc.body.innerHTML
 }
 
-export function RichTextEditor({ content, onChange, onImageUpload, editable = true, blocks = false }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, onImageUpload, editable = true, blocks = false, videoEmbeds = false }: RichTextEditorProps) {
   const imgInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingImg, setIsUploadingImg] = useState(false)
 
@@ -142,6 +163,7 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
       // callout colado num editor sem essa extensão é descartado pelo
       // próprio ProseMirror (comportamento correto pro chamado de feedback).
       ...(blocks ? [Callout, TaskList, TaskItem.configure({ nested: true })] : []),
+      ...(videoEmbeds ? [VideoEmbed] : []),
     ],
     content,
     editable,
@@ -156,6 +178,17 @@ export function RichTextEditor({ content, onChange, onImageUpload, editable = tr
       // — aparece como ícone de imagem quebrada, sem erro nenhum no console.
       // Interceptamos antes disso e subimos pelo mesmo onImageUpload do botão.
       handlePaste: (_view, event) => {
+        // Link de vídeo sozinho (sem HTML no clipboard, senão preferimos
+        // honrar a formatação de origem via transformPastedHTML) vira embed
+        // em vez de autolink puro.
+        if (videoEmbeds && !event.clipboardData?.getData('text/html')) {
+          const videoUrl = extractStandaloneVideoUrl(event.clipboardData?.getData('text/plain') ?? '')
+          if (videoUrl) {
+            event.preventDefault()
+            editor?.chain().focus().insertContent({ type: 'videoEmbed', attrs: { url: videoUrl } }).run()
+            return true
+          }
+        }
         if (!onImageUpload) return false
         const item = Array.from(event.clipboardData?.items ?? []).find((it) => it.type.startsWith('image/'))
         const file = item?.getAsFile()
