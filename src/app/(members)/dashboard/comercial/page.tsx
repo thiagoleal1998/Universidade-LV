@@ -10,6 +10,7 @@ import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { detectEstadoBR, estadoFlagUrl } from '@/lib/estado-flag'
 import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 import { CommercialConditionsGrid } from '@/components/members/commercial-conditions-grid'
+import { ATTENTION_COLOR } from '@/components/ui/highlight-badge'
 
 export const metadata = { title: 'Condições Comerciais' }
 
@@ -485,7 +486,10 @@ export default async function ComercialPage({
                 className="w-full h-40 sm:h-48 md:h-56 object-cover group-hover:opacity-95 transition-opacity"
                 style={{ objectPosition: `center ${commercialBanner.image_position}%` }}
               />
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold">
+              <div
+                className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 px-4 py-2 text-white text-sm font-semibold"
+                style={{ backgroundColor: ATTENTION_COLOR }}
+              >
                 Clique e veja as condições especiais
                 <ChevronRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform" />
               </div>
