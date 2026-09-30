@@ -574,7 +574,10 @@ export default async function LandingPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0 flex flex-col items-center sm:items-stretch gap-2">
-            <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
+            {/* gap-4 igual ao do container pai (logo ↔ bloco de texto), pra
+                a distância texto↔link ficar igual à distância logo↔texto —
+                sem justify-between, que estica o link até a borda direita. */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <span className="text-center sm:text-left leading-relaxed">
                 ©2026 TODOS OS DIREITOS RESERVADOS. | L. V. OPERADORA DE VIAGENS E TURISMO LTDA | CNPJ: 10.218.043/0001-00
               </span>
