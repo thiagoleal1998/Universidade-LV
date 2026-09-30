@@ -557,10 +557,16 @@ export default async function LandingPage() {
       <footer className="border-t border-border py-6 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2.5">
-            {logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={siteName} className="h-5 w-auto object-contain opacity-50" />
-            )}
+            {/* Fundo branco fixo: a logo tem texto escuro ("OPERADORA") que
+                fica ilegível no footer em modo escuro sem um fundo claro. */}
+            <div className="bg-white rounded-md px-2 py-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://jfhbwnbihtdwoesjtlbz.supabase.co/storage/v1/object/public/lesson-photos/logos/litoral-verde-operadora-1790789256682.webp"
+                alt="Litoral Verde Operadora"
+                className="h-6 w-auto object-contain"
+              />
+            </div>
           </div>
           <span className="text-center leading-relaxed">
             ©2026 TODOS OS DIREITOS RESERVADOS. | L. V. OPERADORA DE VIAGENS E TURISMO LTDA | CNPJ: 10.218.043/0001-00
