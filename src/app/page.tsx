@@ -564,7 +564,7 @@ export default async function LandingPage() {
               <img
                 src="https://jfhbwnbihtdwoesjtlbz.supabase.co/storage/v1/object/public/lesson-photos/logos/litoral-verde-operadora-1790789256682.webp"
                 alt="Litoral Verde Operadora"
-                className="h-9 w-auto object-contain"
+                className="h-[54px] w-auto object-contain"
               />
             </div>
           </div>
