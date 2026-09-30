@@ -562,7 +562,7 @@ export default async function LandingPage() {
             <div className="bg-white rounded-md px-2 py-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://jfhbwnbihtdwoesjtlbz.supabase.co/storage/v1/object/public/lesson-photos/logos/litoral-verde-operadora-1790789256682.webp"
+                src="https://jfhbwnbihtdwoesjtlbz.supabase.co/storage/v1/object/public/lesson-photos/logos/litoral-verde-operadora-trimmed-1790795916008.webp"
                 alt="Litoral Verde Operadora"
                 className="h-[54px] w-auto object-contain"
               />
