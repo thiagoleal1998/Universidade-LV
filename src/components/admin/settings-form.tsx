@@ -211,7 +211,7 @@ const DEFAULT_LANDING_BENEFITS: LandingBenefit[] = [
 function parseLandingBenefits(json: string): LandingBenefit[] {
   try {
     const parsed = JSON.parse(json)
-    if (Array.isArray(parsed)) return parsed.slice(0, 4)
+    if (Array.isArray(parsed)) return parsed.slice(0, 6)
   } catch {}
   return DEFAULT_LANDING_BENEFITS
 }
@@ -1691,9 +1691,37 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Card {i + 1}</p>
-                  <button type="button" onClick={() => setLandingBenefits((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover card">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      disabled={i === 0}
+                      onClick={() => setLandingBenefits((prev) => {
+                        const next = [...prev]
+                        ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                        return next
+                      })}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                      title="Mover para cima"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={i === landingBenefits.length - 1}
+                      onClick={() => setLandingBenefits((prev) => {
+                        const next = [...prev]
+                        ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                        return next
+                      })}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                      title="Mover para baixo"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" onClick={() => setLandingBenefits((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors" title="Remover card">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label className="text-xs">Ícone</Label>
