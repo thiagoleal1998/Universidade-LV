@@ -418,6 +418,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [landingBenefitsSectionSubtitle, setLandingBenefitsSectionSubtitle] = useState(settings.landing_benefits_section_subtitle || '')
   const [landingStepsSectionTitle, setLandingStepsSectionTitle] = useState(settings.landing_steps_section_title || '')
   const [landingStepsSectionSubtitle, setLandingStepsSectionSubtitle] = useState(settings.landing_steps_section_subtitle || '')
+  const [landingTestimonialsActive, setLandingTestimonialsActive] = useState(settings.landing_testimonials_active !== 'false')
   const [landingTestimonialsSectionTitle, setLandingTestimonialsSectionTitle] = useState(settings.landing_testimonials_section_title || '')
   const [landingTestimonialsSectionSubtitle, setLandingTestimonialsSectionSubtitle] = useState(settings.landing_testimonials_section_subtitle || '')
   const [landingFaqSectionTitle, setLandingFaqSectionTitle] = useState(settings.landing_faq_section_title || '')
@@ -552,6 +553,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     formData.set('landing_benefits_section_subtitle', landingBenefitsSectionSubtitle)
     formData.set('landing_steps_section_title', landingStepsSectionTitle)
     formData.set('landing_steps_section_subtitle', landingStepsSectionSubtitle)
+    formData.set('landing_testimonials_active', landingTestimonialsActive ? 'true' : 'false')
     formData.set('landing_testimonials_section_title', landingTestimonialsSectionTitle)
     formData.set('landing_testimonials_section_subtitle', landingTestimonialsSectionSubtitle)
     formData.set('landing_faq_section_title', landingFaqSectionTitle)
@@ -1856,9 +1858,23 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         <div className={cn('space-y-6', landingSubTab !== 'social' && 'hidden')}>
 
           <section className="rounded-xl border border-border p-5 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Depoimentos</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Carrossel com depoimentos de agentes. Só aparece se houver ao menos 1 depoimento.</p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Depoimentos</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Carrossel com depoimentos de agentes. Só aparece se estiver visível E houver ao menos 1 depoimento.</p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <span className="text-xs text-muted-foreground">{landingTestimonialsActive ? 'Visível' : 'Oculta'}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={landingTestimonialsActive}
+                  onClick={() => setLandingTestimonialsActive(v => !v)}
+                  className={cn('relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors', landingTestimonialsActive ? 'bg-green-600' : 'bg-muted-foreground/30')}
+                >
+                  <span className={cn('pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform', landingTestimonialsActive ? 'translate-x-4' : 'translate-x-0')} />
+                </button>
+              </label>
             </div>
             <div>
               <Label className="text-xs">Título da seção</Label>

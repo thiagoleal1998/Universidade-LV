@@ -123,6 +123,7 @@ export default async function LandingPage() {
   const benefits     = parse<BenefitCard>(s.landing_benefits, []).filter(b => b.title).slice(0, 4)
   const stats        = parse<Stat>(s.landing_stats, []).filter(st => st.number && st.label).slice(0, 4)
   const steps        = parse<Step>(s.landing_steps, []).filter(st => st.title).slice(0, 3)
+  const testimonialsActive = s.landing_testimonials_active !== 'false'
   const testimonials = parse<Testimonial>(s.landing_testimonials, []).filter(t => t.text)
   const faq          = parse<FaqEntry>(s.landing_faq, []).filter(f => f.question)
   type Perk = { icon: string; title: string; description: string }
@@ -190,7 +191,7 @@ export default async function LandingPage() {
     benefits:     { href: '#beneficios',    show: benefits.length > 0 },
     steps:        { href: '#como-funciona', show: steps.length > 0 },
     about:        { href: '#sobre',         show: aboutActive && !!aboutText },
-    testimonials: { href: '#depoimentos',   show: testimonials.length > 0 },
+    testimonials: { href: '#depoimentos',   show: testimonialsActive && testimonials.length > 0 },
     faq:          { href: '#faq',           show: faq.length > 0 },
     leads:        { href: '#contato',       show: leadFormActive },
   }
@@ -355,7 +356,7 @@ export default async function LandingPage() {
       </section>
     ) : null,
 
-    testimonials: testimonials.length > 0 ? (
+    testimonials: testimonialsActive && testimonials.length > 0 ? (
       <section key="testimonials" id="depoimentos" className="py-12 md:py-16 px-4 sm:px-6 bg-muted/40 scroll-mt-20">
         <div className="max-w-4xl mx-auto">
           {(testimonialsSectionTitle || testimonialsSectionSubtitle) && (

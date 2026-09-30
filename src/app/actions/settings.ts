@@ -67,6 +67,7 @@ export async function updateSettings(formData: FormData) {
     { key: 'landing_benefits_section_subtitle', value: (formData.get('landing_benefits_section_subtitle') as string) || '' },
     { key: 'landing_steps_section_title', value: (formData.get('landing_steps_section_title') as string) || '' },
     { key: 'landing_steps_section_subtitle', value: (formData.get('landing_steps_section_subtitle') as string) || '' },
+    { key: 'landing_testimonials_active', value: (formData.get('landing_testimonials_active') as string) || '' },
     { key: 'landing_testimonials_section_title', value: (formData.get('landing_testimonials_section_title') as string) || '' },
     { key: 'landing_testimonials_section_subtitle', value: (formData.get('landing_testimonials_section_subtitle') as string) || '' },
     { key: 'landing_faq_section_title', value: (formData.get('landing_faq_section_title') as string) || '' },

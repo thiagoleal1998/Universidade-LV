@@ -69,6 +69,7 @@ export type Settings = {
   landing_benefits_section_subtitle: string
   landing_steps_section_title: string
   landing_steps_section_subtitle: string
+  landing_testimonials_active: string
   landing_testimonials_section_title: string
   landing_testimonials_section_subtitle: string
   landing_faq_section_title: string
@@ -251,6 +252,7 @@ const DEFAULTS = {
   landing_benefits_section_subtitle: 'Acesso completo a tudo que um agente de viagem precisa para crescer e se destacar.',
   landing_steps_section_title: 'Como funciona',
   landing_steps_section_subtitle: 'Em 3 passos você já está aprendendo e evoluindo na sua carreira.',
+  landing_testimonials_active: 'true',
   landing_testimonials_section_title: 'Histórias reais',
   landing_testimonials_section_subtitle: 'Agentes de viagem que transformaram sua carreira com a Universidade LV.',
   landing_faq_section_title: 'Perguntas frequentes',
@@ -403,6 +405,7 @@ export async function getSettings(): Promise<Settings> {
       landing_benefits_section_subtitle: map.landing_benefits_section_subtitle ?? DEFAULTS.landing_benefits_section_subtitle,
       landing_steps_section_title: map.landing_steps_section_title ?? DEFAULTS.landing_steps_section_title,
       landing_steps_section_subtitle: map.landing_steps_section_subtitle ?? DEFAULTS.landing_steps_section_subtitle,
+      landing_testimonials_active: map.landing_testimonials_active ?? DEFAULTS.landing_testimonials_active,
       landing_testimonials_section_title: map.landing_testimonials_section_title ?? DEFAULTS.landing_testimonials_section_title,
       landing_testimonials_section_subtitle: map.landing_testimonials_section_subtitle ?? DEFAULTS.landing_testimonials_section_subtitle,
       landing_faq_section_title: map.landing_faq_section_title ?? DEFAULTS.landing_faq_section_title,
