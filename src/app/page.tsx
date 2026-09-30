@@ -555,8 +555,13 @@ export default async function LandingPage() {
 
       {/* ══ Footer ══ */}
       <footer className="border-t border-border py-6 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2.5">
+        {/* Logo centralizada verticalmente em relação ao BLOCO de texto
+            inteiro (as duas linhas: copyright+link, depois o aviso do
+            Turnstile) — pedido do usuário, por isso a logo saiu do flex
+            row da 1ª linha e virou irmã do bloco de texto como um todo,
+            ambos dentro de um flex items-center. */}
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2.5 shrink-0">
             {/* Fundo branco fixo: a logo tem texto escuro ("OPERADORA") que
                 fica ilegível no footer em modo escuro sem um fundo claro. */}
             <div className="bg-white rounded-md px-2 py-1">
@@ -568,25 +573,29 @@ export default async function LandingPage() {
               />
             </div>
           </div>
-          <span className="text-center leading-relaxed">
-            ©2026 TODOS OS DIREITOS RESERVADOS. | L. V. OPERADORA DE VIAGENS E TURISMO LTDA | CNPJ: 10.218.043/0001-00
-          </span>
-          <Link href="/login" className="hover:text-foreground transition-colors font-medium shrink-0">
-            Acessar plataforma →
-          </Link>
+          <div className="flex-1 min-w-0 flex flex-col items-center sm:items-stretch gap-2">
+            <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
+              <span className="text-center sm:text-left leading-relaxed">
+                ©2026 TODOS OS DIREITOS RESERVADOS. | L. V. OPERADORA DE VIAGENS E TURISMO LTDA | CNPJ: 10.218.043/0001-00
+              </span>
+              <Link href="/login" className="hover:text-foreground transition-colors font-medium shrink-0">
+                Acessar plataforma →
+              </Link>
+            </div>
+            <p className="text-center sm:text-left text-[11px] text-muted-foreground/70">
+              Este site utiliza o Cloudflare Turnstile para proteção contra spam e robôs.{' '}
+              <a
+                href="https://www.cloudflare.com/turnstile-privacy-policy/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                Saiba mais sobre a política de privacidade do Turnstile
+              </a>
+              .
+            </p>
+          </div>
         </div>
-        <p className="max-w-6xl mx-auto text-center text-[11px] text-muted-foreground/70 mt-3">
-          Este site utiliza o Cloudflare Turnstile para proteção contra spam e robôs.{' '}
-          <a
-            href="https://www.cloudflare.com/turnstile-privacy-policy/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline hover:text-foreground transition-colors"
-          >
-            Saiba mais sobre a política de privacidade do Turnstile
-          </a>
-          .
-        </p>
       </footer>
     </div>
   )
