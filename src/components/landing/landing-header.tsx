@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { LogIn, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,8 +19,16 @@ export function LandingHeader({ siteName, logoUrl, navItems }: LandingHeaderProp
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [activeSection, setActiveSection] = useState('')
-  const menuRef = useRef<HTMLDivElement>(null)
-  const [menuHeight, setMenuHeight] = useState(0)
+  // O backdrop/painel ficam SEMPRE montados (visibilidade via opacity, pra
+  // animar a transição) — diferente do painel do sino (`notification-bell.tsx`),
+  // que só monta quando `open` já é true. `typeof document !== 'undefined'`
+  // sozinho não bastava: no client, `document` já existe na primeira renderização
+  // (a de hidratação), então o portal aparecia ali sem ter aparecido no HTML
+  // do servidor — mismatch de hidratação real. `mounted` some no servidor E na
+  // primeira passada do client (só vira true depois, via efeito), igualando as
+  // duas primeiras renderizações.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -33,9 +42,16 @@ export function LandingHeader({ siteName, logoUrl, navItems }: LandingHeaderProp
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
+  // O menu agora é um overlay (fixed) por cima da home, não mais um painel
+  // que empurra o conteúdo pra baixo — sem isso, abrir o menu deslocava
+  // todo o resto da página (bug real relatado pelo usuário). Trava o scroll
+  // de fundo enquanto aberto, mesmo padrão já usado no modal de cookies da
+  // landing (`cookie-consent.tsx`) — um `fixed` sozinho não impede arrastar
+  // a página por baixo dele.
   useEffect(() => {
-    if (!menuRef.current) return
-    setMenuHeight(menuOpen ? menuRef.current.scrollHeight : 0)
+    if (!menuOpen) return
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
   }, [menuOpen])
 
   // Scroll spy — detecta qual seção está visível
@@ -70,7 +86,74 @@ export function LandingHeader({ siteName, logoUrl, navItems }: LandingHeaderProp
     }, menuOpen ? 320 : 0)
   }
 
+  // Backdrop + painel do menu mobile precisam ser portalados pro <body> —
+  // o <header> tem backdrop-blur (CSS backdrop-filter), que cria um novo
+  // containing block pra qualquer descendente `fixed` (mesma categoria de
+  // transform/filter/perspective/will-change). Como filhos do header, os
+  // dois posicionavam/dimensionavam relativo à caixa de 64px do header
+  // (h-16), não à viewport — o backdrop resultava em height:0, invisível
+  // e inclicável, apesar de opacity-100/pointer-events-auto corretos.
+  // Mesmo mecanismo já documentado e resolvido em `notification-bell.tsx`
+  // (painel portalado pro document.body pelo mesmo motivo).
+  const mobileMenu = (
+    <>
+      {/* Backdrop — fixed a partir da base do header (top-16), nunca cobre
+          a própria barra (o botão de fechar precisa continuar clicável).
+          Fecha o menu ao tocar fora dele. */}
+      <div
+        className={cn(
+          'md:hidden fixed top-16 inset-x-0 bottom-0 z-40 bg-black/40 transition-opacity duration-300',
+          menuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Mobile menu — overlay fixed por cima da home (não empurra o
+          conteúdo abaixo dele, ao contrário do painel inline de antes). */}
+      <div
+        className={cn(
+          'md:hidden fixed top-16 inset-x-0 z-40 bg-background border-b border-border shadow-lg transition-all duration-300 origin-top',
+          menuOpen ? 'opacity-100 scale-y-100 pointer-events-auto' : 'opacity-0 scale-y-95 pointer-events-none'
+        )}
+      >
+        <nav className="px-3 py-2 max-h-[calc(100dvh-4rem)] overflow-y-auto">
+          {navItems.map((item) => {
+            const id = item.href.slice(1)
+            const isActive = activeSection === id
+            return (
+              <button
+                key={item.href}
+                onClick={() => scrollTo(item.href)}
+                className={cn(
+                  'w-full text-left px-3 py-3 text-sm rounded-lg transition-colors font-medium flex items-center gap-2',
+                  isActive
+                    ? 'text-foreground bg-muted'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <span className={cn('w-1 h-1 rounded-full shrink-0', isActive ? 'bg-green-600' : 'bg-muted-foreground/40')} />
+                {item.label}
+              </button>
+            )
+          })}
+          <div className="mx-0 my-1.5 border-t border-border/60" />
+          <Link
+            href="/login"
+            onClick={() => setMenuOpen(false)}
+            className="flex items-center gap-2 px-3 py-3 text-sm font-semibold text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors"
+          >
+            <LogIn className="w-4 h-4" />
+            Entrar na plataforma
+          </Link>
+        </nav>
+        <div className="h-2" />
+      </div>
+    </>
+  )
+
   return (
+    <>
     <header
       className={cn(
         'sticky top-0 z-40 transition-all duration-300',
@@ -155,50 +238,8 @@ export function LandingHeader({ siteName, logoUrl, navItems }: LandingHeaderProp
           )}
         </div>
       </div>
-
-      {/* Mobile menu — altura animada via scrollHeight */}
-      <div
-        className="md:hidden overflow-hidden"
-        style={{
-          height: menuHeight,
-          transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div ref={menuRef}>
-          <div className="border-t border-border/60 mx-4" />
-          <nav className="px-3 py-2">
-            {navItems.map((item) => {
-              const id = item.href.slice(1)
-              const isActive = activeSection === id
-              return (
-                <button
-                  key={item.href}
-                  onClick={() => scrollTo(item.href)}
-                  className={cn(
-                    'w-full text-left px-3 py-3 text-sm rounded-lg transition-colors font-medium flex items-center gap-2',
-                    isActive
-                      ? 'text-foreground bg-muted'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <span className={cn('w-1 h-1 rounded-full shrink-0', isActive ? 'bg-green-600' : 'bg-muted-foreground/40')} />
-                  {item.label}
-                </button>
-              )
-            })}
-            <div className="mx-0 my-1.5 border-t border-border/60" />
-            <Link
-              href="/login"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-3 text-sm font-semibold text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors"
-            >
-              <LogIn className="w-4 h-4" />
-              Entrar na plataforma
-            </Link>
-          </nav>
-          <div className="h-2" />
-        </div>
-      </div>
     </header>
+    {mounted && createPortal(mobileMenu, document.body)}
+    </>
   )
 }
