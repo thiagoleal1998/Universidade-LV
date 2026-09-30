@@ -444,7 +444,7 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
                                 </button>
                               </div>
                               <Textarea value={item.especificacoes} onChange={(e) => updateItem(cIdx, sIdx, pIdx, 'especificacoes', e.target.value)}
-                                placeholder="Especificações (opcional) — ex: check-in 14h, café incluído, 2 pax..." className="min-h-[60px] text-xs resize-none ml-9" rows={2} />
+                                placeholder="Especificações (opcional) — ex: check-in 14h, café incluído, 2 pax..." className="min-h-[60px] text-xs resize-none ml-9 w-[calc(100%-2.25rem)]" rows={2} />
                             </div>
                           )
                         })}

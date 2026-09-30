@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import {
-  Briefcase, Trophy, MapPin, Globe, Gift, ScrollText,
-  Paperclip, ExternalLink, Clock, PlayCircle, CheckCircle2, Award, Calendar, ChevronRight,
+  Briefcase, Trophy, Gift,
+  Clock, PlayCircle, CheckCircle2, Award, Calendar, ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -10,30 +10,11 @@ import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { detectEstadoBR, estadoFlagUrl } from '@/lib/estado-flag'
 import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 import { CommercialConditionsGrid } from '@/components/members/commercial-conditions-grid'
+import { CorridasVendasGrid } from '@/components/members/corridas-vendas-grid'
+import type { CorridaData, PremiacaoItem, PremiacaoSection, Vencedor, Status } from '@/components/members/corrida-card'
 import { ATTENTION_COLOR } from '@/components/ui/highlight-badge'
 
 export const metadata = { title: 'Condições Comerciais' }
-
-// ── Tipos ──────────────────────────────────────────────────────────────────
-
-type Status = 'proxima' | 'em_andamento' | 'finalizada'
-type PremiacaoItem = { texto: string; especificacoes: string }
-type PremiacaoSection = { titulo: string; itens: PremiacaoItem[] }
-type Vencedor = { posicao: string; nome: string; agencia: string; descricao: string; logo_url: string }
-
-type CorridaData = {
-  status: Status
-  tipo: 'nacional' | 'internacional'
-  titulo: string
-  descricao: string
-  destino: string
-  periodo: string
-  parceiro_logo_url: string
-  premiacoes: PremiacaoSection[]
-  vencedores: Vencedor[]
-  regras: string
-  lamina_url: string
-}
 
 // ── Parsers ────────────────────────────────────────────────────────────────
 
@@ -151,109 +132,6 @@ const SUBTABS = [
 
 type SubtabKey = typeof SUBTABS[number]['key']
 
-// ── CorridaCard ────────────────────────────────────────────────────────────
-
-function CorridaCard({ corrida }: { corrida: CorridaData }) {
-  const iso = detectIso(corrida.destino)
-  return (
-    <div className="space-y-5">
-      {corrida.titulo && <h2 className="text-xl font-bold text-foreground">{corrida.titulo}</h2>}
-
-      <div className="flex items-center gap-3 flex-wrap">
-        {corrida.tipo === 'nacional' ? (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-semibold">
-            <MapPin className="w-3.5 h-3.5" />Nacional
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm font-semibold">
-            <Globe className="w-3.5 h-3.5" />Internacional
-          </span>
-        )}
-        {corrida.destino && (
-          <span className="flex items-center gap-2 text-lg font-bold text-foreground">
-            {iso && <img src={flagImgUrl(iso, '32x24')} srcSet={`${flagImgUrl(iso, '48x36')} 2x`} width={32} height={24} alt="Bandeira" className="rounded-sm object-cover" />}
-            {corrida.destino}
-          </span>
-        )}
-      </div>
-
-      {corrida.periodo && (
-        corrida.status === 'proxima' ? (
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-            <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Data prevista</p>
-              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">{corrida.periodo}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="w-4 h-4 shrink-0" />
-            <span>{corrida.periodo}</span>
-          </div>
-        )
-      )}
-
-      {corrida.descricao && corrida.descricao !== '<p></p>' && (
-        <div className="rich-text text-muted-foreground" dangerouslySetInnerHTML={{ __html: corrida.descricao }} />
-      )}
-
-      {corrida.lamina_url && (
-        <a href={corrida.lamina_url} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-primary/40 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors">
-          <Paperclip className="w-4 h-4" />
-          Ver lâmina da corrida
-          <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-        </a>
-      )}
-
-      {corrida.premiacoes.some((s) => s.itens.length > 0) && (
-        <div className="space-y-3">
-          <h3 className="text-base font-bold text-foreground">Premiação</h3>
-          {corrida.premiacoes.map((section, sIdx) =>
-            section.itens.length === 0 ? null : (
-              <div key={sIdx} className="bg-card border rounded-xl p-5 space-y-4">
-                {section.titulo && (
-                  <div className="flex items-center gap-2">
-                    <Gift className="w-4 h-4 text-yellow-500" />
-                    <span className="font-semibold text-foreground">{section.titulo}</span>
-                  </div>
-                )}
-                <ul className="space-y-3">
-                  {section.itens.map((item, idx) => {
-                    const Icon = detectPremiacaoIcon(item.texto)
-                    return (
-                      <li key={idx} className="space-y-1.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
-                            <Icon className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
-                          </div>
-                          <span className="text-sm font-medium text-foreground">{item.texto}</span>
-                        </div>
-                        {item.especificacoes && <p className="text-xs text-muted-foreground ml-10 leading-relaxed">{item.especificacoes}</p>}
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            ),
-          )}
-        </div>
-      )}
-
-      {corrida.regras && corrida.regras !== '<p></p>' && (
-        <div className="bg-card border rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <ScrollText className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-foreground">Regras</h3>
-          </div>
-          <div className="rich-text" dangerouslySetInnerHTML={{ __html: corrida.regras }} />
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── VencedoresView ─────────────────────────────────────────────────────────
 
 function badgeClasses(pos: string) {
@@ -290,10 +168,15 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
                 className="absolute inset-0 w-full h-full object-cover scale-150 blur-3xl opacity-25 dark:opacity-15 pointer-events-none select-none"
               />
             )}
-            {corrida.titulo
-              ? <h2 className="relative z-10 text-base font-bold text-foreground leading-snug">{corrida.titulo}</h2>
-              : <span className="relative z-10" />
-            }
+            <div className="relative z-10 min-w-0">
+              {corrida.titulo && <h2 className="text-base font-bold text-foreground leading-snug">{corrida.titulo}</h2>}
+              {corrida.periodo && (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                  <Calendar className="w-3.5 h-3.5 shrink-0" />
+                  {corrida.periodo}
+                </p>
+              )}
+            </div>
             {corrida.parceiro_logo_url && (
               <img
                 src={corrida.parceiro_logo_url}
@@ -539,14 +422,7 @@ export default async function ComercialPage({
                 <p className="text-sm">{subtabData.emptyMsg}</p>
               </div>
             ) : (
-              <div className="max-w-2xl space-y-10">
-                {filteredCorridas.map((corrida, idx) => (
-                  <div key={idx}>
-                    {idx > 0 && <hr className="border-border mb-10" />}
-                    <CorridaCard corrida={corrida} />
-                  </div>
-                ))}
-              </div>
+              <CorridasVendasGrid corridas={filteredCorridas} />
             )}
           </div>
         </div>
