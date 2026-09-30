@@ -455,7 +455,10 @@ export default async function LandingPage() {
                   )}
                   <div className="bg-black/40 backdrop-blur-sm rounded-xl px-4 py-3 sm:px-5 sm:py-4 space-y-2">
                     <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-white">{heroTitle}</h1>
-                    <p className="text-sm md:text-base text-white/75 leading-relaxed">{heroSubtitle}</p>
+                    <div
+                      className="text-sm md:text-base text-white/75 leading-relaxed [&_strong]:font-semibold [&_strong]:text-white [&_em]:italic [&>p:not(:first-child)]:mt-2"
+                      dangerouslySetInnerHTML={{ __html: toRichHtml(heroSubtitle) }}
+                    />
                   </div>
                   <div className="flex flex-wrap gap-2.5">
                     <Link href="/login" className="inline-flex items-center gap-2 bg-orange-500 text-white font-semibold px-5 py-3 rounded-lg hover:bg-orange-600 transition-colors text-sm shadow-md min-h-[44px]">
@@ -495,7 +498,10 @@ export default async function LandingPage() {
                     </span>
                   )}
                   <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-foreground">{heroTitle}</h1>
-                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{heroSubtitle}</p>
+                  <div
+                    className="text-sm sm:text-base text-muted-foreground leading-relaxed [&_strong]:font-semibold [&_strong]:text-foreground [&_em]:italic [&>p:not(:first-child)]:mt-2"
+                    dangerouslySetInnerHTML={{ __html: toRichHtml(heroSubtitle) }}
+                  />
                   <div className="flex flex-wrap gap-2.5 pt-1">
                     <Link href="/login" className="inline-flex items-center gap-2 bg-orange-500 text-white font-semibold px-5 py-3 rounded-lg hover:bg-orange-600 transition-colors text-sm shadow-md min-h-[44px]">
                       {heroCtaText} <ArrowRight className="w-4 h-4" />

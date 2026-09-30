@@ -396,7 +396,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [sidebarSocialLabel, setSidebarSocialLabel] = useState(settings.sidebar_social_label || 'Nos siga')
   const [tamojunto, setTamojunto] = useState<TamojuntoData>(() => parseTamojunto(settings.tamojunto))
   const [landingHeroTitle, setLandingHeroTitle] = useState(settings.landing_hero_title || '')
-  const [landingHeroSubtitle, setLandingHeroSubtitle] = useState(settings.landing_hero_subtitle || '')
+  const [landingHeroSubtitle, setLandingHeroSubtitle] = useState(toRichHtml(settings.landing_hero_subtitle || ''))
   const [landingHeroImageUrl, setLandingHeroImageUrl] = useState(settings.landing_hero_image_url || '')
   const [landingHeroCtaText, setLandingHeroCtaText] = useState(settings.landing_hero_cta_text || 'Acessar minha conta')
   const [landingAboutActive, setLandingAboutActive] = useState(settings.landing_about_active !== 'false')
@@ -1567,7 +1567,9 @@ export function SettingsForm({ settings }: { settings: Settings }) {
             </div>
             <div>
               <Label className="text-xs">Subtítulo</Label>
-              <Textarea value={landingHeroSubtitle} onChange={(e) => setLandingHeroSubtitle(e.target.value)} placeholder="Treinamentos ao vivo, cursos completos, comunidade e certificados..." rows={2} className="mt-1.5 resize-none text-sm" />
+              <div className="mt-1.5">
+                <RichTextEditor content={landingHeroSubtitle} onChange={setLandingHeroSubtitle} />
+              </div>
             </div>
             <div>
               <Label className="text-xs">Texto do botão principal (CTA)</Label>
