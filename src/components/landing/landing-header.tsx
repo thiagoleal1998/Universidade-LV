@@ -99,23 +99,50 @@ export function LandingHeader({ siteName, logoUrl, navItems }: LandingHeaderProp
     <>
       {/* Backdrop — fixed a partir da base do header (top-16), nunca cobre
           a própria barra (o botão de fechar precisa continuar clicável).
-          Fecha o menu ao tocar fora dele. */}
+          Fecha o menu ao tocar fora dele. Transição via `style` inline, não
+          `transition-opacity` do Tailwind — ver nota abaixo no painel. */}
       <div
         className={cn(
-          'md:hidden fixed top-16 inset-x-0 bottom-0 z-40 bg-black/40 transition-opacity duration-300',
+          'md:hidden fixed top-16 inset-x-0 bottom-0 z-40 bg-black/40',
           menuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
+        style={{ transition: 'opacity 400ms cubic-bezier(0.16,1,0.3,1)' }}
         onClick={() => setMenuOpen(false)}
         aria-hidden="true"
       />
 
       {/* Mobile menu — overlay fixed por cima da home (não empurra o
-          conteúdo abaixo dele, ao contrário do painel inline de antes). */}
+          conteúdo abaixo dele, ao contrário do painel inline de antes).
+          Translate+opacity em vez de scale-y: escalar o eixo Y distorce o
+          texto/padding durante a transição e passa uma sensação de "esticar"
+          abrupta; deslizar+desvanecer com easing de desaceleração (mesma
+          curva usada em menus nativos) fica mais suave. `bg-background/90
+          backdrop-blur-md` (em vez de opaco) deixa o conteúdo por trás
+          entrever de leve, sem comprometer a leitura do texto por cima.
+          **Transição via `style` inline, não classes `transition-*`/`duration-*`/
+          `ease-*` do Tailwind**: `globals.css` tem uma regra global não-layered
+          (`*, *::before, *::after { transition: background-color, border-color,
+          color, box-shadow }`) que, por estar FORA de qualquer `@layer`, vence
+          qualquer utilitário do Tailwind (que vive dentro de `@layer utilities`)
+          na cascata — regra sem camada sempre bate regra em camada, não importa
+          especificidade. Resultado: `opacity`/`transform` (propriedades fora da
+          lista fixa daquela regra) nunca transicionavam em NENHUM lugar do app
+          via classe Tailwind, só as 4 propriedades cobertas por ela — daí o
+          menu "pulando" em vez de animar, apesar das classes certas presentes.
+          `style` inline tem prioridade sobre qualquer stylesheet (layered ou
+          não), então é o único jeito confiável de transicionar opacity/translate
+          enquanto essa regra global existir. **Segunda pegadinha**: Tailwind v4
+          não compõe `-translate-y-*` dentro de `transform` — usa a propriedade
+          CSS `translate` separada (`getComputedStyle().transform` fica "none",
+          quem carrega o deslocamento é `.translate`). Transicionar `transform`
+          (como um dev acostumado com v3 assumiria) não tem NENHUM efeito aqui;
+          o nome certo pra `transitionProperty` é `translate`. */}
       <div
         className={cn(
-          'md:hidden fixed top-16 inset-x-0 z-40 bg-background border-b border-border shadow-lg transition-all duration-300 origin-top',
-          menuOpen ? 'opacity-100 scale-y-100 pointer-events-auto' : 'opacity-0 scale-y-95 pointer-events-none'
+          'md:hidden fixed top-16 inset-x-0 z-40 bg-background/90 backdrop-blur-md border-b border-border shadow-lg origin-top',
+          menuOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'
         )}
+        style={{ transition: 'opacity 450ms cubic-bezier(0.16,1,0.3,1), translate 450ms cubic-bezier(0.16,1,0.3,1)' }}
       >
         <nav className="px-3 py-2 max-h-[calc(100dvh-4rem)] overflow-y-auto">
           {navItems.map((item) => {
