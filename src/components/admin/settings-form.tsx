@@ -1677,7 +1677,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           <section className="rounded-xl border border-border p-5 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Benefícios / O que você vai encontrar</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Até 4 cards destacando as funcionalidades da área de membros.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Até 6 cards destacando as funcionalidades da área de membros. Exibidos em carrossel na home.</p>
             </div>
             <div>
               <Label className="text-xs">Título da seção</Label>
@@ -1718,7 +1718,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
                 </div>
               </div>
             ))}
-            {landingBenefits.length < 4 && (
+            {landingBenefits.length < 6 && (
               <button type="button" onClick={() => setLandingBenefits((prev) => [...prev, { icon: 'Star', title: '', description: '' }])} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium">
                 <Plus className="w-4 h-4" />Adicionar card
               </button>

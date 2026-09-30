@@ -15,6 +15,7 @@ import { FaqAccordion } from '@/components/landing/faq-accordion'
 import { LandingHeader } from '@/components/landing/landing-header'
 import { CountdownBar } from '@/components/landing/countdown-bar'
 import { LaunchBanner } from '@/components/landing/launch-banner'
+import { BenefitsCarousel } from '@/components/landing/benefits-carousel'
 import { CookieConsent } from '@/components/landing/cookie-consent'
 import { LeadForm } from '@/components/landing/lead-form'
 import { PartnersCarousel } from '@/components/landing/partners-carousel'
@@ -120,7 +121,7 @@ export default async function LandingPage() {
   const testimonialsSectionSubtitle = s.landing_testimonials_section_subtitle || ''
   const faqSectionTitle         = s.landing_faq_section_title         || 'Perguntas frequentes'
 
-  const benefits     = parse<BenefitCard>(s.landing_benefits, []).filter(b => b.title).slice(0, 4)
+  const benefits     = parse<BenefitCard>(s.landing_benefits, []).filter(b => b.title).slice(0, 6)
   const stats        = parse<Stat>(s.landing_stats, []).filter(st => st.number && st.label).slice(0, 4)
   const steps        = parse<Step>(s.landing_steps, []).filter(st => st.title).slice(0, 3)
   const testimonialsActive = s.landing_testimonials_active !== 'false'
@@ -234,26 +235,15 @@ export default async function LandingPage() {
       <section key="benefits" id="beneficios" className="py-12 md:py-16 px-4 sm:px-6 scroll-mt-20">
         <div className="max-w-6xl mx-auto">
           <FadeIn><SectionHeading title={benefitsSectionTitle} subtitle={benefitsSectionSubtitle || undefined} /></FadeIn>
-          <div className={`grid gap-5 ${
-            benefits.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
-            benefits.length === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto' :
-            benefits.length === 3 ? 'grid-cols-1 md:grid-cols-3' :
-            'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-          }`}>
-            {benefits.map((b, i) => (
-              <FadeIn key={i} delay={i * 70}>
-                <div className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 hover:border-green-300 hover:shadow-md transition-all h-full">
-                  <div className="w-11 h-11 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 group-hover:bg-green-500/15 transition-colors">
-                    <BenefitIcon name={b.icon} className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm leading-snug">{b.title}</h3>
-                    {b.description && <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{b.description}</p>}
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
+          <FadeIn delay={80}>
+            <BenefitsCarousel
+              benefits={benefits.map(b => ({
+                icon: <BenefitIcon name={b.icon} className="w-5 h-5 text-green-600" />,
+                title: b.title,
+                description: b.description,
+              }))}
+            />
+          </FadeIn>
         </div>
       </section>
     ) : null,
