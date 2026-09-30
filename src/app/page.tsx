@@ -13,6 +13,7 @@ import { TestimonialsCarousel } from '@/components/landing/testimonials-carousel
 import { FaqAccordion } from '@/components/landing/faq-accordion'
 import { LandingHeader } from '@/components/landing/landing-header'
 import { CountdownBar } from '@/components/landing/countdown-bar'
+import { LaunchBanner } from '@/components/landing/launch-banner'
 import { CookieConsent } from '@/components/landing/cookie-consent'
 import { LeadForm } from '@/components/landing/lead-form'
 import { PartnersCarousel } from '@/components/landing/partners-carousel'
@@ -149,6 +150,10 @@ export default async function LandingPage() {
   const countdownActive = s.landing_countdown_active === 'true'
   const countdownDate   = s.landing_countdown_date   || ''
   const countdownTitle  = s.landing_countdown_title  || 'Próximo treinamento ao vivo'
+
+  // Banner de lançamento
+  const launchBannerActive = s.landing_launch_banner_active === 'true'
+  const launchBannerText   = s.landing_launch_banner_text   || 'Lançamento em Novembro'
 
   // Lead form
   const leadFormActive         = s.landing_lead_form_active          === 'true'
@@ -421,6 +426,11 @@ export default async function LandingPage() {
       {/* ══ Countdown bar (opcional, acima do hero) ══ */}
       {countdownActive && countdownDate && (
         <CountdownBar title={countdownTitle} date={countdownDate} />
+      )}
+
+      {/* ══ Banner de lançamento (opcional, texto fixo, sem contagem) ══ */}
+      {launchBannerActive && (
+        <LaunchBanner text={launchBannerText} />
       )}
 
       {/* ══ Hero (fixo, sempre primeiro) ══ */}

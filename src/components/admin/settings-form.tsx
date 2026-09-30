@@ -470,6 +470,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [countdownActive, setCountdownActive] = useState(settings.landing_countdown_active === 'true')
   const [countdownDate, setCountdownDate] = useState(settings.landing_countdown_date || '')
   const [countdownTitle, setCountdownTitle] = useState(settings.landing_countdown_title || 'Próximo treinamento ao vivo')
+  const [launchBannerActive, setLaunchBannerActive] = useState(settings.landing_launch_banner_active === 'true')
+  const [launchBannerText, setLaunchBannerText] = useState(settings.landing_launch_banner_text || 'Lançamento em Novembro')
   const [leadFormActive, setLeadFormActive] = useState(settings.landing_lead_form_active === 'true')
   const [leadFormTitle, setLeadFormTitle] = useState(settings.landing_lead_form_title || '')
   const [leadFormSubtitle, setLeadFormSubtitle] = useState(settings.landing_lead_form_subtitle || '')
@@ -565,6 +567,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     formData.set('landing_countdown_active', countdownActive ? 'true' : '')
     formData.set('landing_countdown_date', countdownDate)
     formData.set('landing_countdown_title', countdownTitle)
+    formData.set('landing_launch_banner_active', launchBannerActive ? 'true' : '')
+    formData.set('landing_launch_banner_text', launchBannerText)
     formData.set('landing_lead_form_active', leadFormActive ? 'true' : '')
     formData.set('landing_lead_form_title', leadFormTitle)
     formData.set('landing_lead_form_subtitle', leadFormSubtitle)
@@ -1604,6 +1608,26 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               <Label className="text-xs">Data e hora do evento</Label>
               <DateTimePicker value={countdownDate} onChange={setCountdownDate} className="mt-1.5" placeholder="Selecionar data do evento" />
               <p className="text-xs text-muted-foreground mt-1">Quando a data passar, a barra some automaticamente.</p>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Banner de lançamento</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Faixa de destaque no topo da home, com texto fixo (sem contagem regressiva) — ex.: anunciar o mês de lançamento.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLaunchBannerActive(v => !v)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${launchBannerActive ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${launchBannerActive ? 'translate-x-4' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div>
+              <Label className="text-xs">Texto do banner</Label>
+              <Input value={launchBannerText} onChange={e => setLaunchBannerText(e.target.value)} placeholder="Lançamento em Novembro" className="mt-1.5" />
             </div>
           </section>
 

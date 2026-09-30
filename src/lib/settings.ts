@@ -87,6 +87,9 @@ export type Settings = {
   landing_countdown_active: string
   landing_countdown_date: string
   landing_countdown_title: string
+  // Landing — Banner de lançamento
+  landing_launch_banner_active: string
+  landing_launch_banner_text: string
   // Landing — Formulário de leads
   landing_lead_form_active: string
   landing_lead_form_title: string
@@ -276,6 +279,8 @@ const DEFAULTS = {
   landing_countdown_active: '',
   landing_countdown_date: '',
   landing_countdown_title: 'Próximo treinamento ao vivo',
+  landing_launch_banner_active: 'true',
+  landing_launch_banner_text: 'Lançamento em Novembro',
   landing_lead_form_active: '',
   landing_lead_form_title: 'Fique por dentro das novidades',
   landing_lead_form_subtitle: 'Cadastre-se e receba em primeira mão informações sobre treinamentos, dicas e oportunidades exclusivas para agentes de viagem.',
@@ -415,6 +420,8 @@ export async function getSettings(): Promise<Settings> {
       landing_countdown_active: map.landing_countdown_active ?? DEFAULTS.landing_countdown_active,
       landing_countdown_date: map.landing_countdown_date ?? DEFAULTS.landing_countdown_date,
       landing_countdown_title: map.landing_countdown_title ?? DEFAULTS.landing_countdown_title,
+      landing_launch_banner_active: map.landing_launch_banner_active ?? DEFAULTS.landing_launch_banner_active,
+      landing_launch_banner_text: map.landing_launch_banner_text ?? DEFAULTS.landing_launch_banner_text,
       landing_lead_form_active: map.landing_lead_form_active ?? DEFAULTS.landing_lead_form_active,
       landing_lead_form_title: map.landing_lead_form_title ?? DEFAULTS.landing_lead_form_title,
       landing_lead_form_subtitle: map.landing_lead_form_subtitle ?? DEFAULTS.landing_lead_form_subtitle,

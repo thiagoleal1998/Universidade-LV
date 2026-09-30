@@ -84,6 +84,8 @@ export async function updateSettings(formData: FormData) {
     { key: 'landing_countdown_active', value: (formData.get('landing_countdown_active') as string) || '' },
     { key: 'landing_countdown_date', value: (formData.get('landing_countdown_date') as string) || '' },
     { key: 'landing_countdown_title', value: (formData.get('landing_countdown_title') as string) || '' },
+    { key: 'landing_launch_banner_active', value: (formData.get('landing_launch_banner_active') as string) || '' },
+    { key: 'landing_launch_banner_text', value: (formData.get('landing_launch_banner_text') as string) || '' },
     { key: 'landing_lead_form_active', value: (formData.get('landing_lead_form_active') as string) || '' },
     { key: 'landing_lead_form_title', value: (formData.get('landing_lead_form_title') as string) || '' },
     { key: 'landing_lead_form_subtitle', value: (formData.get('landing_lead_form_subtitle') as string) || '' },
