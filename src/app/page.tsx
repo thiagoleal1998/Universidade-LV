@@ -15,6 +15,7 @@ import { FaqAccordion } from '@/components/landing/faq-accordion'
 import { LandingHeader } from '@/components/landing/landing-header'
 import { CountdownBar } from '@/components/landing/countdown-bar'
 import { LaunchBanner } from '@/components/landing/launch-banner'
+import { FooterLogo } from '@/components/landing/footer-logo'
 import { BenefitsCarousel } from '@/components/landing/benefits-carousel'
 import { CookieConsent } from '@/components/landing/cookie-consent'
 import { LeadForm } from '@/components/landing/lead-form'
@@ -562,16 +563,7 @@ export default async function LandingPage() {
             ambos dentro de um flex items-center. */}
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2.5 shrink-0">
-            {/* Fundo branco fixo: a logo tem texto escuro ("OPERADORA") que
-                fica ilegível no footer em modo escuro sem um fundo claro. */}
-            <div className="bg-white rounded-md px-2 py-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://jfhbwnbihtdwoesjtlbz.supabase.co/storage/v1/object/public/lesson-photos/logos/litoral-verde-operadora-trimmed-1790795916008.webp"
-                alt="Litoral Verde Operadora"
-                className="h-[54px] w-auto object-contain"
-              />
-            </div>
+            <FooterLogo />
           </div>
           <div className="flex-1 min-w-0 flex flex-col items-center sm:items-stretch gap-2">
             {/* gap-4 igual ao do container pai (logo ↔ bloco de texto), pra

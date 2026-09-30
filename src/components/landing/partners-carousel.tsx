@@ -77,7 +77,12 @@ export function PartnersCarousel({ partners, title }: { partners: Partner[]; tit
                 src={p.logo_url}
                 alt={p.name}
                 style={{ width: ITEM_W - 24, height: 32 }}
-                className="object-contain brightness-0 opacity-50 hover:brightness-100 hover:opacity-100 transition-all duration-500 ease-out"
+                // brightness-0 vira silhueta preta — invisível sobre o fundo
+                // escuro do dark mode. dark:invert vira ela branca; no hover
+                // (que já mostra a cor original via brightness-100) o
+                // dark:hover:invert-0 desfaz a inversão, senão a cor real
+                // do parceiro sairia com as cores trocadas no hover.
+                className="object-contain brightness-0 dark:invert opacity-50 hover:brightness-100 hover:opacity-100 dark:hover:invert-0 transition-all duration-500 ease-out"
                 draggable={false}
               />
             </div>
