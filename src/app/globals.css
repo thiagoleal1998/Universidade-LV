@@ -163,6 +163,16 @@
   }
 }
 
+/* Navegação por âncora (ex.: botões "Como funciona" da landing, que usam
+   <a href="#id"> puro) suave em vez do salto abrupto padrão do navegador —
+   só os dois botões da landing usam link de âncora hoje, então é seguro
+   global. Respeita "reduzir movimento" do SO/navegador. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* ── Rich text content (editor + member viewer) ─────────────────────── */
 .rich-text {
   font-size: 0.875rem;

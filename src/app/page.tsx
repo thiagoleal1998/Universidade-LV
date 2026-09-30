@@ -210,7 +210,7 @@ export default async function LandingPage() {
   const sectionMap: Record<SectionKey, React.ReactNode> = {
 
     stats: stats.length > 0 ? (
-      <section key="stats" id="numeros" className="bg-green-700 text-white">
+      <section key="stats" id="numeros" className="bg-green-700 text-white scroll-mt-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           <StatsCounter stats={stats} />
         </div>
@@ -218,13 +218,13 @@ export default async function LandingPage() {
     ) : null,
 
     partners: partners.length > 0 ? (
-      <section key="partners" id="parceiros" className="py-10 px-4 sm:px-6 border-b border-border">
+      <section key="partners" id="parceiros" className="py-10 px-4 sm:px-6 border-b border-border scroll-mt-20">
         <PartnersCarousel partners={partners} title={partnersSectionTitle} />
       </section>
     ) : null,
 
     benefits: benefits.length > 0 ? (
-      <section key="benefits" id="beneficios" className="py-12 md:py-16 px-4 sm:px-6">
+      <section key="benefits" id="beneficios" className="py-12 md:py-16 px-4 sm:px-6 scroll-mt-20">
         <div className="max-w-6xl mx-auto">
           <FadeIn><SectionHeading title={benefitsSectionTitle} subtitle={benefitsSectionSubtitle || undefined} /></FadeIn>
           <div className={`grid gap-5 ${
@@ -252,7 +252,7 @@ export default async function LandingPage() {
     ) : null,
 
     perks: perks.length > 0 ? (
-      <section key="perks" id="diferenciais" className="py-12 md:py-16 px-4 sm:px-6 bg-green-700 text-white">
+      <section key="perks" id="diferenciais" className="py-12 md:py-16 px-4 sm:px-6 bg-green-700 text-white scroll-mt-20">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-7 md:mb-10">
             <h2 className="text-2xl md:text-3xl font-bold">{perksSectionTitle}</h2>
@@ -285,7 +285,7 @@ export default async function LandingPage() {
     ) : null,
 
     steps: steps.length > 0 ? (
-      <section key="steps" id="como-funciona" className="py-12 md:py-16 px-4 sm:px-6 bg-muted/40">
+      <section key="steps" id="como-funciona" className="py-12 md:py-16 px-4 sm:px-6 bg-muted/40 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <FadeIn><SectionHeading title={stepsSectionTitle} subtitle={stepsSectionSubtitle || undefined} /></FadeIn>
           <div className={`grid gap-6 ${steps.length === 2 ? 'sm:grid-cols-2' : 'md:grid-cols-3'}`}>
@@ -315,7 +315,7 @@ export default async function LandingPage() {
     ) : null,
 
     about: aboutActive && aboutText ? (
-      <section key="about" id="sobre" className="py-12 md:py-16 px-4 sm:px-6">
+      <section key="about" id="sobre" className="py-12 md:py-16 px-4 sm:px-6 scroll-mt-20">
         <div className="max-w-6xl mx-auto">
           <div className={`flex flex-col gap-10 ${aboutImage ? 'lg:flex-row lg:items-center' : 'max-w-2xl mx-auto'}`}>
             <FadeIn className="flex-1 space-y-4">
@@ -347,7 +347,7 @@ export default async function LandingPage() {
     ) : null,
 
     testimonials: testimonials.length > 0 ? (
-      <section key="testimonials" id="depoimentos" className="py-12 md:py-16 px-4 sm:px-6 bg-muted/40">
+      <section key="testimonials" id="depoimentos" className="py-12 md:py-16 px-4 sm:px-6 bg-muted/40 scroll-mt-20">
         <div className="max-w-4xl mx-auto">
           {(testimonialsSectionTitle || testimonialsSectionSubtitle) && (
             <FadeIn>
@@ -362,7 +362,7 @@ export default async function LandingPage() {
     ) : null,
 
     faq: faq.length > 0 ? (
-      <section key="faq" id="faq" className="py-12 md:py-16 px-4 sm:px-6">
+      <section key="faq" id="faq" className="py-12 md:py-16 px-4 sm:px-6 scroll-mt-20">
         <div className="max-w-2xl mx-auto">
           <FadeIn><SectionHeading title={faqSectionTitle} /></FadeIn>
           <FadeIn delay={60}><FaqAccordion items={faq} /></FadeIn>
