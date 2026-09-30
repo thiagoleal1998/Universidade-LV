@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { toRichHtml } from '@/lib/legacy-rich-text'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -399,7 +401,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [landingHeroCtaText, setLandingHeroCtaText] = useState(settings.landing_hero_cta_text || 'Acessar minha conta')
   const [landingAboutActive, setLandingAboutActive] = useState(settings.landing_about_active !== 'false')
   const [landingAboutTitle, setLandingAboutTitle] = useState(settings.landing_about_title || '')
-  const [landingAboutText, setLandingAboutText] = useState(settings.landing_about_text || '')
+  const [landingAboutText, setLandingAboutText] = useState(toRichHtml(settings.landing_about_text || ''))
   const [landingAboutImageUrl, setLandingAboutImageUrl] = useState(settings.landing_about_image_url || '')
   const [landingBenefits, setLandingBenefits] = useState<LandingBenefit[]>(() => parseLandingBenefits(settings.landing_benefits))
   const [landingCtaTitle, setLandingCtaTitle] = useState(settings.landing_cta_title || '')
@@ -1795,7 +1797,9 @@ export function SettingsForm({ settings }: { settings: Settings }) {
             </div>
             <div>
               <Label className="text-xs">Texto</Label>
-              <Textarea value={landingAboutText} onChange={(e) => setLandingAboutText(e.target.value)} placeholder="Conte sobre a plataforma, missão, diferenciais..." rows={4} className="mt-1.5 resize-none text-sm" />
+              <div className="mt-1.5">
+                <RichTextEditor content={landingAboutText} onChange={setLandingAboutText} />
+              </div>
             </div>
             <div>
               <Label className="text-xs">Lista de diferenciais (um por linha)</Label>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getSettings } from '@/lib/settings'
+import { toRichHtml } from '@/lib/legacy-rich-text'
 import {
   Radio, BookOpen, GraduationCap, MessageCircle, Award, Star,
   Users, Zap, Globe, Shield, Megaphone, FileText, ArrowRight, CheckCircle,
@@ -325,7 +326,10 @@ export default async function LandingPage() {
           <div className={`flex flex-col gap-10 ${aboutImage ? 'lg:flex-row lg:items-center' : 'max-w-2xl mx-auto'}`}>
             <FadeIn className="flex-1 space-y-4">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground">{aboutTitle}</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{aboutText}</p>
+              <div
+                className="rich-text text-sm text-muted-foreground leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: toRichHtml(aboutText) }}
+              />
               {aboutChecklist.length > 0 && (
                 <ul className="space-y-1.5">
                   {aboutChecklist.map(item => (
