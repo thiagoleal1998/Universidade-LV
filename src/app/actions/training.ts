@@ -6,7 +6,7 @@ import { requireAdmin, requireCapability, requireContentAccess, type AdminContex
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
-import { rdNewTraining, rdTrainingReplay } from '@/lib/rdstation'
+import { rdNewTraining } from '@/lib/rdstation'
 import { parseExclusiveUfs } from '@/lib/access-lock'
 
 // Guard de posse: colaborador só mexe em treinamento da própria área.
@@ -78,13 +78,14 @@ async function notifyMembers(payload: {
   const emails = (usersData?.users ?? [])
     .filter((u) => memberIds.has(u.id) && u.email)
     .map((u) => u.email!)
-  // Bug real corrigido: os dois casos (novo treinamento vs. virou replay) já
-  // tinham `notifType`/título/corpo distintos pro sino, mas o e-mail sempre
-  // disparava o mesmo evento `rdNewTraining` — o membro recebia o e-mail de
-  // "novo treinamento" mesmo quando o treinamento só tinha virado replay.
-  if (payload.notifType === 'training_replay') {
-    rdTrainingReplay(emails, payload.notifTitle, payload.body, link)
-  } else {
+  // E-mail de "virou replay" foi DESLIGADO de propósito (pedido do usuário)
+  // — mesmo depois de corrigir assunto/corpo (v1.132.0/v1.132.1), continuava
+  // "feio" pro aluno receber um e-mail avisando que um treinamento que ele já
+  // tinha visto ao vivo (ou perdeu) agora tem replay. Sino continua avisando
+  // normalmente (insert em `notifications` acima, sem mudança) — só esse
+  // e-mail específico parou de sair. `new_training` continua mandando e-mail
+  // normalmente (treinamento genuinamente novo, nunca anunciado antes).
+  if (payload.notifType === 'new_training') {
     rdNewTraining(emails, payload.notifTitle, payload.body, link)
   }
 
