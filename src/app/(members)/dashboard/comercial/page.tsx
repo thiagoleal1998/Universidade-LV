@@ -1,16 +1,14 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import {
-  Briefcase, Trophy, Gift,
+  Briefcase, Trophy,
   Clock, PlayCircle, CheckCircle2, Award, Calendar, ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { detectIso, flagImgUrl } from '@/lib/flag-detect'
-import { detectEstadoBR, estadoFlagUrl } from '@/lib/estado-flag'
-import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 import { CommercialConditionsGrid } from '@/components/members/commercial-conditions-grid'
 import { CorridasVendasGrid } from '@/components/members/corridas-vendas-grid'
+import { VencedorAccordionItem } from '@/components/members/vencedor-accordion-item'
 import type { CorridaData, PremiacaoItem, PremiacaoSection, Vencedor, Status } from '@/components/members/corrida-card'
 import { ATTENTION_COLOR } from '@/components/ui/highlight-badge'
 
@@ -134,16 +132,6 @@ type SubtabKey = typeof SUBTABS[number]['key']
 
 // ── VencedoresView ─────────────────────────────────────────────────────────
 
-function badgeClasses(pos: string) {
-  if (/1[°º]|1\s*lugar|ouro|gold/i.test(pos))
-    return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700'
-  if (/2[°º]|2\s*lugar|prata|silver/i.test(pos))
-    return 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-  if (/3[°º]|3\s*lugar|bronze/i.test(pos))
-    return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700'
-  return 'bg-muted text-muted-foreground border-border'
-}
-
 function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
   if (corridas.length === 0) {
     return (
@@ -189,95 +177,9 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
 
           {/* ── Vencedores ── */}
           <div className="divide-y divide-border">
-            {corrida.vencedores.map((v, vIdx) => {
-              const pos = v.posicao.trim()
-              const bc = badgeClasses(pos)
-              const hasDetails = corrida.premiacoes.some((s) => s.itens.length > 0)
-
-              return (
-                <details key={vIdx} className="group">
-                  {/* Fechado: logo do vencedor + badge + nome + agência + localização */}
-                  <summary className="flex items-center gap-3 px-5 py-4 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden hover:bg-muted/30 transition-colors">
-                    {v.logo_url ? (
-                      <div className="shrink-0 flex items-center justify-center" style={{ width: 44, height: 44 }}>
-                        <img
-                          src={v.logo_url}
-                          alt={v.nome}
-                          className="object-contain rounded"
-                          style={{ maxHeight: 44, maxWidth: 44, width: 'auto', height: 'auto' }}
-                        />
-                      </div>
-                    ) : (
-                      <div className={cn('w-11 h-11 rounded-full border flex items-center justify-center shrink-0', bc)}>
-                        <Award className="w-5 h-5" />
-                      </div>
-                    )}
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {pos && <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full border shrink-0', bc)}>{pos}</span>}
-                        <span className="font-semibold text-foreground">{v.nome}</span>
-                      </div>
-                      {v.agencia && <p className="text-sm text-muted-foreground mt-0.5">{v.agencia}</p>}
-                      {v.descricao && (() => {
-                        const estadoSigla = detectEstadoBR(v.descricao)
-                        const flagSrc = estadoSigla
-                          ? estadoFlagUrl(estadoSigla)
-                          : (() => { const iso = detectIso(v.descricao); return iso ? flagImgUrl(iso, '20x15') : null })()
-                        return (
-                          <span className="flex items-center gap-1.5 mt-0.5">
-                            {flagSrc && (
-                              <img src={flagSrc} width={18} height={13} alt="" className="rounded-sm object-contain shrink-0" style={{ width: 18, height: 13 }} />
-                            )}
-                            <span className="text-xs text-muted-foreground">{v.descricao}</span>
-                          </span>
-                        )
-                      })()}
-                    </div>
-
-                    {hasDetails && (
-                      <svg className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
-                  </summary>
-
-                  {/* Aberto: premiação */}
-                  {hasDetails && (
-                    <div className="border-t border-border px-5 pb-5 pt-4 space-y-4 bg-muted/20">
-                      {corrida.premiacoes.map((section, sIdx) =>
-                        section.itens.length === 0 ? null : (
-                          <div key={sIdx} className="space-y-2">
-                            {section.titulo && (
-                              <div className="flex items-center gap-2">
-                                <Gift className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
-                                <span className="text-sm font-semibold text-foreground">{section.titulo}</span>
-                              </div>
-                            )}
-                            <ul className="space-y-2">
-                              {section.itens.map((item, idx) => {
-                                const Icon = detectPremiacaoIcon(item.texto)
-                                return (
-                                  <li key={idx} className="space-y-0.5">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
-                                        <Icon className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                                      </div>
-                                      <span className="text-sm text-foreground">{item.texto}</span>
-                                    </div>
-                                    {item.especificacoes && <p className="text-xs text-muted-foreground ml-8">{item.especificacoes}</p>}
-                                  </li>
-                                )
-                              })}
-                            </ul>
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  )}
-                </details>
-              )
-            })}
+            {corrida.vencedores.map((v, vIdx) => (
+              <VencedorAccordionItem key={vIdx} vencedor={v} premiacoes={corrida.premiacoes} />
+            ))}
           </div>
 
         </div>
