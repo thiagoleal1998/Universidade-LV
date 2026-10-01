@@ -128,9 +128,14 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
 
   const materials = [...(item.materials ?? [])].sort((a, b) => a.order_index - b.order_index)
   const winners = [...(item.raffle_winners ?? [])].sort((a, b) => a.order_index - b.order_index)
+  // Vídeo do sorteio ganha coluna própria ao lado da capa em telas largas —
+  // mesmo padrão já usado pra galeria/vídeo de Famtour/Evento. Só entra em
+  // jogo com vídeo cadastrado E não bloqueado (locked já esconde tudo atrás
+  // do pedido de acesso, não faz sentido reservar a coluna nesse caso).
+  const showSide = !locked && !!item.raffle_video_url
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl">
+    <div className={`p-4 md:p-8 ${showSide ? 'max-w-6xl' : 'max-w-3xl'}`}>
 
       {/* ── Back ── */}
       <Link
@@ -141,15 +146,21 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
         Voltar para Treinamentos
       </Link>
 
+      {/* Com vídeo de sorteio: ele fica AO LADO da capa em telas largas,
+          ocupando a coluna direita inteira (row-span-2, numa linha `1fr`
+          pra não esticar a capa). Em telas estreitas empilha: capa, vídeo,
+          texto — mesma lógica já usada em Famtour/Evento. */}
+      <div className={showSide ? 'grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] lg:gap-x-8' : 'space-y-6'}>
+
       {/* ── Player do replay (substitui a capa) ── */}
       {replayVideoId ? (
-        <div className="rounded-2xl overflow-hidden mb-6 border border-border">
+        <div className="rounded-2xl overflow-hidden border border-border lg:col-start-1 lg:row-start-1">
           <StudyVideoPlayer videoId={replayVideoId} />
         </div>
       ) : (
 
       /* ── Cover ── */
-      <div className="relative rounded-2xl overflow-hidden mb-6 bg-muted">
+      <div className="relative rounded-2xl overflow-hidden bg-muted lg:col-start-1 lg:row-start-1">
         {item.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -193,8 +204,22 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
       </div>
       )}
 
+      {/* Painel do sorteio — promo + vídeo embutido, ao lado da capa */}
+      {showSide && (
+        <div className="space-y-4 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+          <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-5 space-y-1">
+            <p className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 font-semibold">
+              <Trophy className="w-4 h-4 shrink-0" />
+              Participe dos treinamentos e concorra a sorteios
+            </p>
+            <p className="text-xs text-muted-foreground">Veja como foi o sorteio deste treinamento:</p>
+          </div>
+          <RaffleVideo url={item.raffle_video_url} />
+        </div>
+      )}
+
       {/* ── Body ── */}
-      <div className="space-y-6">
+      <div className="space-y-6 min-w-0 lg:col-start-1 lg:row-start-2">
 
         {/* Título e descrição */}
         <div className="space-y-2">
@@ -314,26 +339,21 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
           </div>
         )}
 
-        {/* Sorteio: vídeo de anúncio/revelação + vencedores — também fica
-            atrás do bloqueio, mesmo motivo dos materiais. Vídeo e vencedores
-            são independentes: pode ter um sem o outro (sorteio anunciado,
-            resultado por vir; ou vencedor divulgado sem vídeo). */}
-        {!locked && (item.raffle_video_url || winners.length > 0) && (
-          <div className="space-y-4">
-            {item.raffle_video_url && <RaffleVideo url={item.raffle_video_url} />}
-            {winners.length > 0 && (
-              <div className="rounded-xl border border-border overflow-hidden">
-                <div className="px-5 py-4 border-b border-border bg-yellow-500/5 flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-yellow-500 shrink-0" />
-                  <p className="text-sm font-semibold text-foreground">
-                    {winners.length === 1 ? 'Vencedor do sorteio' : 'Vencedores do sorteio'}
-                  </p>
-                </div>
-                <div className="divide-y divide-border">
-                  {winners.map((w) => <WinnerRow key={w.id} w={w} />)}
-                </div>
-              </div>
-            )}
+        {/* Vencedores do sorteio — também fica atrás do bloqueio, mesmo
+            motivo dos materiais. O vídeo (quando há) já foi pro painel
+            lateral acima (showSide); aqui só sobra a lista de vencedores,
+            independente de ter vídeo ou não. */}
+        {!locked && winners.length > 0 && (
+          <div className="rounded-xl border border-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-border bg-yellow-500/5 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-500 shrink-0" />
+              <p className="text-sm font-semibold text-foreground">
+                {winners.length === 1 ? 'Vencedor do sorteio' : 'Vencedores do sorteio'}
+              </p>
+            </div>
+            <div className="divide-y divide-border">
+              {winners.map((w) => <WinnerRow key={w.id} w={w} />)}
+            </div>
           </div>
         )}
 
@@ -369,6 +389,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
           </div>
         )}
 
+      </div>
       </div>
     </div>
   )
