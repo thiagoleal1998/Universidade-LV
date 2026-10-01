@@ -2,16 +2,19 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainingItem } from '@/app/actions/training'
-import type { TrainingMaterial } from '@/app/actions/training'
+import type { TrainingMaterial, TrainingRaffleWinner } from '@/app/actions/training'
 import { getMyTrainingAccessContext, requestTrainingAccess } from '@/app/actions/training-access'
 import { isAccessLocked } from '@/lib/access-lock'
 import { RequestAccessButton } from '@/components/members/request-access-button'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import { StudyVideoPlayer } from '@/components/members/study-video-player'
 import { extractYouTubeId } from '@/lib/youtube'
+import { getVideoEmbed } from '@/lib/video'
+import { detectIso, flagImgUrl } from '@/lib/flag-detect'
+import { detectEstadoBR, estadoFlagUrl } from '@/lib/estado-flag'
 import {
   ArrowLeft, ExternalLink, FileText, Play, File, Link2,
-  Radio, RotateCcw, Clock, CalendarDays, GraduationCap,
+  Radio, RotateCcw, Clock, CalendarDays, GraduationCap, Trophy,
 } from 'lucide-react'
 
 const TWO_HOURS = 2 * 3_600_000
@@ -29,6 +32,72 @@ function MaterialIcon({ type }: { type: string }) {
   if (type === 'video') return <Play className="w-4 h-4 text-blue-500 shrink-0" />
   if (type === 'doc')   return <File className="w-4 h-4 text-sky-500 shrink-0" />
   return <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+}
+
+// Mesmo padrão de embed já usado em Famtour/Evento (SingleVideo, em
+// trip-media-sections.tsx) — não reaproveitado direto porque aquele arquivo
+// é 'use client' inteiro, e aqui não precisamos de nenhuma interatividade.
+function RaffleVideo({ url }: { url: string }) {
+  const embed = getVideoEmbed(url)
+  if (!embed) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-colors"
+      >
+        <Play className="w-4 h-4" />
+        Assistir vídeo do sorteio
+        <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+      </a>
+    )
+  }
+  const frameClass = embed.type === 'instagram'
+    ? 'w-full max-w-[400px] mx-auto h-[640px]'
+    : embed.vertical
+      ? 'w-full max-w-[340px] mx-auto aspect-[9/16]'
+      : 'w-full aspect-video'
+  return (
+    <div className={`rounded-xl overflow-hidden border border-border bg-black/5 ${frameClass}`}>
+      <iframe
+        src={embed.embedUrl}
+        title="Vídeo do sorteio"
+        className="w-full h-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  )
+}
+
+function WinnerRow({ w }: { w: TrainingRaffleWinner }) {
+  const estadoSigla = w.cidade_uf ? detectEstadoBR(w.cidade_uf) : null
+  const flagSrc = estadoSigla
+    ? estadoFlagUrl(estadoSigla)
+    : (() => { const iso = w.cidade_uf ? detectIso(w.cidade_uf) : null; return iso ? flagImgUrl(iso, '20x15') : null })()
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-4">
+      <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+        <Trophy className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-foreground">{w.nome}</p>
+        {w.agencia && <p className="text-sm text-muted-foreground">{w.agencia}</p>}
+        {w.cidade_uf && (
+          <span className="flex items-center gap-1.5 mt-0.5">
+            {flagSrc && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={flagSrc} width={18} height={13} alt="" className="rounded-sm object-contain shrink-0" style={{ width: 18, height: 13 }} />
+            )}
+            <span className="text-xs text-muted-foreground">{w.cidade_uf}</span>
+          </span>
+        )}
+        {w.premio && <p className="text-xs text-muted-foreground mt-1">🎁 {w.premio}</p>}
+      </div>
+    </div>
+  )
 }
 
 export default async function TrainingDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -58,6 +127,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
   const replayVideoId = !locked && isReplay && item.url ? extractYouTubeId(item.url) : null
 
   const materials = [...(item.materials ?? [])].sort((a, b) => a.order_index - b.order_index)
+  const winners = [...(item.raffle_winners ?? [])].sort((a, b) => a.order_index - b.order_index)
 
   return (
     <div className="p-4 md:p-8 max-w-3xl">
@@ -241,6 +311,29 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
               Acessar treinamento
               <ExternalLink className="w-3.5 h-3.5 opacity-70" />
             </a>
+          </div>
+        )}
+
+        {/* Sorteio: vídeo de anúncio/revelação + vencedores — também fica
+            atrás do bloqueio, mesmo motivo dos materiais. Vídeo e vencedores
+            são independentes: pode ter um sem o outro (sorteio anunciado,
+            resultado por vir; ou vencedor divulgado sem vídeo). */}
+        {!locked && (item.raffle_video_url || winners.length > 0) && (
+          <div className="space-y-4">
+            {item.raffle_video_url && <RaffleVideo url={item.raffle_video_url} />}
+            {winners.length > 0 && (
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="px-5 py-4 border-b border-border bg-yellow-500/5 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-500 shrink-0" />
+                  <p className="text-sm font-semibold text-foreground">
+                    {winners.length === 1 ? 'Vencedor do sorteio' : 'Vencedores do sorteio'}
+                  </p>
+                </div>
+                <div className="divide-y divide-border">
+                  {winners.map((w) => <WinnerRow key={w.id} w={w} />)}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

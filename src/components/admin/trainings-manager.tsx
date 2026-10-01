@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import {
   createTrainingItem, updateTrainingItem, deleteTrainingItem, uploadTrainingCover,
   createTrainingMaterial, deleteTrainingMaterial, toggleTrainingActive,
+  createTrainingRaffleWinner, deleteTrainingRaffleWinner,
 } from '@/app/actions/training'
 import { resolveTrainingAccessRequest } from '@/app/actions/training-access'
-import type { TrainingItem, TrainingMaterial } from '@/app/actions/training'
+import type { TrainingItem, TrainingMaterial, TrainingRaffleWinner } from '@/app/actions/training'
 import type { PendingAccessRequest } from '@/lib/access-lock'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +24,7 @@ import {
   Plus, Pencil, Trash2, X, ExternalLink, GraduationCap, EyeOff,
   Upload, ImageIcon, Paperclip, ChevronDown, ChevronUp,
   FileText, Play, File, Link2, Eye, Radio, RotateCcw,
-  CheckCircle2, Clock, MapPin, Users, Check,
+  CheckCircle2, Clock, MapPin, Users, Check, Trophy, Gift,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -134,6 +135,69 @@ function MaterialsList({ materials, onDelete, isPending, canEdit = true }: {
           <a href={mat.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-foreground hover:text-primary truncate font-medium">{mat.title}</a>
           {canEdit && (
             <button onClick={() => onDelete(mat.id)} disabled={isPending} className="text-muted-foreground hover:text-red-500 transition-colors p-0.5">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function AddWinnerForm({ trainingId, onDone }: { trainingId: string; onDone: () => void }) {
+  const router = useRouter()
+  const [, startTransition] = useTransition()
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const result = await createTrainingRaffleWinner(trainingId, fd)
+      if (result?.error) toast.error(result.error)
+      else { toast.success('Vencedor adicionado!'); onDone(); router.refresh() }
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-2 bg-card rounded-xl border border-border p-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <Input name="nome" required placeholder="Nome do vencedor" className="h-8 text-sm" />
+        <Input name="agencia" placeholder="Agência (opcional)" className="h-8 text-sm" />
+        <Input name="cidade_uf" placeholder="Cidade - UF (opcional)" className="h-8 text-sm" />
+        <Input name="premio" placeholder="Prêmio (opcional)" className="h-8 text-sm" />
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" className="gap-1.5 h-7 text-xs">
+          <Plus className="w-3.5 h-3.5" /> Adicionar
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone} className="h-7 text-xs">
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function WinnersList({ winners, onDelete, isPending, canEdit = true }: {
+  winners: TrainingRaffleWinner[]
+  onDelete: (id: string) => void
+  isPending: boolean
+  canEdit?: boolean
+}) {
+  if (winners.length === 0) return <p className="text-sm text-muted-foreground py-1">Nenhum vencedor anunciado ainda.</p>
+  return (
+    <div className="space-y-1.5">
+      {winners.map((w) => (
+        <div key={w.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 border border-border">
+          <Trophy className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{w.nome}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {[w.agencia, w.cidade_uf, w.premio].filter(Boolean).join(' — ') || 'Sem detalhes informados'}
+            </p>
+          </div>
+          {canEdit && (
+            <button onClick={() => onDelete(w.id)} disabled={isPending} className="text-muted-foreground hover:text-red-500 transition-colors p-0.5 shrink-0">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
@@ -262,6 +326,8 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [accessExpandedId, setAccessExpandedId] = useState<string | null>(null)
   const [addingMaterialFor, setAddingMaterialFor] = useState<string | null>(null)
+  const [winnersExpandedId, setWinnersExpandedId] = useState<string | null>(null)
+  const [addingWinnerFor, setAddingWinnerFor] = useState<string | null>(null)
   const [previewItem, setPreviewItem] = useState<TrainingItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -372,6 +438,14 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
       const result = await deleteTrainingMaterial(materialId)
       if (result?.error) toast.error(result.error)
       else { toast.success('Material removido.'); router.refresh() }
+    })
+  }
+
+  function handleDeleteWinner(winnerId: string) {
+    startTransition(async () => {
+      const result = await deleteTrainingRaffleWinner(winnerId)
+      if (result?.error) toast.error(result.error)
+      else { toast.success('Vencedor removido.'); router.refresh() }
     })
   }
 
@@ -546,6 +620,24 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                 )}
               </div>
 
+              {/* Vídeo do sorteio — opcional, independente do conteúdo
+                  principal do treinamento (url). Normalmente o vídeo que
+                  anuncia/revela quem ganhou o sorteio feito nesse treinamento. */}
+              <div className="md:col-span-2">
+                <Label htmlFor="raffle_video_url">Vídeo do sorteio (opcional)</Label>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                  Link do YouTube (ou Vimeo/Instagram) do vídeo que anuncia ou revela o sorteio feito neste treinamento.
+                </p>
+                <Input
+                  id="raffle_video_url"
+                  name="raffle_video_url"
+                  type="url"
+                  defaultValue={editing?.raffle_video_url ?? ''}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="h-9 text-sm"
+                />
+              </div>
+
               <div>
                 <Label htmlFor="order_index">Ordem</Label>
                 <Input id="order_index" name="order_index" type="number" min={0} defaultValue={editing?.order_index ?? items.length} className="mt-1.5" />
@@ -588,6 +680,8 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
               const isLiveFuture = item.type === 'live' && item.live_at && new Date(item.live_at) > new Date()
               const pendingAccess = item.pendingAccessRequests ?? []
               const isAccessExpanded = accessExpandedId === item.id
+              const winners = item.raffle_winners ?? []
+              const isWinnersExpanded = winnersExpandedId === item.id
 
               return (
                 <div key={item.id} className={cn('bg-card border rounded-xl overflow-hidden transition-opacity', !item.is_active && 'opacity-70')}>
@@ -677,6 +771,20 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                         <Paperclip className="w-3.5 h-3.5" />
                         <span>{materials.length}</span>
                         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+
+                      {/* Sorteio: vídeo + vencedores */}
+                      <button
+                        onClick={() => { setWinnersExpandedId(isWinnersExpanded ? null : item.id); if (!isWinnersExpanded) setAddingWinnerFor(null) }}
+                        className={cn(
+                          'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                          isWinnersExpanded ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        )}
+                        title="Sorteio — vídeo e vencedores"
+                      >
+                        <Trophy className="w-3.5 h-3.5" />
+                        <span>{winners.length}</span>
+                        {isWinnersExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
 
                       {/* Solicitações de acesso pendentes */}
@@ -773,6 +881,37 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                       ) : (
                         <Button type="button" size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => setAddingMaterialFor(item.id)}>
                           <Plus className="w-3.5 h-3.5" /> Adicionar material
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sorteio panel: vídeo (editado no form principal — só um
+                      lembrete/link aqui) + vencedores (coleção própria) */}
+                  {isWinnersExpanded && (
+                    <div className="border-t border-border px-4 pb-4 pt-3 bg-muted/20 space-y-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sorteio</p>
+                      {item.raffle_video_url ? (
+                        <a
+                          href={item.raffle_video_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-primary hover:underline w-fit"
+                        >
+                          <Play className="w-3.5 h-3.5 shrink-0" /> Ver vídeo do sorteio
+                        </a>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">
+                          Sem vídeo cadastrado — edite o treinamento pra adicionar o link.
+                        </p>
+                      )}
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-1">Vencedores</p>
+                      <WinnersList winners={winners} onDelete={handleDeleteWinner} isPending={isPending} canEdit={item.canEdit ?? true} />
+                      {(item.canEdit ?? true) && (addingWinnerFor === item.id ? (
+                        <AddWinnerForm trainingId={item.id} onDone={() => setAddingWinnerFor(null)} />
+                      ) : (
+                        <Button type="button" size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => setAddingWinnerFor(item.id)}>
+                          <Gift className="w-3.5 h-3.5" /> Anunciar vencedor
                         </Button>
                       ))}
                     </div>

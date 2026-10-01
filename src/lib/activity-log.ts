@@ -23,6 +23,7 @@ export const ACTIVITY_ENTITY_LABELS = {
   pergunta_aula: 'Pergunta de aula',
   treinamento: 'Treinamento',
   material_treinamento: 'Material de treinamento',
+  vencedor_sorteio_treinamento: 'Vencedor de sorteio de treinamento',
   solicitacao_treinamento: 'Solicitação de acesso a treinamento',
   solicitacao_famtour: 'Solicitação de acesso a famtour',
   produto_marketing: 'Produto de marketing',

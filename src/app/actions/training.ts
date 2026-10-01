@@ -132,6 +132,17 @@ export type TrainingMaterial = {
   created_at: string
 }
 
+export type TrainingRaffleWinner = {
+  id: string
+  training_id: string
+  nome: string
+  agencia: string
+  cidade_uf: string
+  premio: string
+  order_index: number
+  created_at: string
+}
+
 export type TrainingItem = {
   id: string
   title: string
@@ -148,13 +159,21 @@ export type TrainingItem = {
   // Array vazio = sem restrição (comportamento padrão). Uma ou mais UFs =
   // só membro dessa(s) UF ou com solicitação aprovada acessa direto.
   exclusive_ufs: string[]
+  // Sorteio: vídeo (YouTube/etc, via getVideoEmbed) que anuncia/revela o
+  // sorteio + vencedores anunciados depois. Os dois são opcionais e
+  // independentes — um treinamento pode ter vídeo sem vencedor ainda
+  // (sorteio anunciado, resultado por vir) ou vencedor sem vídeo.
+  raffle_video_url: string
+  raffle_winners?: TrainingRaffleWinner[]
 }
+
+const TRAINING_SELECT = '*, materials:training_materials(id, training_id, title, url, type, order_index, created_at), raffle_winners:training_raffle_winners(id, training_id, nome, agencia, cidade_uf, premio, order_index, created_at)'
 
 export async function getTrainingItem(id: string): Promise<TrainingItem | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('training_items')
-    .select('*, materials:training_materials(id, training_id, title, url, type, order_index, created_at)')
+    .select(TRAINING_SELECT)
     .eq('id', id)
     .single()
 
@@ -169,7 +188,7 @@ export async function getTrainingItems(): Promise<TrainingItem[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('training_items')
-    .select('*, materials:training_materials(id, training_id, title, url, type, order_index, created_at)')
+    .select(TRAINING_SELECT)
     .order('order_index')
 
   if (error) {
@@ -196,6 +215,17 @@ function isPastLiveAt(iso: string): boolean {
   return new Date(iso).getTime() < Date.now()
 }
 
+// Vídeo do anúncio do sorteio é opcional, sem exigir YouTube especificamente
+// (getVideoEmbed já reconhece YouTube/Vimeo/Instagram; qualquer outro link
+// cai no botão "Assistir vídeo" do lado do membro) — só confere que é uma
+// URL de verdade quando preenchido, mesmo padrão de validateItemUrl em
+// marketing.ts.
+function validateRaffleVideoUrl(url: string): { error: string } | null {
+  if (!url) return null
+  try { new URL(url) } catch { return { error: 'Link do vídeo do sorteio inválido. Cole uma URL completa (ex.: https://...).' } }
+  return null
+}
+
 export async function createTrainingItem(formData: FormData) {
   const ctx = await requireCapability('trainings')
   if ('error' in ctx) return { error: ctx.error }
@@ -206,6 +236,10 @@ export async function createTrainingItem(formData: FormData) {
   if (type === 'live' && liveAt && isPastLiveAt(liveAt)) {
     return { error: 'A data do treinamento ao vivo não pode ser uma data que já passou.' }
   }
+
+  const raffleVideoUrl = (formData.get('raffle_video_url') as string)?.trim() || ''
+  const raffleUrlError = validateRaffleVideoUrl(raffleVideoUrl)
+  if (raffleUrlError) return { error: raffleUrlError.error }
 
   const adminClient = createAdminClient()
   const title = (formData.get('title') as string).trim()
@@ -222,6 +256,7 @@ export async function createTrainingItem(formData: FormData) {
     live_at: liveAt,
     owner_area_id: ctx.areaId,
     exclusive_ufs: exclusiveUfs,
+    raffle_video_url: raffleVideoUrl,
   }).select('id, title, type, live_at').single()
 
   if (error) return { error: error.message }
@@ -247,7 +282,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
 
   const { data: prev } = await adminClient
     .from('training_items')
-    .select('type, is_active, title, description, url, cover_url, order_index, live_at, exclusive_ufs')
+    .select('type, is_active, title, description, url, cover_url, order_index, live_at, exclusive_ufs, raffle_video_url')
     .eq('id', id)
     .single()
 
@@ -255,6 +290,9 @@ export async function updateTrainingItem(id: string, formData: FormData) {
   const newActive = formData.get('is_active') === 'true'
   const newTitle = (formData.get('title') as string).trim()
   const newExclusiveUfs = parseExclusiveUfs(formData.get('exclusive_ufs') as string | null)
+  const newRaffleVideoUrl = (formData.get('raffle_video_url') as string)?.trim() || ''
+  const raffleUrlError = validateRaffleVideoUrl(newRaffleVideoUrl)
+  if (raffleUrlError) return { error: raffleUrlError.error }
 
   const after = {
     title: newTitle,
@@ -266,6 +304,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
     type: newType,
     live_at: parseLiveAt(formData.get('live_at') as string | null),
     exclusive_ufs: newExclusiveUfs,
+    raffle_video_url: newRaffleVideoUrl,
   }
   // Só rejeita quando a data está sendo MUDADA pra uma data passada — uma
   // live que já aconteceu naturalmente fica no passado, e isso não pode
@@ -280,7 +319,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
   const changed = diffFields(prev ?? {}, after, {
     title: 'título', description: 'descrição', url: 'link', cover_url: 'capa',
     order_index: 'ordem', is_active: 'ativação', type: 'tipo', live_at: 'data ao vivo',
-    exclusive_ufs: 'UFs exclusivas',
+    exclusive_ufs: 'UFs exclusivas', raffle_video_url: 'vídeo do sorteio',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'treinamento', entityId: id, entityLabel: newTitle, detail: `alterou: ${changed.join(', ')}` })
@@ -413,6 +452,50 @@ export async function deleteTrainingMaterial(id: string) {
   const { error } = await adminClient.from('training_materials').delete().eq('id', id)
   if (error) return { error: error.message }
   logActivity(ctx, { action: 'delete', entityType: 'material_treinamento', entityId: id, entityLabel: material.title })
+  revalidatePath('/admin/marketing')
+  revalidatePath('/dashboard/treinamentos')
+  return { success: true }
+}
+
+export async function createTrainingRaffleWinner(trainingId: string, formData: FormData) {
+  const ctx = await requireTrainingAccess(trainingId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  const nome = (formData.get('nome') as string).trim()
+  if (!nome) return { error: 'Informe o nome do vencedor.' }
+
+  // Devolve o id real do insert — nunca deixar o chamador inventar um id
+  // temporário pra atualizar o state local, senão editar/excluir sem dar
+  // reload afeta 0 linhas em silêncio (mesma classe de bug já documentada
+  // em createCommercialBannerItem).
+  const { data: inserted, error } = await adminClient.from('training_raffle_winners').insert({
+    training_id: trainingId,
+    nome,
+    agencia: (formData.get('agencia') as string)?.trim() || '',
+    cidade_uf: (formData.get('cidade_uf') as string)?.trim() || '',
+    premio: (formData.get('premio') as string)?.trim() || '',
+    order_index: Number(formData.get('order_index') ?? 0),
+  }).select('id').single()
+
+  if (error) return { error: error.message }
+  logActivity(ctx, { action: 'create', entityType: 'vencedor_sorteio_treinamento', entityLabel: nome, detail: `treinamento ${trainingId}` })
+  revalidatePath('/admin/marketing')
+  revalidatePath('/dashboard/treinamentos')
+  return { success: true, id: inserted?.id }
+}
+
+export async function deleteTrainingRaffleWinner(id: string) {
+  const adminClient = createAdminClient()
+  const { data: winner } = await adminClient.from('training_raffle_winners').select('training_id, nome').eq('id', id).single()
+  if (!winner) return { error: 'Vencedor não encontrado.' }
+
+  const ctx = await requireTrainingAccess(winner.training_id)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const { error } = await adminClient.from('training_raffle_winners').delete().eq('id', id)
+  if (error) return { error: error.message }
+  logActivity(ctx, { action: 'delete', entityType: 'vencedor_sorteio_treinamento', entityId: id, entityLabel: winner.nome })
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
   return { success: true }
