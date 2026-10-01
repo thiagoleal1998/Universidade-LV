@@ -4,7 +4,7 @@ import { useState, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   createEvento, updateEvento, deleteEvento, toggleEventoActive, uploadEventoCover,
-  uploadEventoGalleryPhoto, updateEventoGalleryPhoto, deleteEventoGalleryPhoto,
+  uploadEventoGalleryPhoto, updateEventoGalleryPhoto, deleteEventoGalleryPhoto, reorderEventoGalleryPhotos,
   createEventoTestimonial, updateEventoTestimonial, deleteEventoTestimonial, uploadEventoTestimonialPhoto,
   type Evento, type EventoPhoto, type EventoTestimonial,
 } from '@/app/actions/eventos'
@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner'
 import {
   Plus, Trash2, Pencil, X, Upload, ImageIcon, CalendarDays, ExternalLink, Calendar, Crop,
-  Check, Video, MessageSquareQuote, FileText,
+  ChevronLeft, ChevronRight, Check, Video, MessageSquareQuote, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -485,6 +485,18 @@ function EventoGallerySection({
     else { onPhotosChange(photos.filter((p) => p.id !== photo.id)); toast.success('Foto removida.') }
   }
 
+  // Reorder por troca de posição (mesmo padrão de FamtourGallerySection).
+  function handleMove(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= photos.length) return
+    const reordered = [...photos]
+    ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
+    onPhotosChange(reordered)
+    reorderEventoGalleryPhotos(eventoId, reordered.map((p) => p.id)).then((result) => {
+      if (result?.error) toast.error(result.error)
+    })
+  }
+
   async function handleAdjustConfirm(blob: Blob) {
     if (!adjustPhoto) return
     try {
@@ -510,12 +522,34 @@ function EventoGallerySection({
 
       {photos.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {photos.map((photo) => (
+          {photos.map((photo, index) => (
             <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-border bg-muted/30">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={photo.url} alt={photo.caption || 'Foto da galeria'} className="w-full aspect-square object-cover" />
               {photo.caption && (
                 <p className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-1 line-clamp-1">{photo.caption}</p>
+              )}
+              {photos.length > 1 && (
+                <div className="absolute top-1 left-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => handleMove(index, -1)}
+                    disabled={index === 0}
+                    className="p-1 rounded-full bg-black/60 text-white hover:bg-black/80 disabled:opacity-30 disabled:pointer-events-none"
+                    title="Mover para trás"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMove(index, 1)}
+                    disabled={index === photos.length - 1}
+                    className="p-1 rounded-full bg-black/60 text-white hover:bg-black/80 disabled:opacity-30 disabled:pointer-events-none"
+                    title="Mover para frente"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               )}
               <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
@@ -553,7 +587,7 @@ function EventoGallerySection({
           {uploadProgress ? `Enviando ${uploadProgress.done + 1} de ${uploadProgress.total}...` : 'Adicionar fotos'}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Pode selecionar várias fotos de uma vez. Passe o mouse sobre uma foto já enviada pra ajustar o enquadramento ou excluir.</p>
+      <p className="text-xs text-muted-foreground">Pode selecionar várias fotos de uma vez. Passe o mouse sobre uma foto já enviada pra ajustar o enquadramento, reordenar ou excluir.</p>
 
       <ImageCropModal
         imageSrc={adjustPhoto?.url ?? null}

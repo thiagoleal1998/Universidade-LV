@@ -292,6 +292,28 @@ export async function deleteEventoGalleryPhoto(photoId: string, storagePath: str
   return { success: true }
 }
 
+// Pedido do usuário: reordenar fotos da galeria — mesmo padrão de
+// reorderFamtourGalleryPhotos (peça duplicada de propósito, mesmo racional
+// já documentado pra guard/action de famtour vs. evento).
+export async function reorderEventoGalleryPhotos(eventoId: string, ids: string[]) {
+  const ctx = await requireEventoAccess(eventoId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  await Promise.all(
+    ids.map((id, index) =>
+      adminClient.from('evento_photos').update({ order_index: index }).eq('id', id).eq('evento_id', eventoId)
+    )
+  )
+
+  logActivity(ctx, { action: 'reorder', entityType: 'evento', entityId: eventoId, entityLabel: eventoId, detail: 'reordenou fotos da galeria' })
+
+  revalidatePath('/admin/marketing')
+  const { data: item } = await adminClient.from('eventos').select('slug').eq('id', eventoId).single()
+  revalidatePath(`/dashboard/eventos/${item?.slug ?? eventoId}`)
+  return { success: true }
+}
+
 // ── Depoimentos ──────────────────────────────────────────────────────────
 
 export async function createEventoTestimonial(eventoId: string, formData: FormData) {

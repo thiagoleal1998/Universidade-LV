@@ -312,6 +312,29 @@ export async function deleteFamtourGalleryPhoto(photoId: string, storagePath: st
   return { success: true }
 }
 
+// Pedido do usuário: reordenar fotos da galeria (antes só dava pra adicionar/
+// excluir/ajustar). Mesmo padrão de `reorderTrainingItems` — recebe a lista
+// de ids JÁ na ordem final (calculada no cliente) e regrava `order_index`
+// sequencialmente; escopado ao famtour (não é reorder global).
+export async function reorderFamtourGalleryPhotos(famtourId: string, ids: string[]) {
+  const ctx = await requireFamtourAccess(famtourId)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const adminClient = createAdminClient()
+  await Promise.all(
+    ids.map((id, index) =>
+      adminClient.from('famtour_photos').update({ order_index: index }).eq('id', id).eq('famtour_id', famtourId)
+    )
+  )
+
+  logActivity(ctx, { action: 'reorder', entityType: 'famtour', entityId: famtourId, entityLabel: famtourId, detail: 'reordenou fotos da galeria' })
+
+  revalidatePath('/admin/marketing')
+  const { data: item } = await adminClient.from('famtours').select('slug').eq('id', famtourId).single()
+  revalidatePath(`/dashboard/famtours/${item?.slug ?? famtourId}`)
+  return { success: true }
+}
+
 // ── Depoimentos ──────────────────────────────────────────────────────────
 
 export async function createFamtourTestimonial(famtourId: string, formData: FormData) {
