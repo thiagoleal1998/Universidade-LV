@@ -13,6 +13,7 @@ const RD_EVENTS = {
   comunicado: 'universidade-lv-comunicado',
   conteudo_publicado: 'universidade-lv-conteudo-publicado',
   treinamento_novo: 'universidade-lv-treinamento-novo',
+  treinamento_replay: 'universidade-lv-treinamento-replay',
   perfil_atualizado: 'universidade-lv-perfil-atualizado',
   admin_cadastro_pendente: 'universidade-lv-admin-cadastro-pendente',
   admin_feedback_novo: 'universidade-lv-admin-feedback-novo',
@@ -178,6 +179,21 @@ export async function rdCourseContentPublished(emails: string[], title: string, 
 export async function rdNewTraining(emails: string[], title: string, body: string, link: string) {
   for (const email of emails) {
     await sendConversion(RD_EVENTS.treinamento_novo, email, { cf_titulo: title, cf_corpo: body, cf_link: link })
+  }
+}
+
+// Evento PRÓPRIO pro caso "treinamento virou replay" — não reaproveita
+// RD_EVENTS.treinamento_novo de propósito: reaproveitar fazia o e-mail sair
+// com o texto "Novo Treinamento" fixo (o assunto configurado NA PRÓPRIA
+// Automação da RD Station, fora deste código, não só cf_titulo/cf_corpo),
+// mesmo com os campos certos. `cf_titulo` aqui nunca contém a palavra "novo"
+// — mas a Automação ligada a `universidade-lv-treinamento-replay` (criada
+// manualmente no painel da RD Station) precisa ter o PRÓPRIO assunto, sem
+// reaproveitar o texto/template da Automação de "novo treinamento" — senão
+// o e-mail sai errado mesmo com o evento certo disparando.
+export async function rdTrainingReplay(emails: string[], title: string, body: string, link: string) {
+  for (const email of emails) {
+    await sendConversion(RD_EVENTS.treinamento_replay, email, { cf_titulo: title, cf_corpo: body, cf_link: link })
   }
 }
 

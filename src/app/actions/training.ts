@@ -6,7 +6,7 @@ import { requireAdmin, requireCapability, requireContentAccess, type AdminContex
 import { logActivity, diffFields } from '@/lib/activity-log'
 import { revalidatePath } from 'next/cache'
 import { toWebP } from '@/lib/image'
-import { rdNewTraining } from '@/lib/rdstation'
+import { rdNewTraining, rdTrainingReplay } from '@/lib/rdstation'
 import { parseExclusiveUfs } from '@/lib/access-lock'
 
 // Guard de posse: colaborador só mexe em treinamento da própria área.
@@ -78,14 +78,15 @@ async function notifyMembers(payload: {
   const emails = (usersData?.users ?? [])
     .filter((u) => memberIds.has(u.id) && u.email)
     .map((u) => u.email!)
-  // E-mail de "virou replay" foi DESLIGADO de propósito (pedido do usuário)
-  // — mesmo depois de corrigir assunto/corpo (v1.132.0/v1.132.1), continuava
-  // "feio" pro aluno receber um e-mail avisando que um treinamento que ele já
-  // tinha visto ao vivo (ou perdeu) agora tem replay. Sino continua avisando
-  // normalmente (insert em `notifications` acima, sem mudança) — só esse
-  // e-mail específico parou de sair. `new_training` continua mandando e-mail
-  // normalmente (treinamento genuinamente novo, nunca anunciado antes).
-  if (payload.notifType === 'new_training') {
+  // Os dois casos (novo treinamento vs. virou replay) precisam do PRÓPRIO
+  // evento RD Station — reaproveitar o mesmo (`rdNewTraining`) pros dois faz
+  // o e-mail de replay sair com o assunto/template de "novo treinamento"
+  // (bug real já corrigido antes, v1.132.0/v1.132.1). `cf_titulo` de replay
+  // nunca menciona "novo" — se o e-mail ainda chegar dizendo isso, o texto
+  // vem da própria Automação configurada na RD Station, não daqui.
+  if (payload.notifType === 'training_replay') {
+    rdTrainingReplay(emails, payload.notifTitle, payload.body, link)
+  } else {
     rdNewTraining(emails, payload.notifTitle, payload.body, link)
   }
 
