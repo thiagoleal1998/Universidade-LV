@@ -10,6 +10,7 @@ import { LiveCountdown } from '@/components/members/live-countdown'
 import { StudyVideoPlayer } from '@/components/members/study-video-player'
 import { extractYouTubeId } from '@/lib/youtube'
 import { getVideoEmbed } from '@/lib/video'
+import { toRichHtml } from '@/lib/legacy-rich-text'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { detectEstadoBR, estadoFlagUrl } from '@/lib/estado-flag'
 import {
@@ -95,13 +96,16 @@ function WinnerRow({ w }: { w: TrainingRaffleWinner }) {
           </span>
         )}
         {w.premios.length > 0 && (
-          <ul className="mt-1.5 space-y-0.5">
-            {w.premios.map((p, i) => (
-              <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                <span className="shrink-0">🎁</span> <span>{p}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-1.5">
+            {w.premios_titulo && <p className="text-sm font-medium text-foreground">{w.premios_titulo}</p>}
+            <ul className="space-y-0.5">
+              {w.premios.map((p, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <span className="shrink-0">🎁</span> <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>
@@ -233,7 +237,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
         <div className="space-y-2">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">{item.title}</h1>
           {item.description && (
-            <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+            <div className="rich-text rich-text-muted leading-relaxed" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
           )}
         </div>
 

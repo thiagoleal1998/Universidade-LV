@@ -225,6 +225,22 @@
   }
 }
 
+/* Variante "apagada" de `.rich-text`, pra texto secundário (ex.: descrição
+   curta de treinamento) que precisa continuar em `--muted-foreground`, não
+   `--foreground`. Não dá pra conseguir isso combinando `.rich-text` com uma
+   classe Tailwind `text-muted-foreground` no mesmo elemento — as duas são
+   regras NÃO-LAYERED (fora de `@layer`), e entre duas regras assim o
+   desempate é ordem no arquivo, não a classe citada por último no JSX; aqui
+   funciona porque `.rich-text-muted` vem DEPOIS de `.rich-text` no arquivo e
+   só sobrescreve `color`, então usar as duas classes juntas (`rich-text
+   rich-text-muted`) soma o resto da formatação de `.rich-text` com a cor
+   certa. Mesmo mecanismo já documentado no bug do menu hambúrguer mobile
+   (v1.148.4) e no porquê do Subtítulo do Hero não usar `.rich-text` puro
+   (v1.149.3) — aqui a solução é essa 2ª classe, não variantes arbitrárias. */
+.rich-text-muted {
+  color: var(--muted-foreground);
+}
+
 /* ── Blocos ricos (aviso/dica/checklist) — formato Manual interativo ──
    Seletores de atributo, sem escopo em `.rich-text`: precisam valer nos
    TRÊS lugares onde o mesmo HTML pode aparecer — dentro do editor

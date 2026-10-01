@@ -38,7 +38,7 @@ export default async function MarketingPage() {
   ] = await Promise.all([
     db.from('marketing_items').select('*').order('order_index'),
     getSettings(),
-    db.from('training_items').select('*, materials:training_materials(id, training_id, title, url, type, order_index, created_at), raffle_winners:training_raffle_winners(id, training_id, nome, agencia, cidade_uf, premios, order_index, created_at)').order('order_index'),
+    db.from('training_items').select('*, materials:training_materials(id, training_id, title, url, type, order_index, created_at), raffle_winners:training_raffle_winners(id, training_id, nome, agencia, cidade_uf, premios, premios_titulo, order_index, created_at)').order('order_index'),
     getMarketingProducts(),
     getMarketingPeriods(),
     supabase.from('tags').select('*').order('name'),

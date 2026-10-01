@@ -142,6 +142,8 @@ export type TrainingRaffleWinner = {
   // ganhador ganhou" (pedido do usuário), não um texto único. Mesmo padrão
   // de campo-lista já usado em exclusive_ufs/video_urls.
   premios: string[]
+  // Título opcional acima da lista (ex.: "Prêmios do pacote:").
+  premios_titulo: string
   order_index: number
   created_at: string
 }
@@ -170,7 +172,7 @@ export type TrainingItem = {
   raffle_winners?: TrainingRaffleWinner[]
 }
 
-const TRAINING_SELECT = '*, materials:training_materials(id, training_id, title, url, type, order_index, created_at), raffle_winners:training_raffle_winners(id, training_id, nome, agencia, cidade_uf, premios, order_index, created_at)'
+const TRAINING_SELECT = '*, materials:training_materials(id, training_id, title, url, type, order_index, created_at), raffle_winners:training_raffle_winners(id, training_id, nome, agencia, cidade_uf, premios, premios_titulo, order_index, created_at)'
 
 export async function getTrainingItem(id: string): Promise<TrainingItem | null> {
   const supabase = await createClient()
@@ -489,6 +491,7 @@ export async function createTrainingRaffleWinner(trainingId: string, formData: F
     agencia: (formData.get('agencia') as string)?.trim() || '',
     cidade_uf: (formData.get('cidade_uf') as string)?.trim() || '',
     premios: parsePremios(formData.get('premios') as string | null),
+    premios_titulo: (formData.get('premios_titulo') as string)?.trim() || '',
     order_index: Number(formData.get('order_index') ?? 0),
   }).select('id').single()
 
@@ -515,6 +518,7 @@ export async function updateTrainingRaffleWinner(id: string, formData: FormData)
     agencia: (formData.get('agencia') as string)?.trim() || '',
     cidade_uf: (formData.get('cidade_uf') as string)?.trim() || '',
     premios: parsePremios(formData.get('premios') as string | null),
+    premios_titulo: (formData.get('premios_titulo') as string)?.trim() || '',
   }).eq('id', id)
 
   if (error) return { error: error.message }

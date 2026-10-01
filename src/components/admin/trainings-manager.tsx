@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { toRichHtml } from '@/lib/legacy-rich-text'
 import { Spinner } from '@/components/ui/spinner'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -189,6 +190,12 @@ function WinnerForm({ trainingId, winner, onDone }: { trainingId: string; winner
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Benefícios / prêmios (opcional)</Label>
+        <Input
+          name="premios_titulo"
+          defaultValue={winner?.premios_titulo}
+          placeholder="Título acima da lista (ex.: Prêmios do pacote)"
+          className="h-8 text-sm"
+        />
         {premios.map((p, i) => (
           <div key={i} className="flex gap-1.5">
             <Input
@@ -241,13 +248,16 @@ function WinnersList({ winners, onDelete, onEdit, isPending, canEdit = true }: {
               {[w.agencia, w.cidade_uf].filter(Boolean).join(' — ') || 'Sem agência/cidade informada'}
             </p>
             {w.premios.length > 0 && (
-              <ul className="mt-1 space-y-0.5">
-                {w.premios.map((p, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
-                    <span className="shrink-0">🎁</span> <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-1">
+                {w.premios_titulo && <p className="text-xs font-medium text-foreground">{w.premios_titulo}</p>}
+                <ul className="space-y-0.5">
+                  {w.premios.map((p, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                      <span className="shrink-0">🎁</span> <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
           {canEdit && (
@@ -301,7 +311,9 @@ function PreviewModal({ item, onClose }: { item: TrainingItem; onClose: () => vo
           {/* Content */}
           <div className="flex flex-col p-4 gap-2">
             <p className="font-semibold text-foreground leading-snug">{item.title}</p>
-            {item.description && <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>}
+            {item.description && (
+              <div className="rich-text rich-text-muted text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
+            )}
 
             {/* Live: date + countdown */}
             {item.type === 'live' && item.live_at && (
@@ -389,6 +401,11 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
   const [addingWinnerFor, setAddingWinnerFor] = useState<string | null>(null)
   const [editingWinner, setEditingWinner] = useState<TrainingRaffleWinner | null>(null)
   const [previewItem, setPreviewItem] = useState<TrainingItem | null>(null)
+  // RichTextEditor não é input nativo — o HTML vive em state e é injetado
+  // no FormData no submit, mesmo padrão já usado pra cover_url/exclusive_ufs.
+  // toRichHtml() trata descrição legada (texto puro com \n) sem perder
+  // quebra de linha ao carregar no editor pela primeira vez.
+  const [descriptionValue, setDescriptionValue] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -399,6 +416,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     setCoverFile(null)
     setFormType('link')
     setSelectedUfs([])
+    setDescriptionValue('')
   }
 
   function handleEdit(item: TrainingItem) {
@@ -407,6 +425,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     setCoverPreview(item.cover_url ?? null)
     setCoverFile(null)
     setSelectedUfs(item.exclusive_ufs ?? [])
+    setDescriptionValue(toRichHtml(item.description ?? ''))
     setShowForm(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -442,6 +461,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     fd.set('exclusive_ufs', JSON.stringify(selectedUfs))
+    fd.set('description', descriptionValue)
     startTransition(async () => {
       try {
         if (coverFile) {
@@ -559,7 +579,9 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
 
               <div className="md:col-span-2">
                 <Label htmlFor="description">Descrição</Label>
-                <Textarea id="description" name="description" rows={2} defaultValue={editing?.description ?? ''} placeholder="Breve descrição..." className="mt-1.5 resize-none" />
+                <div className="mt-1.5">
+                  <RichTextEditor content={descriptionValue} onChange={setDescriptionValue} />
+                </div>
               </div>
 
               {/* Live date/time */}
@@ -774,7 +796,9 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                           </span>
                         )}
                       </div>
-                      {item.description && <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>}
+                      {item.description && (
+                        <div className="rich-text rich-text-muted text-sm line-clamp-1" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
+                      )}
                       {item.type === 'live' && item.live_at && (
                         <p className={cn('text-xs mt-0.5 flex items-center gap-1', isLiveFuture ? 'text-red-500' : 'text-muted-foreground')}>
                           <Clock className="w-3 h-3" />

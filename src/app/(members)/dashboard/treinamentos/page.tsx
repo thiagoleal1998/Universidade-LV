@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainingItems, checkAndNotifyExpiredLive } from '@/app/actions/training'
+import { toRichHtml } from '@/lib/legacy-rich-text'
 import type { TrainingItem, TrainingMaterial } from '@/app/actions/training'
 import { getMyTrainingAccessContext, requestTrainingAccess } from '@/app/actions/training-access'
 import { isAccessLocked, type AccessRequestStatus } from '@/lib/access-lock'
@@ -89,7 +90,9 @@ function HappeningNowBanner({ item, locked, requestStatus }: { item: TrainingIte
           <Link href={`/dashboard/treinamentos/${item.id}`} className="group">
             <h2 className="text-xl font-bold text-foreground leading-tight group-hover:text-red-500 transition-colors">{item.title}</h2>
           </Link>
-          {item.description && <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>}
+          {item.description && (
+            <div className="rich-text rich-text-muted text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
+          )}
           {locked ? (
             <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} />
           ) : (
@@ -139,7 +142,9 @@ function FeaturedLiveCard({ item, locked, requestStatus }: { item: TrainingItem;
           <Link href={`/dashboard/treinamentos/${item.id}`}>
             <h2 className="text-2xl font-bold text-foreground leading-tight hover:text-red-500 transition-colors">{item.title}</h2>
           </Link>
-          {item.description && <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>}
+          {item.description && (
+            <div className="rich-text rich-text-muted text-sm" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
+          )}
           {item.live_at && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="w-4 h-4 shrink-0" />
@@ -231,7 +236,9 @@ function LinkCard({ item, locked, requestStatus }: { item: TrainingItem; locked:
         </div>
         <div className="flex flex-col flex-1 p-4 gap-2">
           <p className="font-semibold text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">{item.title}</p>
-          {item.description && <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{item.description}</p>}
+          {item.description && (
+            <div className="rich-text rich-text-muted text-sm line-clamp-2 flex-1" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
+          )}
           {locked ? (
             <RequestAccessButton onRequest={requestTrainingAccess.bind(null, item.id)} exclusiveUfs={item.exclusive_ufs} status={requestStatus} compact />
           ) : (
@@ -265,7 +272,9 @@ function ReplayCard({ item, locked, requestStatus }: { item: TrainingItem; locke
         </div>
         <div className="flex flex-col flex-1 p-4 gap-2">
           <p className="font-semibold text-foreground leading-snug group-hover:text-blue-500 transition-colors line-clamp-2">{item.title}</p>
-          {item.description && <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{item.description}</p>}
+          {item.description && (
+            <div className="rich-text rich-text-muted text-sm line-clamp-2 flex-1" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
+          )}
           {item.live_at && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <CalendarDays className="w-3 h-3" />
