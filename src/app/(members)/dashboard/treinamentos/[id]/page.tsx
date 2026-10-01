@@ -94,7 +94,15 @@ function WinnerRow({ w }: { w: TrainingRaffleWinner }) {
             <span className="text-xs text-muted-foreground">{w.cidade_uf}</span>
           </span>
         )}
-        {w.premio && <p className="text-xs text-muted-foreground mt-1">🎁 {w.premio}</p>}
+        {w.premios.length > 0 && (
+          <ul className="mt-1.5 space-y-0.5">
+            {w.premios.map((p, i) => (
+              <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <span className="shrink-0">🎁</span> <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )

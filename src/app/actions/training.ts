@@ -138,7 +138,10 @@ export type TrainingRaffleWinner = {
   nome: string
   agencia: string
   cidade_uf: string
-  premio: string
+  // Lista livre — "preciso de espaço pra colocar todos os benefícios que o
+  // ganhador ganhou" (pedido do usuário), não um texto único. Mesmo padrão
+  // de campo-lista já usado em exclusive_ufs/video_urls.
+  premios: string[]
   order_index: number
   created_at: string
 }
@@ -167,7 +170,7 @@ export type TrainingItem = {
   raffle_winners?: TrainingRaffleWinner[]
 }
 
-const TRAINING_SELECT = '*, materials:training_materials(id, training_id, title, url, type, order_index, created_at), raffle_winners:training_raffle_winners(id, training_id, nome, agencia, cidade_uf, premio, order_index, created_at)'
+const TRAINING_SELECT = '*, materials:training_materials(id, training_id, title, url, type, order_index, created_at), raffle_winners:training_raffle_winners(id, training_id, nome, agencia, cidade_uf, premios, order_index, created_at)'
 
 export async function getTrainingItem(id: string): Promise<TrainingItem | null> {
   const supabase = await createClient()
@@ -457,6 +460,17 @@ export async function deleteTrainingMaterial(id: string) {
   return { success: true }
 }
 
+function parsePremios(raw: string | null): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    if (!Array.isArray(arr)) return []
+    return arr.map((v) => String(v).trim()).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 export async function createTrainingRaffleWinner(trainingId: string, formData: FormData) {
   const ctx = await requireTrainingAccess(trainingId)
   if ('error' in ctx) return { error: ctx.error }
@@ -474,7 +488,7 @@ export async function createTrainingRaffleWinner(trainingId: string, formData: F
     nome,
     agencia: (formData.get('agencia') as string)?.trim() || '',
     cidade_uf: (formData.get('cidade_uf') as string)?.trim() || '',
-    premio: (formData.get('premio') as string)?.trim() || '',
+    premios: parsePremios(formData.get('premios') as string | null),
     order_index: Number(formData.get('order_index') ?? 0),
   }).select('id').single()
 
@@ -483,6 +497,31 @@ export async function createTrainingRaffleWinner(trainingId: string, formData: F
   revalidatePath('/admin/marketing')
   revalidatePath('/dashboard/treinamentos')
   return { success: true, id: inserted?.id }
+}
+
+export async function updateTrainingRaffleWinner(id: string, formData: FormData) {
+  const adminClient = createAdminClient()
+  const { data: winner } = await adminClient.from('training_raffle_winners').select('training_id').eq('id', id).single()
+  if (!winner) return { error: 'Vencedor não encontrado.' }
+
+  const ctx = await requireTrainingAccess(winner.training_id)
+  if ('error' in ctx) return { error: ctx.error }
+
+  const nome = (formData.get('nome') as string).trim()
+  if (!nome) return { error: 'Informe o nome do vencedor.' }
+
+  const { error } = await adminClient.from('training_raffle_winners').update({
+    nome,
+    agencia: (formData.get('agencia') as string)?.trim() || '',
+    cidade_uf: (formData.get('cidade_uf') as string)?.trim() || '',
+    premios: parsePremios(formData.get('premios') as string | null),
+  }).eq('id', id)
+
+  if (error) return { error: error.message }
+  logActivity(ctx, { action: 'update', entityType: 'vencedor_sorteio_treinamento', entityId: id, entityLabel: nome })
+  revalidatePath('/admin/marketing')
+  revalidatePath('/dashboard/treinamentos')
+  return { success: true }
 }
 
 export async function deleteTrainingRaffleWinner(id: string) {

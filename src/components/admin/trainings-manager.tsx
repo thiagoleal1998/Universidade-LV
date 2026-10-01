@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   createTrainingItem, updateTrainingItem, deleteTrainingItem, uploadTrainingCover,
   createTrainingMaterial, deleteTrainingMaterial, toggleTrainingActive,
-  createTrainingRaffleWinner, deleteTrainingRaffleWinner,
+  createTrainingRaffleWinner, updateTrainingRaffleWinner, deleteTrainingRaffleWinner,
 } from '@/app/actions/training'
 import { resolveTrainingAccessRequest } from '@/app/actions/training-access'
 import type { TrainingItem, TrainingMaterial, TrainingRaffleWinner } from '@/app/actions/training'
@@ -24,7 +24,7 @@ import {
   Plus, Pencil, Trash2, X, ExternalLink, GraduationCap, EyeOff,
   Upload, ImageIcon, Paperclip, ChevronDown, ChevronUp,
   FileText, Play, File, Link2, Eye, Radio, RotateCcw,
-  CheckCircle2, Clock, MapPin, Users, Check, Trophy, Gift,
+  CheckCircle2, Clock, MapPin, Users, Check, Trophy, Gift, Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -144,33 +144,77 @@ function MaterialsList({ materials, onDelete, isPending, canEdit = true }: {
   )
 }
 
-function AddWinnerForm({ trainingId, onDone }: { trainingId: string; onDone: () => void }) {
+// Serve tanto pra anunciar um vencedor novo quanto pra editar um já
+// existente — `winner` presente = modo edição (pré-preenche e chama
+// updateTrainingRaffleWinner em vez de create).
+function WinnerForm({ trainingId, winner, onDone }: { trainingId: string; winner?: TrainingRaffleWinner; onDone: () => void }) {
   const router = useRouter()
-  const [, startTransition] = useTransition()
+  const [isPending, startTransition] = useTransition()
+  // Lista livre de benefícios/prêmios — "preciso de espaço pra colocar
+  // todos os benefícios que o ganhador ganhou" (pedido do usuário). Campo
+  // não-nativo (lista dinâmica), por isso vive em state e é injetado no
+  // FormData no submit, mesmo padrão já usado pra exclusive_ufs/video_urls.
+  const [premios, setPremios] = useState<string[]>(winner?.premios.length ? winner.premios : [''])
+
+  function updatePremio(i: number, value: string) {
+    setPremios((prev) => prev.map((p, idx) => (idx === i ? value : p)))
+  }
+  function addPremio() {
+    setPremios((prev) => [...prev, ''])
+  }
+  function removePremio(i: number) {
+    setPremios((prev) => prev.filter((_, idx) => idx !== i))
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
+    fd.set('premios', JSON.stringify(premios.map((p) => p.trim()).filter(Boolean)))
     startTransition(async () => {
-      const result = await createTrainingRaffleWinner(trainingId, fd)
+      const result = winner
+        ? await updateTrainingRaffleWinner(winner.id, fd)
+        : await createTrainingRaffleWinner(trainingId, fd)
       if (result?.error) toast.error(result.error)
-      else { toast.success('Vencedor adicionado!'); onDone(); router.refresh() }
+      else { toast.success(winner ? 'Vencedor atualizado!' : 'Vencedor adicionado!'); onDone(); router.refresh() }
     })
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2 bg-card rounded-xl border border-border p-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Input name="nome" required placeholder="Nome do vencedor" className="h-8 text-sm" />
-        <Input name="agencia" placeholder="Agência (opcional)" className="h-8 text-sm" />
-        <Input name="cidade_uf" placeholder="Cidade - UF (opcional)" className="h-8 text-sm" />
-        <Input name="premio" placeholder="Prêmio (opcional)" className="h-8 text-sm" />
+        <Input name="nome" required defaultValue={winner?.nome} placeholder="Nome do vencedor" className="h-8 text-sm" />
+        <Input name="agencia" defaultValue={winner?.agencia} placeholder="Agência (opcional)" className="h-8 text-sm" />
+        <Input name="cidade_uf" defaultValue={winner?.cidade_uf} placeholder="Cidade - UF (opcional)" className="h-8 text-sm sm:col-span-2" />
       </div>
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" className="gap-1.5 h-7 text-xs">
-          <Plus className="w-3.5 h-3.5" /> Adicionar
+
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Benefícios / prêmios (opcional)</Label>
+        {premios.map((p, i) => (
+          <div key={i} className="flex gap-1.5">
+            <Input
+              value={p}
+              onChange={(e) => updatePremio(i, e.target.value)}
+              placeholder="Ex.: Passagem aérea ida e volta"
+              className="h-8 text-sm flex-1"
+            />
+            {premios.length > 1 && (
+              <button type="button" onClick={() => removePremio(i)} className="text-muted-foreground hover:text-red-500 transition-colors p-1 shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ))}
+        <Button type="button" size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={addPremio}>
+          <Plus className="w-3.5 h-3.5" /> Adicionar benefício
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onDone} className="h-7 text-xs">
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" size="sm" disabled={isPending} className="gap-1.5 h-7 text-xs">
+          {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          {isPending ? (winner ? 'Salvando...' : 'Adicionando...') : (winner ? 'Salvar' : 'Adicionar')}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone} disabled={isPending} className="h-7 text-xs">
           Cancelar
         </Button>
       </div>
@@ -178,9 +222,10 @@ function AddWinnerForm({ trainingId, onDone }: { trainingId: string; onDone: () 
   )
 }
 
-function WinnersList({ winners, onDelete, isPending, canEdit = true }: {
+function WinnersList({ winners, onDelete, onEdit, isPending, canEdit = true }: {
   winners: TrainingRaffleWinner[]
   onDelete: (id: string) => void
+  onEdit: (winner: TrainingRaffleWinner) => void
   isPending: boolean
   canEdit?: boolean
 }) {
@@ -188,18 +233,32 @@ function WinnersList({ winners, onDelete, isPending, canEdit = true }: {
   return (
     <div className="space-y-1.5">
       {winners.map((w) => (
-        <div key={w.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 border border-border">
-          <Trophy className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+        <div key={w.id} className="flex items-start gap-2 bg-card rounded-lg px-3 py-2 border border-border">
+          <Trophy className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{w.nome}</p>
             <p className="text-xs text-muted-foreground truncate">
-              {[w.agencia, w.cidade_uf, w.premio].filter(Boolean).join(' — ') || 'Sem detalhes informados'}
+              {[w.agencia, w.cidade_uf].filter(Boolean).join(' — ') || 'Sem agência/cidade informada'}
             </p>
+            {w.premios.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {w.premios.map((p, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                    <span className="shrink-0">🎁</span> <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           {canEdit && (
-            <button onClick={() => onDelete(w.id)} disabled={isPending} className="text-muted-foreground hover:text-red-500 transition-colors p-0.5 shrink-0">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => onEdit(w)} disabled={isPending} className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => onDelete(w.id)} disabled={isPending} className="text-muted-foreground hover:text-red-500 transition-colors p-0.5">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
         </div>
       ))}
@@ -328,6 +387,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
   const [addingMaterialFor, setAddingMaterialFor] = useState<string | null>(null)
   const [winnersExpandedId, setWinnersExpandedId] = useState<string | null>(null)
   const [addingWinnerFor, setAddingWinnerFor] = useState<string | null>(null)
+  const [editingWinner, setEditingWinner] = useState<TrainingRaffleWinner | null>(null)
   const [previewItem, setPreviewItem] = useState<TrainingItem | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -775,7 +835,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
 
                       {/* Sorteio: vídeo + vencedores */}
                       <button
-                        onClick={() => { setWinnersExpandedId(isWinnersExpanded ? null : item.id); if (!isWinnersExpanded) setAddingWinnerFor(null) }}
+                        onClick={() => { setWinnersExpandedId(isWinnersExpanded ? null : item.id); if (!isWinnersExpanded) { setAddingWinnerFor(null); setEditingWinner(null) } }}
                         className={cn(
                           'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
                           isWinnersExpanded ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -906,11 +966,19 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                         </p>
                       )}
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-1">Vencedores</p>
-                      <WinnersList winners={winners} onDelete={handleDeleteWinner} isPending={isPending} canEdit={item.canEdit ?? true} />
-                      {(item.canEdit ?? true) && (addingWinnerFor === item.id ? (
-                        <AddWinnerForm trainingId={item.id} onDone={() => setAddingWinnerFor(null)} />
+                      <WinnersList
+                        winners={winners}
+                        onDelete={handleDeleteWinner}
+                        onEdit={(w) => { setEditingWinner(w); setAddingWinnerFor(null) }}
+                        isPending={isPending}
+                        canEdit={item.canEdit ?? true}
+                      />
+                      {(item.canEdit ?? true) && (editingWinner && editingWinner.training_id === item.id ? (
+                        <WinnerForm trainingId={item.id} winner={editingWinner} onDone={() => setEditingWinner(null)} />
+                      ) : addingWinnerFor === item.id ? (
+                        <WinnerForm trainingId={item.id} onDone={() => setAddingWinnerFor(null)} />
                       ) : (
-                        <Button type="button" size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => setAddingWinnerFor(item.id)}>
+                        <Button type="button" size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => { setAddingWinnerFor(item.id); setEditingWinner(null) }}>
                           <Gift className="w-3.5 h-3.5" /> Anunciar vencedor
                         </Button>
                       ))}
