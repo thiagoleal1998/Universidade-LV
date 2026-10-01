@@ -272,9 +272,20 @@ export function TripMediaSections({ testimonials }: { testimonials: Testimonial[
   )
 }
 
+// Mostra no máximo 4 miniaturas — pedido do usuário, pra galeria não
+// dominar a lateral da página quando o famtour/evento tem muitas fotos. A
+// 4ª miniatura ganha um overlay "+N" (N = fotos que não aparecem na grade)
+// quando sobra mais — clicar nela (ou em qualquer uma das 4) abre o
+// lightbox já com a lista COMPLETA de fotos navegável, não só as 4
+// visíveis, então o "+N" é só um indicador, nunca um limite real de acesso.
+const GALLERY_VISIBLE_COUNT = 4
+
 export function TripGallery({ photos, className }: { photos: Photo[]; className?: string }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   if (photos.length === 0) return null
+
+  const visiblePhotos = photos.slice(0, GALLERY_VISIBLE_COUNT)
+  const hiddenCount = photos.length - visiblePhotos.length
 
   return (
     <div className={`space-y-3 ${className ?? ''}`}>
@@ -282,21 +293,30 @@ export function TripGallery({ photos, className }: { photos: Photo[]; className?
         <ImageIcon className="w-4 h-4 text-muted-foreground" />
         <p className="text-sm font-semibold text-foreground">Galeria de fotos</p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3">
-        {photos.map((photo, i) => (
-          <button
-            key={photo.id}
-            type="button"
-            onClick={() => setLightboxIndex(i)}
-            className="relative rounded-lg overflow-hidden border border-border bg-muted/30 group"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.url} alt={photo.caption || 'Foto da galeria'} className="w-full aspect-square object-cover group-hover:opacity-90 transition-opacity" />
-            {photo.caption && (
-              <p className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-1 line-clamp-1 text-left">{photo.caption}</p>
-            )}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-3">
+        {visiblePhotos.map((photo, i) => {
+          const isLastVisible = i === visiblePhotos.length - 1
+          const showMoreOverlay = isLastVisible && hiddenCount > 0
+          return (
+            <button
+              key={photo.id}
+              type="button"
+              onClick={() => setLightboxIndex(i)}
+              className="relative rounded-lg overflow-hidden border border-border bg-muted/30 group"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.url} alt={photo.caption || 'Foto da galeria'} className="w-full aspect-square object-cover group-hover:opacity-90 transition-opacity" />
+              {photo.caption && !showMoreOverlay && (
+                <p className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-1 line-clamp-1 text-left">{photo.caption}</p>
+              )}
+              {showMoreOverlay && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center group-hover:bg-black/70 transition-colors">
+                  <span className="text-white text-xl font-bold">+{hiddenCount}</span>
+                </div>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {lightboxIndex !== null && (
