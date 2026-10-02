@@ -725,7 +725,12 @@ export default async function DashboardPage() {
                     ? { bar: 'bg-green-500', badge: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800', icon: <PlayCircle className="w-2.5 h-2.5" />, label: 'Em andamento', fallbackBg: 'bg-green-500/10', fallbackIcon: 'text-green-500', subtab: 'em_andamento' }
                     : st === 'proxima'
                     ? { bar: 'bg-blue-500',  badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',   icon: <Clock className="w-2.5 h-2.5" />,       label: 'Próxima',       fallbackBg: 'bg-blue-500/10',  fallbackIcon: 'text-blue-500',  subtab: 'proximas' }
-                    : { bar: 'bg-yellow-500', badge: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700', icon: <Trophy className="w-2.5 h-2.5" />, label: 'Finalizada', fallbackBg: 'bg-yellow-500/10', fallbackIcon: 'text-yellow-500', subtab: 'vencedores' }
+                    // Bug real corrigido: ia pra subtab "vencedores" (visão
+                    // agrupada por vencedor, de todas as corridas finalizadas
+                    // juntas) em vez da aba "Finalizadas" (onde o CARD desta
+                    // corrida específica de fato existe, clicável pra abrir
+                    // o Dialog com os detalhes completos).
+                    : { bar: 'bg-yellow-500', badge: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700', icon: <Trophy className="w-2.5 h-2.5" />, label: 'Finalizada', fallbackBg: 'bg-yellow-500/10', fallbackIcon: 'text-yellow-500', subtab: 'finalizadas' }
 
                   return (
                     <Link
