@@ -48,7 +48,7 @@ function CorridaVideo({ videoUrl }: { videoUrl: string }) {
   }
 
   const frameClass = embed.type === 'instagram'
-    ? 'w-full max-w-[400px] mx-auto h-[640px]'
+    ? 'w-full max-w-[560px] mx-auto h-[896px]'
     : embed.vertical
       ? 'w-full max-w-[340px] mx-auto aspect-[9/16]'
       : 'w-full aspect-video'

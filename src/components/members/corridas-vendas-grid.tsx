@@ -90,7 +90,7 @@ export function CorridasVendasGrid({ corridas }: { corridas: CorridaData[] }) {
       </div>
 
       <Dialog open={open !== null} onOpenChange={(o) => { if (!o) setOpenIdx(null) }}>
-        <DialogContent className="max-h-[85vh] flex flex-col sm:max-w-lg">
+        <DialogContent className="max-h-[85vh] flex flex-col sm:max-w-2xl">
           {open && (
             <>
               <DialogHeader>
