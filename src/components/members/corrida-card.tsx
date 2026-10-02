@@ -1,6 +1,7 @@
-import { MapPin, Globe, Gift, ScrollText, Paperclip, ExternalLink, Calendar, Users } from 'lucide-react'
+import { MapPin, Globe, Gift, ScrollText, Paperclip, ExternalLink, Calendar, Users, PlayCircle } from 'lucide-react'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
+import { getVideoEmbed } from '@/lib/video'
 
 export type Status = 'proxima' | 'em_andamento' | 'finalizada'
 export type PremiacaoItem = { texto: string; especificacoes: string }
@@ -20,6 +21,49 @@ export type CorridaData = {
   vencedores: Vencedor[]
   regras: string
   lamina_url: string
+  video_url: string
+}
+
+// Mesma lógica/markup de `SingleVideo` em trip-media-sections.tsx
+// (Famtour/Evento) — duplicado de propósito porque aquele componente é
+// `'use client'` inteiro (carrossel de depoimentos) e este card precisa
+// continuar puro (sem hooks), pra funcionar tanto direto num Server
+// Component quanto dentro do Dialog do CorridasVendasGrid.
+function CorridaVideo({ videoUrl }: { videoUrl: string }) {
+  const embed = getVideoEmbed(videoUrl)
+
+  if (!embed) {
+    return (
+      <a
+        href={videoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-colors"
+      >
+        <PlayCircle className="w-4 h-4" />
+        Assistir vídeo
+        <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+      </a>
+    )
+  }
+
+  const frameClass = embed.type === 'instagram'
+    ? 'w-full max-w-[400px] mx-auto h-[640px]'
+    : embed.vertical
+      ? 'w-full max-w-[340px] mx-auto aspect-[9/16]'
+      : 'w-full aspect-video'
+
+  return (
+    <div className={`rounded-xl overflow-hidden border border-border bg-black/5 ${frameClass}`}>
+      <iframe
+        src={embed.embedUrl}
+        title="Vídeo"
+        className="w-full h-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  )
 }
 
 // Conteúdo completo de uma corrida — usado tanto direto na página (formato
@@ -75,6 +119,8 @@ export function CorridaCard({ corrida }: { corrida: CorridaData }) {
       {corrida.descricao && corrida.descricao !== '<p></p>' && (
         <div className="rich-text text-muted-foreground" dangerouslySetInnerHTML={{ __html: corrida.descricao }} />
       )}
+
+      {corrida.video_url && <CorridaVideo videoUrl={corrida.video_url} />}
 
       {corrida.lamina_url && (
         <a href={corrida.lamina_url} target="_blank" rel="noopener noreferrer"

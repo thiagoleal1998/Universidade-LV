@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import {
   Trophy, Globe, MapPin, Plus, X, ScrollText, Paperclip, Upload,
   ExternalLink, Loader2, ChevronDown, Trash2, Clock, PlayCircle,
-  CheckCircle2, Award, Calendar, Users,
+  CheckCircle2, Award, Calendar, Users, Video,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
@@ -38,6 +38,7 @@ type CorridaData = {
   vencedores: Vencedor[]
   regras: string
   lamina_url: string
+  video_url: string
 }
 
 // ── Status config ─────────────────────────────────────────────────────────────
@@ -57,7 +58,7 @@ function emptyVencedor(): Vencedor { return { posicao: '', nome: '', agencia: ''
 function emptyCorida(): CorridaData {
   return {
     status: 'proxima', tipo: 'nacional', exclusivo_grupos: false, titulo: '', descricao: '', destino: '', periodo: '',
-    parceiro_logo_url: '', premiacoes: [emptySection()], vencedores: [], regras: '', lamina_url: '',
+    parceiro_logo_url: '', premiacoes: [emptySection()], vencedores: [], regras: '', lamina_url: '', video_url: '',
   }
 }
 
@@ -127,6 +128,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
     vencedores: Array.isArray(p.vencedores) ? p.vencedores.map(parseVencedor) : [],
     regras: typeof p.regras === 'string' ? p.regras : '',
     lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
+    video_url: typeof p.video_url === 'string' ? p.video_url : '',
   }
 }
 
@@ -543,6 +545,16 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
                       </button>
                     )}
                   </div>
+                </div>
+
+                {/* Vídeo */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-primary" />
+                    <Label className="text-xs text-muted-foreground font-medium">Vídeo (opcional)</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Cole um link do YouTube, Instagram (Reels/post) ou Vimeo — aparece embutido pro aluno.</p>
+                  <Input value={corrida.video_url} onChange={(e) => updateAt(cIdx, { video_url: e.target.value })} placeholder="https://www.youtube.com/watch?v=... ou https://www.instagram.com/reel/..." />
                 </div>
 
                 {/* Lâmina */}

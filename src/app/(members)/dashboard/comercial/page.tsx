@@ -74,6 +74,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
     vencedores: Array.isArray(p.vencedores) ? p.vencedores.map(parseVencedor) : [],
     regras: typeof p.regras === 'string' ? p.regras : '',
     lamina_url: typeof p.lamina_url === 'string' ? p.lamina_url : '',
+    video_url: typeof p.video_url === 'string' ? p.video_url : '',
   }
 }
 
