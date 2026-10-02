@@ -1,4 +1,4 @@
-import { MapPin, Globe, Gift, ScrollText, Paperclip, ExternalLink, Calendar } from 'lucide-react'
+import { MapPin, Globe, Gift, ScrollText, Paperclip, ExternalLink, Calendar, Users } from 'lucide-react'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { detectPremiacaoIcon } from '@/lib/premiacao-icons'
 
@@ -10,6 +10,7 @@ export type Vencedor = { posicao: string; nome: string; agencia: string; descric
 export type CorridaData = {
   status: Status
   tipo: 'nacional' | 'internacional'
+  exclusivo_grupos: boolean
   titulo: string
   descricao: string
   destino: string
@@ -39,6 +40,11 @@ export function CorridaCard({ corrida }: { corrida: CorridaData }) {
         ) : (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm font-semibold">
             <Globe className="w-3.5 h-3.5" />Internacional
+          </span>
+        )}
+        {corrida.exclusivo_grupos && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-semibold">
+            <Users className="w-3.5 h-3.5" />Exclusivo para Grupos
           </span>
         )}
         {corrida.destino && (

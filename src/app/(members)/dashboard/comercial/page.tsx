@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import {
   Briefcase, Trophy,
-  Clock, PlayCircle, CheckCircle2, Award, Calendar, ChevronRight,
+  Clock, PlayCircle, CheckCircle2, Award, Calendar, ChevronRight, Users,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -64,6 +64,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
   return {
     status,
     tipo: p.tipo === 'internacional' ? 'internacional' : 'nacional',
+    exclusivo_grupos: p.exclusivo_grupos === true,
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
@@ -158,6 +159,11 @@ function VencedoresView({ corridas }: { corridas: CorridaData[] }) {
             )}
             <div className="relative z-10 min-w-0">
               {corrida.titulo && <h2 className="text-base font-bold text-foreground leading-snug">{corrida.titulo}</h2>}
+              {corrida.exclusivo_grupos && (
+                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-[11px] font-semibold">
+                  <Users className="w-3 h-3" />Exclusivo para Grupos
+                </span>
+              )}
               {corrida.periodo && (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
                   <Calendar className="w-3.5 h-3.5 shrink-0" />

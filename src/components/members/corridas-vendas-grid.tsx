@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Trophy, MapPin, Globe, Calendar, ChevronRight } from 'lucide-react'
+import { Trophy, MapPin, Globe, Calendar, ChevronRight, Users } from 'lucide-react'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
 import { CorridaCard, type CorridaData } from './corrida-card'
 
@@ -60,6 +60,11 @@ export function CorridasVendasGrid({ corridas }: { corridas: CorridaData[] }) {
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-[11px] font-semibold">
                       <Globe className="w-3 h-3" />Internacional
+                    </span>
+                  )}
+                  {corrida.exclusivo_grupos && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-[11px] font-semibold">
+                      <Users className="w-3 h-3" />Grupos
                     </span>
                   )}
                   {corrida.destino && (

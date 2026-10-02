@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import {
   Trophy, Globe, MapPin, Plus, X, ScrollText, Paperclip, Upload,
   ExternalLink, Loader2, ChevronDown, Trash2, Clock, PlayCircle,
-  CheckCircle2, Award, Calendar,
+  CheckCircle2, Award, Calendar, Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
@@ -28,6 +28,7 @@ type Vencedor = { posicao: string; nome: string; agencia: string; descricao: str
 type CorridaData = {
   status: Status
   tipo: 'nacional' | 'internacional'
+  exclusivo_grupos: boolean
   titulo: string
   descricao: string
   destino: string
@@ -55,7 +56,7 @@ function emptyVencedor(): Vencedor { return { posicao: '', nome: '', agencia: ''
 
 function emptyCorida(): CorridaData {
   return {
-    status: 'proxima', tipo: 'nacional', titulo: '', descricao: '', destino: '', periodo: '',
+    status: 'proxima', tipo: 'nacional', exclusivo_grupos: false, titulo: '', descricao: '', destino: '', periodo: '',
     parceiro_logo_url: '', premiacoes: [emptySection()], vencedores: [], regras: '', lamina_url: '',
   }
 }
@@ -116,6 +117,7 @@ function parseSingle(p: Record<string, unknown>): CorridaData {
   return {
     status,
     tipo: p.tipo === 'internacional' ? 'internacional' : 'nacional',
+    exclusivo_grupos: p.exclusivo_grupos === true,
     titulo: typeof p.titulo === 'string' ? p.titulo : '',
     descricao: typeof p.descricao === 'string' ? p.descricao : '',
     destino: typeof p.destino === 'string' ? p.destino : '',
@@ -359,6 +361,17 @@ export function CorridaVendasManager({ raw, canEdit = true }: { raw: string; can
                       )
                     })}
                   </div>
+                </div>
+
+                {/* Exclusivo para grupos */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground font-medium">Exclusividade</Label>
+                  <button type="button" onClick={() => updateAt(cIdx, { exclusivo_grupos: !corrida.exclusivo_grupos })}
+                    className={cn('flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-colors',
+                      corrida.exclusivo_grupos ? 'bg-purple-600 text-white border-purple-600' : 'bg-transparent text-muted-foreground border-border hover:border-primary/50')}>
+                    <Users className="w-3.5 h-3.5" />
+                    Exclusiva para vendas de grupos
+                  </button>
                 </div>
 
                 {/* Título */}
