@@ -166,11 +166,15 @@ export type TrainingItem = {
   // Array vazio = sem restrição (comportamento padrão). Uma ou mais UFs =
   // só membro dessa(s) UF ou com solicitação aprovada acessa direto.
   exclusive_ufs: string[]
-  // Sorteio: vídeo (YouTube/etc, via getVideoEmbed) que anuncia/revela o
-  // sorteio + vencedores anunciados depois. Os dois são opcionais e
-  // independentes — um treinamento pode ter vídeo sem vencedor ainda
-  // (sorteio anunciado, resultado por vir) ou vencedor sem vídeo.
+  // Sorteio: vídeo (YouTube/etc, via getVideoEmbed) OU imagem (upload) que
+  // anuncia/revela o sorteio + vencedores anunciados depois. Os três são
+  // opcionais e independentes — um treinamento pode ter mídia sem vencedor
+  // ainda (sorteio anunciado, resultado por vir) ou vencedor sem mídia. O
+  // admin escolhe um modo por vez no formulário; só um dos dois campos de
+  // mídia fica preenchido por vez (o cliente zera o outro ao trocar), mas
+  // o banco não impõe essa exclusividade.
   raffle_video_url: string
+  raffle_image_url: string
   raffle_winners?: TrainingRaffleWinner[]
 }
 
@@ -247,6 +251,7 @@ export async function createTrainingItem(formData: FormData) {
   const raffleVideoUrl = (formData.get('raffle_video_url') as string)?.trim() || ''
   const raffleUrlError = validateRaffleVideoUrl(raffleVideoUrl)
   if (raffleUrlError) return { error: raffleUrlError.error }
+  const raffleImageUrl = (formData.get('raffle_image_url') as string)?.trim() || ''
 
   const adminClient = createAdminClient()
   const title = (formData.get('title') as string).trim()
@@ -264,6 +269,7 @@ export async function createTrainingItem(formData: FormData) {
     owner_area_id: ctx.areaId,
     exclusive_ufs: exclusiveUfs,
     raffle_video_url: raffleVideoUrl,
+    raffle_image_url: raffleImageUrl,
   }).select('id, title, type, live_at').single()
 
   if (error) return { error: error.message }
@@ -289,7 +295,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
 
   const { data: prev } = await adminClient
     .from('training_items')
-    .select('type, is_active, title, description, url, cover_url, order_index, live_at, exclusive_ufs, raffle_video_url')
+    .select('type, is_active, title, description, url, cover_url, order_index, live_at, exclusive_ufs, raffle_video_url, raffle_image_url')
     .eq('id', id)
     .single()
 
@@ -300,6 +306,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
   const newRaffleVideoUrl = (formData.get('raffle_video_url') as string)?.trim() || ''
   const raffleUrlError = validateRaffleVideoUrl(newRaffleVideoUrl)
   if (raffleUrlError) return { error: raffleUrlError.error }
+  const newRaffleImageUrl = (formData.get('raffle_image_url') as string)?.trim() || ''
 
   const after = {
     title: newTitle,
@@ -312,6 +319,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
     live_at: parseLiveAt(formData.get('live_at') as string | null),
     exclusive_ufs: newExclusiveUfs,
     raffle_video_url: newRaffleVideoUrl,
+    raffle_image_url: newRaffleImageUrl,
   }
   // Só rejeita quando a data está sendo MUDADA pra uma data passada — uma
   // live que já aconteceu naturalmente fica no passado, e isso não pode
@@ -326,7 +334,7 @@ export async function updateTrainingItem(id: string, formData: FormData) {
   const changed = diffFields(prev ?? {}, after, {
     title: 'título', description: 'descrição', url: 'link', cover_url: 'capa',
     order_index: 'ordem', is_active: 'ativação', type: 'tipo', live_at: 'data ao vivo',
-    exclusive_ufs: 'UFs exclusivas', raffle_video_url: 'vídeo do sorteio',
+    exclusive_ufs: 'UFs exclusivas', raffle_video_url: 'vídeo do sorteio', raffle_image_url: 'imagem do sorteio',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'treinamento', entityId: id, entityLabel: newTitle, detail: `alterou: ${changed.join(', ')}` })
@@ -419,6 +427,35 @@ export async function uploadTrainingCover(file: File) {
   }
   const isConverted = webpFile.type === 'image/webp'
   const path = `training-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${isConverted ? 'webp' : ext}`
+
+  const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: webpFile.type })
+  if (error) return { error: error.message }
+
+  const { data: { publicUrl } } = adminClient.storage.from('marketing-files').getPublicUrl(path)
+  return { success: true, url: publicUrl }
+}
+
+// Mídia do sorteio como imagem — pedido do usuário ("permita que o vídeo de
+// sorteio seja vídeo ou imagem"). Mesmo tratamento de `uploadTrainingCover`
+// (validação de extensão + conversão pra webp), path próprio no storage.
+export async function uploadTrainingRaffleImage(file: File) {
+  const ctx = await requireCapability('trainings')
+  if ('error' in ctx) return { error: ctx.error }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (!TRAINING_COVER_EXTS.includes(ext)) {
+    return { error: 'Apenas imagens são aceitas (JPG, PNG, WEBP ou GIF).' }
+  }
+
+  const adminClient = createAdminClient()
+  let webpFile: File
+  try {
+    webpFile = await toWebP(file, { maxWidth: 1280, quality: 85 })
+  } catch {
+    return { error: 'Não foi possível processar esta imagem — ela pode estar corrompida ou num formato inesperado.' }
+  }
+  const isConverted = webpFile.type === 'image/webp'
+  const path = `training-raffle/${Date.now()}-${Math.random().toString(36).slice(2)}.${isConverted ? 'webp' : ext}`
 
   const { error } = await adminClient.storage.from('marketing-files').upload(path, webpFile, { contentType: webpFile.type })
   if (error) return { error: error.message }

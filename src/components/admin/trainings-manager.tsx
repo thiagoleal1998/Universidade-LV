@@ -6,6 +6,7 @@ import {
   createTrainingItem, updateTrainingItem, deleteTrainingItem, uploadTrainingCover,
   createTrainingMaterial, deleteTrainingMaterial, toggleTrainingActive,
   createTrainingRaffleWinner, updateTrainingRaffleWinner, deleteTrainingRaffleWinner,
+  uploadTrainingRaffleImage,
 } from '@/app/actions/training'
 import { resolveTrainingAccessRequest } from '@/app/actions/training-access'
 import type { TrainingItem, TrainingMaterial, TrainingRaffleWinner } from '@/app/actions/training'
@@ -406,7 +407,15 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
   // toRichHtml() trata descrição legada (texto puro com \n) sem perder
   // quebra de linha ao carregar no editor pela primeira vez.
   const [descriptionValue, setDescriptionValue] = useState('')
+  // Mídia do sorteio: vídeo (link) OU imagem (upload) — pedido do usuário.
+  // `raffleMode` decide qual seção aparece no form; ao trocar de modo, o
+  // campo do outro é zerado no submit (ver handleSubmit), nunca os dois
+  // juntos. Mesmo padrão de coverPreview/coverFile pra imagem.
+  const [raffleMode, setRaffleMode] = useState<'video' | 'image'>('video')
+  const [raffleImagePreview, setRaffleImagePreview] = useState<string | null>(null)
+  const [raffleImageFile, setRaffleImageFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const raffleImageFileRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
   function resetForm() {
@@ -417,6 +426,9 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     setFormType('link')
     setSelectedUfs([])
     setDescriptionValue('')
+    setRaffleMode('video')
+    setRaffleImagePreview(null)
+    setRaffleImageFile(null)
   }
 
   function handleEdit(item: TrainingItem) {
@@ -426,6 +438,9 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     setCoverFile(null)
     setSelectedUfs(item.exclusive_ufs ?? [])
     setDescriptionValue(toRichHtml(item.description ?? ''))
+    setRaffleMode(item.raffle_image_url ? 'image' : 'video')
+    setRaffleImagePreview(item.raffle_image_url || null)
+    setRaffleImageFile(null)
     setShowForm(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -457,17 +472,45 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
     setCoverPreview(URL.createObjectURL(file))
   }
 
+  function handleRaffleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx. 8MB). Escolha uma foto menor ou comprima antes de enviar.')
+      e.target.value = ''
+      return
+    }
+    setRaffleImageFile(file)
+    setRaffleImagePreview(URL.createObjectURL(file))
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     fd.set('exclusive_ufs', JSON.stringify(selectedUfs))
     fd.set('description', descriptionValue)
+    // Só um dos dois campos de mídia do sorteio vai preenchido — o outro é
+    // zerado explicitamente, senão trocar de modo não limparia o anterior.
+    if (raffleMode === 'video') {
+      fd.set('raffle_image_url', '')
+    } else {
+      fd.set('raffle_video_url', '')
+    }
     startTransition(async () => {
       try {
         if (coverFile) {
           const upload = await uploadTrainingCover(coverFile)
           if (upload.error) { toast.error(upload.error); return }
           fd.set('cover_url', upload.url ?? '')
+        }
+        if (raffleMode === 'image') {
+          if (raffleImageFile) {
+            const upload = await uploadTrainingRaffleImage(raffleImageFile)
+            if (upload.error) { toast.error(upload.error); return }
+            fd.set('raffle_image_url', upload.url ?? '')
+          } else {
+            fd.set('raffle_image_url', raffleImagePreview ?? '')
+          }
         }
         const result = editing
           ? await updateTrainingItem(editing.id, fd)
@@ -702,22 +745,84 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                 )}
               </div>
 
-              {/* Vídeo do sorteio — opcional, independente do conteúdo
-                  principal do treinamento (url). Normalmente o vídeo que
-                  anuncia/revela quem ganhou o sorteio feito nesse treinamento. */}
+              {/* Mídia do sorteio — opcional, independente do conteúdo
+                  principal do treinamento (url). Normalmente anuncia/revela
+                  quem ganhou o sorteio feito nesse treinamento — vídeo (link)
+                  OU imagem (upload), nunca os dois ao mesmo tempo. */}
               <div className="md:col-span-2">
-                <Label htmlFor="raffle_video_url">Vídeo do sorteio (opcional)</Label>
+                <Label>Mídia do sorteio (opcional)</Label>
                 <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                  Link do YouTube (ou Vimeo/Instagram) do vídeo que anuncia ou revela o sorteio feito neste treinamento.
+                  Vídeo ou imagem que anuncia ou revela o sorteio feito neste treinamento.
                 </p>
-                <Input
-                  id="raffle_video_url"
-                  name="raffle_video_url"
-                  type="url"
-                  defaultValue={editing?.raffle_video_url ?? ''}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  className="h-9 text-sm"
-                />
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setRaffleMode('video')}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                      raffleMode === 'video'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <Play className="w-3.5 h-3.5" /> Vídeo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRaffleMode('image')}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                      raffleMode === 'image'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" /> Imagem
+                  </button>
+                </div>
+
+                {raffleMode === 'video' ? (
+                  <Input
+                    id="raffle_video_url"
+                    name="raffle_video_url"
+                    type="url"
+                    defaultValue={editing?.raffle_video_url ?? ''}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="h-9 text-sm"
+                  />
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div
+                      className={cn(
+                        'relative w-full sm:w-48 aspect-video rounded-xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-primary/50 transition-colors',
+                        raffleImagePreview && 'border-solid border-border'
+                      )}
+                      onClick={() => raffleImageFileRef.current?.click()}
+                    >
+                      {raffleImagePreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={raffleImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                          <ImageIcon className="w-7 h-7" />
+                          <span className="text-xs text-center leading-tight px-2">Clique para<br />fazer upload</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-center gap-2">
+                      <input ref={raffleImageFileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleRaffleImageFileChange} className="hidden" />
+                      <Button type="button" variant="outline" size="sm" onClick={() => raffleImageFileRef.current?.click()} className="gap-2 w-fit">
+                        <Upload className="w-4 h-4" />
+                        {raffleImagePreview ? 'Trocar imagem' : 'Selecionar imagem'}
+                      </Button>
+                      {raffleImagePreview && (
+                        <button type="button" onClick={() => { setRaffleImagePreview(null); setRaffleImageFile(null) }} className="text-xs text-muted-foreground hover:text-red-500 transition-colors text-left">
+                          Remover imagem
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -970,12 +1075,18 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                     </div>
                   )}
 
-                  {/* Sorteio panel: vídeo (editado no form principal — só um
-                      lembrete/link aqui) + vencedores (coleção própria) */}
+                  {/* Sorteio panel: vídeo/imagem (editado no form principal
+                      — só um lembrete/preview aqui) + vencedores (coleção
+                      própria) */}
                   {isWinnersExpanded && (
                     <div className="border-t border-border px-4 pb-4 pt-3 bg-muted/20 space-y-3">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sorteio</p>
-                      {item.raffle_video_url ? (
+                      {item.raffle_image_url ? (
+                        <a href={item.raffle_image_url} target="_blank" rel="noreferrer" className="block w-fit">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.raffle_image_url} alt="Imagem do sorteio" className="h-16 w-auto rounded-lg border border-border object-cover" />
+                        </a>
+                      ) : item.raffle_video_url ? (
                         <a
                           href={item.raffle_video_url}
                           target="_blank"
@@ -986,7 +1097,7 @@ export function TrainingsManager({ items, canCreate = true }: { items: TrainingI
                         </a>
                       ) : (
                         <p className="text-xs text-muted-foreground italic">
-                          Sem vídeo cadastrado — edite o treinamento pra adicionar o link.
+                          Sem vídeo/imagem cadastrado — edite o treinamento pra adicionar.
                         </p>
                       )}
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-1">Vencedores</p>

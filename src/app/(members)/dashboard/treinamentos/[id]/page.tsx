@@ -35,15 +35,25 @@ function MaterialIcon({ type }: { type: string }) {
   return <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
 }
 
-// Mesmo padrão de embed já usado em Famtour/Evento (SingleVideo, em
-// trip-media-sections.tsx) — não reaproveitado direto porque aquele arquivo
-// é 'use client' inteiro, e aqui não precisamos de nenhuma interatividade.
-function RaffleVideo({ url }: { url: string }) {
-  const embed = getVideoEmbed(url)
+// Mídia do sorteio: vídeo OU imagem, nunca os dois (admin escolhe um modo
+// no form). Mesmo padrão de embed já usado em Famtour/Evento (SingleVideo,
+// em trip-media-sections.tsx) — não reaproveitado direto porque aquele
+// arquivo é 'use client' inteiro, e aqui não precisamos de interatividade.
+function RaffleMedia({ videoUrl, imageUrl }: { videoUrl: string; imageUrl: string }) {
+  if (imageUrl) {
+    return (
+      <div className="rounded-xl overflow-hidden border border-border bg-black/5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt="Imagem do sorteio" className="w-full h-auto" />
+      </div>
+    )
+  }
+
+  const embed = getVideoEmbed(videoUrl)
   if (!embed) {
     return (
       <a
-        href={url}
+        href={videoUrl}
         target="_blank"
         rel="noreferrer"
         className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-colors"
@@ -140,11 +150,12 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
 
   const materials = [...(item.materials ?? [])].sort((a, b) => a.order_index - b.order_index)
   const winners = [...(item.raffle_winners ?? [])].sort((a, b) => a.order_index - b.order_index)
-  // Vídeo do sorteio ganha coluna própria ao lado da capa em telas largas —
-  // mesmo padrão já usado pra galeria/vídeo de Famtour/Evento. Só entra em
-  // jogo com vídeo cadastrado E não bloqueado (locked já esconde tudo atrás
-  // do pedido de acesso, não faz sentido reservar a coluna nesse caso).
-  const showSide = !locked && !!item.raffle_video_url
+  // Mídia do sorteio (vídeo OU imagem) ganha coluna própria ao lado da capa
+  // em telas largas — mesmo padrão já usado pra galeria/vídeo de Famtour/
+  // Evento. Só entra em jogo com mídia cadastrada E não bloqueado (locked já
+  // esconde tudo atrás do pedido de acesso, não faz sentido reservar a
+  // coluna nesse caso).
+  const showSide = !locked && (!!item.raffle_video_url || !!item.raffle_image_url)
 
   return (
     <div className={`p-4 md:p-8 ${showSide ? 'max-w-6xl' : 'max-w-3xl'}`}>
@@ -226,7 +237,7 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
             </p>
             <p className="text-xs text-muted-foreground">Veja como foi o sorteio deste treinamento:</p>
           </div>
-          <RaffleVideo url={item.raffle_video_url} />
+          <RaffleMedia videoUrl={item.raffle_video_url} imageUrl={item.raffle_image_url} />
         </div>
       )}
 
