@@ -552,29 +552,33 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
-      <div className="flex flex-col gap-6 items-start xl:grid xl:grid-cols-[1fr_288px]">
+      <div className="flex flex-col gap-6 items-start xl:grid xl:grid-cols-[1fr_288px] xl:gap-x-6">
+
+        {/* ── Greeting ── */}
+        <section className="w-full min-w-0 xl:col-start-1 xl:row-start-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-full px-3 py-1">
+                <Sparkles className="w-3 h-3" /> Bem-vindo de volta
+              </span>
+            </div>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">Olá, {firstName}! 👋</h1>
+            <p className="text-muted-foreground mt-1 text-sm max-w-lg">{heroTagline}</p>
+          </div>
+          {badgeModules.length > 0 && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Trophy className="w-4 h-4 text-yellow-500" />
+              <span className="text-sm font-semibold text-foreground">{badgeModules.length} {badgeModules.length === 1 ? 'módulo concluído' : 'módulos concluídos'}</span>
+            </div>
+          )}
+        </section>
+
+        <div className="w-full xl:col-start-2 xl:row-start-1">
+          <BuscaRapidaButton />
+        </div>
 
         {/* ── Coluna principal ── */}
-        <div className="min-w-0 w-full space-y-6">
-
-          {/* ── Greeting ── */}
-          <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-full px-3 py-1">
-                  <Sparkles className="w-3 h-3" /> Bem-vindo de volta
-                </span>
-              </div>
-              <h1 className="text-3xl font-bold text-foreground tracking-tight">Olá, {firstName}! 👋</h1>
-              <p className="text-muted-foreground mt-1 text-sm max-w-lg">{heroTagline}</p>
-            </div>
-            {badgeModules.length > 0 && (
-              <div className="flex items-center gap-2 shrink-0">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                <span className="text-sm font-semibold text-foreground">{badgeModules.length} {badgeModules.length === 1 ? 'módulo concluído' : 'módulos concluídos'}</span>
-              </div>
-            )}
-          </section>
+        <div className="min-w-0 w-full space-y-6 xl:col-start-1 xl:row-start-2">
 
           {/* ── Stats grid ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -944,9 +948,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* ── Sidebar direita ── */}
-        <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-20 xl:border-l xl:border-border xl:pl-6">
-
-            <BuscaRapidaButton />
+        <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-20 xl:row-start-2 xl:col-start-2 xl:border-l xl:border-border xl:pl-6">
 
             {sidebarTrainingActive && featuredTrainings.length > 0 && (
               <div className="space-y-2">
