@@ -28,6 +28,7 @@ Incremente `APP_VERSION` em `src/lib/version.ts`, semver:
 
 - **Armadilha nova, convenção nova, regra de autorização** → `CLAUDE.md`, em uma ou duas frases no imperativo.
 - **A investigação que levou até ela, ou descrição de feature que já estabilizou** → `docs/historico-tecnico.md`.
+- **Feature com comportamento novo** → conferir se existe `docs/specs/<slug>.md` com status `implementada` e critérios de aceite verificados. Se faltar, avisar o usuário, sem bloquear o ritual (mudança pequena continua válida).
 
 Nada a documentar é uma resposta válida — não invente. Não documente o óbvio.
 

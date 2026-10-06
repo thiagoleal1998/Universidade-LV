@@ -26,6 +26,12 @@ A versão fica em `src/lib/version.ts` (constante `APP_VERSION`) e exibida no ro
 
 Atualize `src/lib/version.ts` junto com os demais arquivos no mesmo commit.
 
+# Especificação antes de código (SDD leve)
+
+- Feature com **comportamento novo** (tela, fluxo, regra de negócio, permissão): escrever a spec em `docs/specs/<slug>.md` seguindo `docs/specs/_template.md` e aguardar aprovação do usuário antes de implementar.
+- Ficam isentos: bugfix pontual, ajuste visual, texto de interface, mudança de ferramenta de desenvolvimento.
+- Ao concluir, marcar o status da spec como `implementada` e confirmar que cada critério de aceite foi verificado (o passo "Documentar" do `/finalizar` checa isso).
+
 # Projeto — Universidade LV
 
 **Criador:** Thiago Leal da Silva
