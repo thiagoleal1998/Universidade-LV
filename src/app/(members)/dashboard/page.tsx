@@ -557,13 +557,13 @@ export default async function DashboardPage() {
         {/* ── Greeting ── */}
         <section className="w-full min-w-0 xl:col-start-1 xl:row-start-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-3">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-full px-3 py-1">
                 <Sparkles className="w-3 h-3" /> Bem-vindo de volta
               </span>
             </div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">Olá, {firstName}! 👋</h1>
-            <p className="text-muted-foreground mt-1 text-sm max-w-lg">{heroTagline}</p>
+            <p className="text-muted-foreground mt-2 text-sm max-w-lg">{heroTagline}</p>
           </div>
           {badgeModules.length > 0 && (
             <div className="flex items-center gap-2 shrink-0">
