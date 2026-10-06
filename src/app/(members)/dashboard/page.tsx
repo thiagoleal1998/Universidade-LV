@@ -223,13 +223,15 @@ function SidebarPodviajarCard({ pod }: { pod: SidebarPodviajar }) {
   const latest = pod.episodes?.[0] ?? null
   return (
     <div className="rounded-xl border border-border overflow-hidden bg-card">
-      {latest?.cover_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={latest.cover_url} alt={latest.title} className="w-full aspect-video object-cover bg-muted/30" />
-      ) : pod.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={pod.image_url} alt={pod.title} className="w-full aspect-video object-contain bg-muted/30" />
-      ) : null}
+      <Link href="/dashboard/podviajar?ep=0" className="block hover:opacity-90 transition-opacity">
+        {latest?.cover_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={latest.cover_url} alt={latest.title} className="w-full aspect-video object-cover bg-muted/30" />
+        ) : pod.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={pod.image_url} alt={pod.title} className="w-full aspect-video object-contain bg-muted/30" />
+        ) : null}
+      </Link>
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
           <Headphones className="w-3.5 h-3.5" />
@@ -237,10 +239,8 @@ function SidebarPodviajarCard({ pod }: { pod: SidebarPodviajar }) {
         </div>
 
         {latest && (
-          <a
-            href={latest.url || '#'}
-            target={latest.url ? '_blank' : undefined}
-            rel="noreferrer"
+          <Link
+            href="/dashboard/podviajar?ep=0"
             className="group flex items-start gap-3 hover:opacity-80 transition-opacity"
           >
             {latest.cover_url ? (
@@ -257,7 +257,7 @@ function SidebarPodviajarCard({ pod }: { pod: SidebarPodviajar }) {
                 {latest.title}
               </p>
             </div>
-          </a>
+          </Link>
         )}
 
         <Link
