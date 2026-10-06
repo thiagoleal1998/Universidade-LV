@@ -8,7 +8,7 @@ import { logout } from '@/app/actions/auth'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
-  Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Search, Menu, X, BookOpen,
+  Home, MessageSquare, FileText, Settings, GraduationCap, LogOut, Menu, X, BookOpen,
   PanelLeftClose, PanelLeftOpen, Headphones, Megaphone, Plane, Briefcase, Users2, Luggage, CalendarDays,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -170,25 +170,6 @@ function SidebarContent({
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
-
-        {/* Search */}
-        <button
-          type="button"
-          title={collapsed ? 'Busca rápida (Ctrl K)' : undefined}
-          className={cn(
-            'w-full flex items-center rounded-lg text-xs text-white/70 border border-dashed border-white/25',
-            'hover:border-white/40 hover:bg-white/10 transition-colors mb-1',
-            collapsed ? 'justify-center p-2.5' : 'gap-2 px-3 py-2',
-          )}
-          onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))}
-        >
-          <Search className="w-3.5 h-3.5 shrink-0" />
-          <span style={slideText(collapsed, 130)} className="flex-1 text-left">Busca rápida</span>
-          {/* kbd uses slideText so it takes 0px layout space when collapsed */}
-          <kbd style={slideText(collapsed, 58)} className="text-xs bg-white/15 text-white px-1.5 py-0.5 rounded font-mono hidden md:block">
-            Ctrl K
-          </kbd>
-        </button>
 
         {/* Nav items */}
         {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {

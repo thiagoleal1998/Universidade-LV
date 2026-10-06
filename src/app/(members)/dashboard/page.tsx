@@ -18,6 +18,7 @@ import {
   TrendingUp, CheckCircle2, Trophy, Star, Headphones,
   MapPin, Calendar, Luggage, CalendarDays,
 } from 'lucide-react'
+import { BuscaRapidaButton } from '@/components/members/busca-rapida-button'
 import type { Module, Course } from '@/lib/supabase/types'
 import type { TrainingItem } from '@/app/actions/training'
 import { detectIso, flagImgUrl } from '@/lib/flag-detect'
@@ -549,11 +550,9 @@ export default async function DashboardPage() {
     : fallbackLinkTraining ? [fallbackLinkTraining]
     : []
 
-  const hasSidebar = (sidebarTrainingActive && featuredTrainings.length > 0) || sidebarMagazine || Object.values(sidebarSocials).some(Boolean) || !!podviajar
-
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
-      <div className={`flex flex-col gap-6 items-start ${hasSidebar ? 'xl:grid xl:grid-cols-[1fr_288px]' : ''}`}>
+      <div className="flex flex-col gap-6 items-start xl:grid xl:grid-cols-[1fr_288px]">
 
         {/* ── Coluna principal ── */}
         <div className="min-w-0 w-full space-y-6">
@@ -945,8 +944,9 @@ export default async function DashboardPage() {
         </div>
 
         {/* ── Sidebar direita ── */}
-        {hasSidebar && (
-          <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-20 xl:border-l xl:border-border xl:pl-6">
+        <aside className="w-full xl:w-[288px] shrink-0 space-y-4 xl:sticky xl:top-20 xl:border-l xl:border-border xl:pl-6">
+
+            <BuscaRapidaButton />
 
             {sidebarTrainingActive && featuredTrainings.length > 0 && (
               <div className="space-y-2">
@@ -981,8 +981,7 @@ export default async function DashboardPage() {
 
             <SidebarSocialsBlock socials={sidebarSocials} label={sidebarSocialLabel} />
 
-          </aside>
-        )}
+        </aside>
 
       </div>
     </div>
