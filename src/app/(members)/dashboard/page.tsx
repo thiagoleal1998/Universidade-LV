@@ -6,6 +6,7 @@ import { getTrainingItems } from '@/app/actions/training'
 import { getMyTrainingAccessContext } from '@/app/actions/training-access'
 import { getMyFamtourAccessContext, requestFamtourAccess } from '@/app/actions/famtour-access'
 import { isAccessLocked } from '@/lib/access-lock'
+import { slugify } from '@/lib/slug'
 import { RequestAccessButton } from '@/components/members/request-access-button'
 import { TripCard } from '@/components/members/trip-card'
 import { buttonVariants } from '@/components/ui/button'
@@ -221,9 +222,10 @@ type SidebarPodviajar = { active: boolean; title: string; description: string; i
 
 function SidebarPodviajarCard({ pod }: { pod: SidebarPodviajar }) {
   const latest = pod.episodes?.[0] ?? null
+  const latestHref = latest ? `/dashboard/podviajar/${slugify(latest.title)}` : '/dashboard/podviajar'
   return (
     <div className="rounded-xl border border-border overflow-hidden bg-card">
-      <Link href="/dashboard/podviajar?ep=0" className="block hover:opacity-90 transition-opacity">
+      <Link href={latestHref} className="block hover:opacity-90 transition-opacity">
         {latest?.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={latest.cover_url} alt={latest.title} className="w-full aspect-video object-cover bg-muted/30" />
@@ -240,7 +242,7 @@ function SidebarPodviajarCard({ pod }: { pod: SidebarPodviajar }) {
 
         {latest && (
           <Link
-            href="/dashboard/podviajar?ep=0"
+            href={latestHref}
             className="group flex items-start gap-3 hover:opacity-80 transition-opacity"
           >
             {latest.cover_url ? (

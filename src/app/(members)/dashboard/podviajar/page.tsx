@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSettings } from '@/lib/settings'
-import { getVideoEmbed } from '@/lib/video'
-import { Headphones, ExternalLink, Calendar, Clock, PlayCircle } from 'lucide-react'
+import { slugify } from '@/lib/slug'
+import { Headphones, Calendar, Clock, PlayCircle } from 'lucide-react'
 
 export const metadata = { title: 'PodViajar' }
 
@@ -43,53 +43,11 @@ function parse(raw: string): PodviajarData | null {
   }
 }
 
-function EpisodePlayer({ url, title }: { url: string; title: string }) {
-  const embed = getVideoEmbed(url)
-
-  if (!embed) {
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        className="flex items-center justify-center gap-2 w-full aspect-video rounded-2xl bg-primary/5 border border-primary/20 text-primary font-semibold text-sm hover:bg-primary/10 transition-colors"
-      >
-        <PlayCircle className="w-5 h-5" />
-        Ouvir/assistir este episódio
-        <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-      </a>
-    )
-  }
-
-  const frameClass = embed.type === 'instagram'
-    ? 'w-full max-w-[400px] mx-auto h-[640px]'
-    : embed.vertical
-      ? 'w-full max-w-[340px] mx-auto aspect-[9/16]'
-      : 'w-full aspect-video'
-
-  return (
-    <div className={`rounded-2xl overflow-hidden border border-border bg-black ${frameClass}`}>
-      <iframe
-        src={embed.embedUrl}
-        title={title}
-        className="w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-    </div>
-  )
-}
-
-export default async function PodviajarPage({ searchParams }: { searchParams: Promise<{ ep?: string }> }) {
+export default async function PodviajarPage() {
   const settings = await getSettings()
   const podcast = parse(settings.podviajar)
 
   if (!podcast) redirect('/dashboard')
-
-  const { ep } = await searchParams
-  const requested = Number(ep)
-  const selectedIdx = Number.isInteger(requested) && requested >= 0 && requested < podcast.episodes.length ? requested : 0
-  const selected = podcast.episodes[selectedIdx] ?? null
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
@@ -151,35 +109,8 @@ export default async function PodviajarPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {/* Episódio selecionado */}
-      {selected && (
-        <div className="mb-10 space-y-4">
-          <EpisodePlayer url={selected.url} title={selected.title} />
-          <div className="space-y-2">
-            <h2 className="text-xl font-bold text-foreground leading-snug">{selected.title}</h2>
-            {(selected.date || selected.duration) && (
-              <div className="flex items-center gap-3 flex-wrap">
-                {selected.date && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
-                    <Calendar className="w-3 h-3" /> {selected.date}
-                  </span>
-                )}
-                {selected.duration && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
-                    <Clock className="w-3 h-3" /> {selected.duration}
-                  </span>
-                )}
-              </div>
-            )}
-            {selected.description && (
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{selected.description}</p>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Episódios */}
-      <div>
+      <div className="mt-8">
         <h2 className="text-base font-semibold text-foreground mb-4">
           Episódios {podcast.episodes.length > 0 && <span className="text-muted-foreground font-normal text-sm">({podcast.episodes.length})</span>}
         </h2>
@@ -194,9 +125,8 @@ export default async function PodviajarPage({ searchParams }: { searchParams: Pr
             {podcast.episodes.map((ep, idx) => (
               <Link
                 key={idx}
-                href={`/dashboard/podviajar?ep=${idx}`}
-                scroll={false}
-                className={`group block bg-card border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-md transition-all ${idx === selectedIdx ? 'border-primary/50 ring-1 ring-primary/30' : 'border-border'}`}
+                href={`/dashboard/podviajar/${slugify(ep.title)}`}
+                className="group block bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-md transition-all"
               >
                 {/* Imagem de capa em destaque */}
                 {ep.cover_url ? (
@@ -218,7 +148,7 @@ export default async function PodviajarPage({ searchParams }: { searchParams: Pr
                     <p className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors leading-snug">
                       {ep.title}
                     </p>
-                    <PlayCircle className={`w-4 h-4 shrink-0 mt-0.5 transition-colors ${idx === selectedIdx ? 'text-primary' : 'text-muted-foreground/30 group-hover:text-primary/50'}`} />
+                    <PlayCircle className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
                   </div>
                   {ep.description && (
                     <p className="text-xs text-muted-foreground mt-2 leading-relaxed whitespace-pre-wrap">{ep.description}</p>
