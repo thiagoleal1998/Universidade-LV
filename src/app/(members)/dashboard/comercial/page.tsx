@@ -275,12 +275,13 @@ export default async function ComercialPage({
       {activeTab === 'comercial' && (
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {commercialBanner ? (
-            // Campanha com banner ativo "absorve" os cards de Condições
-            // Comerciais pra dentro do mesmo bloco — título opcional acima,
-            // texto opcional logo abaixo da imagem, e a grade de condições
-            // já cadastradas entra como parte da campanha, sem o título
-            // solto "Confira mais condições" que existia antes.
-            <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-5">
+            // Banner de campanha ativo substitui a grade de Condições
+            // Comerciais nesta tela por inteiro — título opcional acima,
+            // imagem+CTA, texto opcional abaixo. As condições comerciais
+            // "normais" saem daqui e passam a aparecer na página que o
+            // próprio banner abre (/dashboard/comercial/campanha), não mais
+            // duplicadas aqui.
+            <div className="space-y-4">
               {commercialBanner.title && (
                 <h2 className="text-xl md:text-2xl font-bold text-foreground">{commercialBanner.title}</h2>
               )}
@@ -303,11 +304,6 @@ export default async function ComercialPage({
               </Link>
               {commercialBanner.description && (
                 <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{commercialBanner.description}</p>
-              )}
-              {commercialConditions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma condição comercial disponível no momento.</p>
-              ) : (
-                <CommercialConditionsGrid items={commercialConditions} />
               )}
             </div>
           ) : commercialConditions.length === 0 ? (
