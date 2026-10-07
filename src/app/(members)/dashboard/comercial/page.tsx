@@ -218,7 +218,7 @@ export default async function ComercialPage({
   const [{ data: conditionsData }, settings] = await Promise.all([
     adminClient
       .from('commercial_conditions')
-      .select('id, title, description, cover_url, logo_url, logo_bg_color, highlight_text, url, expires_at')
+      .select('id, title, description, cover_url, logo_url, logo_bg_color, highlight_text, url, expires_at, conditions')
       .eq('is_active', true)
       .order('created_at', { ascending: false }),
     getSettings(),

@@ -17,6 +17,21 @@ function resolveLogoBgColor(raw: string): string {
   return HEX_RE.test(trimmed) ? trimmed : '#ffffff'
 }
 
+// `conditions` chega do form como um JSON string (mesmo padrão de
+// video_urls/exclusive_ufs) — cada item vira sua própria "caixinha" no card,
+// substituindo o hábito de digitar "========" dentro da descrição pra separar
+// condições diferentes no mesmo item.
+function parseConditions(raw: string | null): string[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((v) => String(v).trim()).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 export type CommercialCondition = {
   id: string
   title: string
@@ -30,6 +45,7 @@ export type CommercialCondition = {
   expires_at: string | null
   owner_area_id: string | null
   created_at: string
+  conditions: string[]
 }
 
 // Guard de posse: colaborador só mexe em condição da própria área
@@ -58,6 +74,7 @@ export async function createCommercialCondition(formData: FormData) {
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
+    conditions: parseConditions(formData.get('conditions') as string | null),
     owner_area_id: ctx.areaId,
   }).select('id').single()
   if (error) return { error: error.message }
@@ -79,7 +96,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('commercial_conditions')
-    .select('title, description, cover_url, logo_url, logo_bg_color, highlight_text, url, is_active, expires_at')
+    .select('title, description, cover_url, logo_url, logo_bg_color, highlight_text, url, is_active, expires_at, conditions')
     .eq('id', id)
     .single()
 
@@ -93,12 +110,13 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
+    conditions: parseConditions(formData.get('conditions') as string | null),
   }
   const { error } = await adminClient.from('commercial_conditions').update(after).eq('id', id)
   if (error) return { error: error.message }
 
   const changed = diffFields(prev ?? {}, after, {
-    title: 'título', description: 'descrição', cover_url: 'capa', logo_url: 'logo', logo_bg_color: 'cor de fundo da logo', highlight_text: 'destaque', url: 'link', is_active: 'ativação', expires_at: 'validade',
+    title: 'título', description: 'descrição', cover_url: 'capa', logo_url: 'logo', logo_bg_color: 'cor de fundo da logo', highlight_text: 'destaque', url: 'link', is_active: 'ativação', expires_at: 'validade', conditions: 'condições separadas',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'condicao_comercial', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })

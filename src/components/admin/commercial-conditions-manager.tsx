@@ -19,6 +19,8 @@ import {
 import { ColorPicker } from '@/components/ui/color-picker'
 import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
 import { HighlightBadge } from '@/components/ui/highlight-badge'
+import { ConditionBoxes } from '@/components/ui/condition-boxes'
+import { Textarea } from '@/components/ui/textarea'
 import { toRichHtml } from '@/lib/legacy-rich-text'
 import { toast } from 'sonner'
 import { Plus, Trash2, Pencil, X, Upload, ImageIcon, TrendingUp, ExternalLink } from 'lucide-react'
@@ -43,6 +45,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoBgColor, setLogoBgColor] = useState(DEFAULT_LOGO_BG)
+  const [conditionsList, setConditionsList] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -56,6 +59,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     setLogoPreview(null)
     setLogoFile(null)
     setLogoBgColor(DEFAULT_LOGO_BG)
+    setConditionsList([])
   }
 
   function handleEdit(item: CommercialCondition) {
@@ -66,6 +70,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     setLogoPreview(item.logo_url || null)
     setLogoFile(null)
     setLogoBgColor(item.logo_bg_color || DEFAULT_LOGO_BG)
+    setConditionsList(item.conditions ?? [])
     setShowForm(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -97,6 +102,14 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     setLogoPreview(URL.createObjectURL(file))
   }
 
+  function updateConditionItem(i: number, value: string) {
+    setConditionsList((prev) => prev.map((v, idx) => (idx === i ? value : v)))
+  }
+
+  function removeConditionItem(i: number) {
+    setConditionsList((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
@@ -104,6 +117,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
     // FormData acima (mesmo motivo de cover_url/logo_url serem sobrescritos
     // manualmente depois de um upload).
     fd.set('description', descriptionValue)
+    fd.set('conditions', JSON.stringify(conditionsList.map((c) => c.trim()).filter(Boolean)))
     startTransition(async () => {
       try {
         if (coverFile) {
@@ -165,6 +179,36 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
               <Label htmlFor="cc-description">Descrição</Label>
               <div className="mt-1.5">
                 <RichTextEditor content={descriptionValue} onChange={setDescriptionValue} />
+              </div>
+            </div>
+
+            {/* Condições separadas — substitui o hábito de digitar "========"
+                dentro da descrição pra separar condições diferentes do mesmo
+                item. Cada caixa aqui vira sua própria caixinha visual pro
+                aluno, sem precisar de nenhuma formatação manual. */}
+            <div className="md:col-span-2">
+              <Label>Confira as condições (opcional)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
+                Cada campo abaixo vira uma caixinha separada no card — não precisa digitar &quot;====&quot; ou qualquer separador manual.
+              </p>
+              <div className="space-y-2">
+                {conditionsList.map((text, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <Textarea
+                      value={text}
+                      onChange={(e) => updateConditionItem(i, e.target.value)}
+                      placeholder="Ex.: Fique 4 noites e pague 3"
+                      rows={2}
+                      className="flex-1"
+                    />
+                    <button type="button" onClick={() => removeConditionItem(i)} className="text-muted-foreground hover:text-red-500 transition-colors p-1.5 shrink-0" title="Remover">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => setConditionsList((prev) => [...prev, ''])} className="gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar condição
+                </Button>
               </div>
             </div>
 
@@ -377,6 +421,7 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                 {item.description && item.description !== '<p></p>' && (
                   <div className="rich-text text-sm text-muted-foreground line-clamp-2" dangerouslySetInnerHTML={{ __html: toRichHtml(item.description) }} />
                 )}
+                <ConditionBoxes items={item.conditions} />
                 {item.expires_at && (
                   <p className={cn('text-xs', item.expires_at < todayIsoDate() ? 'text-red-500' : 'text-muted-foreground')}>
                     Válido até {new Date(item.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
