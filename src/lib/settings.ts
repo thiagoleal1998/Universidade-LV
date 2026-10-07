@@ -211,7 +211,7 @@ const DEFAULTS = {
   // Banner grande, acima da grade de cards, pra campanhas em destaque —
   // separado de `commercial_conditions` (não é um "card" da grade, é um
   // banner só, sem título/descrição/validade).
-  commercial_banner: JSON.stringify({ active: false, image_url: '', image_position: 50, lv_conditions: '' }),
+  commercial_banner: JSON.stringify({ active: false, image_url: '', image_position: 50, title: '', description: '', lv_conditions: '' }),
   landing_hero_title: 'Capacitação exclusiva para agentes de viagem',
   landing_hero_subtitle: 'Treinamentos ao vivo, cursos completos, comunidade e certificados — tudo que você precisa para se destacar no mercado.',
   landing_hero_image_url: '',

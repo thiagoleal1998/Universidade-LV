@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 import { Megaphone, Upload, ImageIcon, Lock, MoveVertical, Leaf } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Banner = { active: boolean; image_url: string; image_position: number; lv_conditions: string }
+type Banner = { active: boolean; image_url: string; image_position: number; title: string; description: string; lv_conditions: string }
 
 function parse(raw: string): Banner {
   try {
@@ -22,10 +22,12 @@ function parse(raw: string): Banner {
       active: p?.active === true,
       image_url: typeof p?.image_url === 'string' ? p.image_url : '',
       image_position: typeof p?.image_position === 'number' ? p.image_position : 50,
+      title: typeof p?.title === 'string' ? p.title : '',
+      description: typeof p?.description === 'string' ? p.description : '',
       lv_conditions: typeof p?.lv_conditions === 'string' ? p.lv_conditions : '',
     }
   } catch {
-    return { active: false, image_url: '', image_position: 50, lv_conditions: '' }
+    return { active: false, image_url: '', image_position: 50, title: '', description: '', lv_conditions: '' }
   }
 }
 
@@ -104,8 +106,19 @@ export function CommercialBannerManager({ raw, canEdit = true }: { raw: string; 
           </button>
         </div>
         <p className="text-xs text-muted-foreground -mt-2">
-          Aparece bem grande, acima dos cards de Condições Comerciais — pra campanhas que merecem destaque especial.
+          Aparece bem grande, acima dos cards de Condições Comerciais — pra campanhas que merecem destaque especial. Enquanto ativo, os cards de Condições Comerciais cadastrados abaixo passam a fazer parte deste bloco da campanha (sem o título solto "Confira mais condições").
         </p>
+
+        <div>
+          <Label htmlFor="cb-title">Título (opcional)</Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">Aparece acima da imagem do banner.</p>
+          <Input
+            id="cb-title"
+            value={data.title}
+            onChange={(e) => setData((d) => ({ ...d, title: e.target.value }))}
+            placeholder="Ex.: Antecipa Black Friday"
+          />
+        </div>
 
         <div>
           <Label>Imagem do banner</Label>
@@ -188,6 +201,19 @@ export function CommercialBannerManager({ raw, canEdit = true }: { raw: string; 
             </div>
           </div>
         )}
+
+        <div>
+          <Label htmlFor="cb-description">Texto da campanha (opcional)</Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">Aparece logo abaixo da imagem do banner, explicando a campanha pro aluno.</p>
+          <Textarea
+            id="cb-description"
+            value={data.description}
+            onChange={(e) => setData((d) => ({ ...d, description: e.target.value }))}
+            placeholder="Ex.: Antecipe suas reservas de fim de ano com condições exclusivas..."
+            className="resize-none"
+            rows={3}
+          />
+        </div>
 
         <p className="text-xs text-muted-foreground">
           Ao clicar no banner, o aluno é levado para uma página com a lista de parceiros e condições especiais da campanha — configure os parceiros no bloco abaixo.

@@ -235,11 +235,17 @@ export default async function ComercialPage({
   // Comerciais → "Banner de campanha". Clicar sempre leva pra
   // /dashboard/comercial/campanha (planilha de parceiros), nunca mais um
   // link externo configurável.
-  let commercialBanner: { active: boolean; image_url: string; image_position: number } | null = null
+  let commercialBanner: { active: boolean; image_url: string; image_position: number; title: string; description: string } | null = null
   try {
     const parsed = JSON.parse(settings.commercial_banner)
     if (parsed?.active && parsed?.image_url) {
-      commercialBanner = { active: true, image_url: parsed.image_url, image_position: typeof parsed?.image_position === 'number' ? parsed.image_position : 50 }
+      commercialBanner = {
+        active: true,
+        image_url: parsed.image_url,
+        image_position: typeof parsed?.image_position === 'number' ? parsed.image_position : 50,
+        title: typeof parsed?.title === 'string' ? parsed.title : '',
+        description: typeof parsed?.description === 'string' ? parsed.description : '',
+      }
     }
   } catch {}
 
@@ -268,8 +274,16 @@ export default async function ComercialPage({
       {/* Condições Comerciais */}
       {activeTab === 'comercial' && (
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-          {commercialBanner && (
-            <>
+          {commercialBanner ? (
+            // Campanha com banner ativo "absorve" os cards de Condições
+            // Comerciais pra dentro do mesmo bloco — título opcional acima,
+            // texto opcional logo abaixo da imagem, e a grade de condições
+            // já cadastradas entra como parte da campanha, sem o título
+            // solto "Confira mais condições" que existia antes.
+            <div className="rounded-2xl border border-border bg-card p-4 md:p-6 space-y-5">
+              {commercialBanner.title && (
+                <h2 className="text-xl md:text-2xl font-bold text-foreground">{commercialBanner.title}</h2>
+              )}
               <Link href="/dashboard/comercial/campanha" className="group block relative rounded-2xl overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -287,10 +301,16 @@ export default async function ComercialPage({
                   <ChevronRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </Link>
-              <h2 className="text-base font-semibold text-foreground">Confira mais condições:</h2>
-            </>
-          )}
-          {commercialConditions.length === 0 ? (
+              {commercialBanner.description && (
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{commercialBanner.description}</p>
+              )}
+              {commercialConditions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma condição comercial disponível no momento.</p>
+              ) : (
+                <CommercialConditionsGrid items={commercialConditions} />
+              )}
+            </div>
+          ) : commercialConditions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-3 text-muted-foreground">
               <Briefcase className="w-10 h-10 opacity-30" />
               <p className="text-sm">Nenhuma condição comercial disponível no momento.</p>
