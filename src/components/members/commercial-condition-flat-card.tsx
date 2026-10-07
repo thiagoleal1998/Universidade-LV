@@ -36,7 +36,7 @@ export function CommercialConditionFlatCard({ c }: { c: Condition }) {
         {c.description && c.description !== '<p></p>' && (
           <div className="rich-text rich-text-muted text-sm" dangerouslySetInnerHTML={{ __html: toRichHtml(c.description) }} />
         )}
-        <ConditionBoxes items={c.conditions} />
+        <ConditionBoxes items={c.conditions} showLabel={false} />
         {c.expires_at && (
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Calendar className="w-3.5 h-3.5 shrink-0" />
