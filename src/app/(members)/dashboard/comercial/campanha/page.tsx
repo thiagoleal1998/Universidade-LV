@@ -3,7 +3,7 @@ import { getSettings } from '@/lib/settings'
 import { ArrowLeft, Megaphone, Briefcase, Leaf } from 'lucide-react'
 import Link from 'next/link'
 import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
-import { CommercialConditionFlatCard } from '@/components/members/commercial-condition-flat-card'
+import { CommercialConditionsFlatGrid } from '@/components/members/commercial-conditions-flat-grid'
 
 export const metadata = { title: 'Condições especiais da campanha' }
 
@@ -96,14 +96,7 @@ export default async function CampanhaComercialPage() {
           )}
 
           {commercialConditions.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold text-foreground">Confira mais condições:</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {commercialConditions.map((c) => (
-                  <CommercialConditionFlatCard key={c.id} c={c} />
-                ))}
-              </div>
-            </div>
+            <CommercialConditionsFlatGrid items={commercialConditions} />
           )}
         </>
       )}
