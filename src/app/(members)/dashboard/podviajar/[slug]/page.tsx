@@ -70,8 +70,16 @@ export default async function PodviajarEpisodePage({ params }: { params: Promise
   const episode = episodes.find((ep) => slugify(ep.title) === slug)
   if (!episode) notFound()
 
+  const photos = (episode.photos ?? []).map((url, i) => ({ id: `${i}-${url}`, url, caption: '' }))
+  const videoUrls = episode.video_urls ?? []
+  // Mesmo racional de Famtour: só a galeria precisa do espaço lateral (fica
+  // AO LADO do vídeo principal); os vídeos extras ("shorts") entram no fluxo
+  // principal, abaixo da descrição — por isso só `photos` decide o layout
+  // largo, não `videoUrls` como em Famtour (lá os dois dividem a coluna lateral).
+  const showGallery = photos.length > 0
+
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto">
+    <div className={`p-4 md:p-8 mx-auto ${showGallery ? 'max-w-6xl' : 'max-w-3xl'}`}>
       <Link
         href="/dashboard/podviajar"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
@@ -80,45 +88,49 @@ export default async function PodviajarEpisodePage({ params }: { params: Promise
         Voltar para o PodViajar
       </Link>
 
-      <div className="space-y-6">
-        <EpisodeMedia url={episode.url} title={episode.title} />
-
-        <div className="space-y-3">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">{episode.title}</h1>
-          {(episode.date || episode.duration) && (
-            <div className="flex items-center gap-3 flex-wrap">
-              {episode.date && (
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4 shrink-0" /> {episode.date}
-                </span>
-              )}
-              {episode.duration && (
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4 shrink-0" /> {episode.duration}
-                </span>
-              )}
-            </div>
-          )}
-          {episode.description && (
-            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{episode.description}</p>
-          )}
+      <div className={showGallery ? 'grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] lg:gap-x-8' : 'space-y-6'}>
+        <div className="lg:col-start-1 lg:row-start-1">
+          <EpisodeMedia url={episode.url} title={episode.title} />
         </div>
 
-        {((episode.photos?.length ?? 0) > 0 || (episode.video_urls?.length ?? 0) > 0) && (
-          <div className="space-y-5 pt-2 border-t border-border">
-            <div className="flex items-center gap-2 pt-4">
-              <Camera className="w-4 h-4 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">Bastidores</h2>
-            </div>
-            {(episode.video_urls?.length ?? 0) > 0 && <TripVideo videoUrls={episode.video_urls!} />}
-            {(episode.photos?.length ?? 0) > 0 && (
-              <TripGallery
-                title="Fotos"
-                photos={episode.photos!.map((url, i) => ({ id: `${i}-${url}`, url, caption: '' }))}
-              />
-            )}
+        {showGallery && (
+          <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2">
+            <TripGallery title="Bastidores" photos={photos} />
           </div>
         )}
+
+        <div className="space-y-6 min-w-0 lg:col-start-1 lg:row-start-2">
+          <div className="space-y-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">{episode.title}</h1>
+            {(episode.date || episode.duration) && (
+              <div className="flex items-center gap-3 flex-wrap">
+                {episode.date && (
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4 shrink-0" /> {episode.date}
+                  </span>
+                )}
+                {episode.duration && (
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4 shrink-0" /> {episode.duration}
+                  </span>
+                )}
+              </div>
+            )}
+            {episode.description && (
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{episode.description}</p>
+            )}
+          </div>
+
+          {videoUrls.length > 0 && (
+            <div className="space-y-4 pt-2 border-t border-border">
+              <div className="flex items-center gap-2 pt-4">
+                <Camera className="w-4 h-4 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Mais sobre esse episódio</h2>
+              </div>
+              <TripVideo videoUrls={videoUrls} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
