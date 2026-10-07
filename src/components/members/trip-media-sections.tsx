@@ -280,7 +280,7 @@ export function TripMediaSections({ testimonials }: { testimonials: Testimonial[
 // visíveis, então o "+N" é só um indicador, nunca um limite real de acesso.
 const GALLERY_VISIBLE_COUNT = 4
 
-export function TripGallery({ photos, className }: { photos: Photo[]; className?: string }) {
+export function TripGallery({ photos, className, title = 'Galeria de fotos' }: { photos: Photo[]; className?: string; title?: string }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   if (photos.length === 0) return null
 
@@ -291,7 +291,7 @@ export function TripGallery({ photos, className }: { photos: Photo[]; className?
     <div className={`space-y-3 ${className ?? ''}`}>
       <div className="flex items-center gap-2">
         <ImageIcon className="w-4 h-4 text-muted-foreground" />
-        <p className="text-sm font-semibold text-foreground">Galeria de fotos</p>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {visiblePhotos.map((photo, i) => {

@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { getSettings } from '@/lib/settings'
 import { slugify } from '@/lib/slug'
 import { getVideoEmbed } from '@/lib/video'
-import { ArrowLeft, Calendar, Clock, ExternalLink, PlayCircle } from 'lucide-react'
+import { TripGallery, TripVideo } from '@/components/members/trip-media-sections'
+import { ArrowLeft, Calendar, Clock, ExternalLink, PlayCircle, Camera } from 'lucide-react'
 
 type Episode = {
   title: string
@@ -12,6 +13,8 @@ type Episode = {
   date: string
   cover_url: string
   duration: string
+  photos?: string[]
+  video_urls?: string[]
 }
 
 function EpisodeMedia({ url, title }: { url: string; title: string }) {
@@ -100,6 +103,22 @@ export default async function PodviajarEpisodePage({ params }: { params: Promise
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{episode.description}</p>
           )}
         </div>
+
+        {((episode.photos?.length ?? 0) > 0 || (episode.video_urls?.length ?? 0) > 0) && (
+          <div className="space-y-5 pt-2 border-t border-border">
+            <div className="flex items-center gap-2 pt-4">
+              <Camera className="w-4 h-4 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Bastidores</h2>
+            </div>
+            {(episode.video_urls?.length ?? 0) > 0 && <TripVideo videoUrls={episode.video_urls!} />}
+            {(episode.photos?.length ?? 0) > 0 && (
+              <TripGallery
+                title="Fotos"
+                photos={episode.photos!.map((url, i) => ({ id: `${i}-${url}`, url, caption: '' }))}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
