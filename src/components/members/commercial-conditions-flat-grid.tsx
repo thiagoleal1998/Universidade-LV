@@ -19,10 +19,12 @@ type Condition = {
   conditions: string[] | null
 }
 
-// Só o "miolo" do card (descrição + caixinhas de condição + validade/link),
-// sem logo/título — reaproveitado dentro da prévia truncada abaixo. O modal
-// (clique em "Veja mais") usa `CommercialConditionFlatCard` inteiro, não
-// truncado.
+// Só a parte que pode crescer bastante (descrição + caixinhas de condição),
+// sem logo/título/validade — reaproveitado dentro da prévia truncada abaixo.
+// `expires_at` fica de fora de propósito (ver `FlatCardPreview`): a validade
+// precisa continuar visível mesmo quando o resto é cortado pelo "Veja mais".
+// O modal (clique em "Veja mais") usa `CommercialConditionFlatCard` inteiro,
+// não truncado.
 function FlatCardBody({ c }: { c: Condition }) {
   return (
     <>
@@ -30,12 +32,6 @@ function FlatCardBody({ c }: { c: Condition }) {
         <div className="rich-text rich-text-muted text-sm" dangerouslySetInnerHTML={{ __html: toRichHtml(c.description) }} />
       )}
       <ConditionBoxes items={c.conditions} />
-      {c.expires_at && (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Calendar className="w-3.5 h-3.5 shrink-0" />
-          Válido até {new Date(c.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
-        </p>
-      )}
       {c.url && (
         <a href={c.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
           <ExternalLink className="w-3.5 h-3.5" /> Abrir link
@@ -83,6 +79,12 @@ function FlatCardPreview({ c, onOpen }: { c: Condition; onOpen: () => void }) {
             <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-card to-transparent pointer-events-none" />
           )}
         </div>
+        {c.expires_at && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            Válido até {new Date(c.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
+          </p>
+        )}
         {truncated && (
           <button type="button" onClick={onOpen} className="mt-2 text-sm font-medium text-primary hover:underline">
             Veja mais
