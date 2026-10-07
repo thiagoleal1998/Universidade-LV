@@ -151,7 +151,7 @@ export default async function PodviajarPage() {
                     <PlayCircle className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
                   </div>
                   {ep.description && (
-                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed whitespace-pre-wrap">{ep.description}</p>
+                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-2">{ep.description.replace(/\n\s*\n+/g, ' ')}</p>
                   )}
                   {(ep.date || ep.duration) && (
                     <div className="flex items-center gap-3 mt-3 flex-wrap">
