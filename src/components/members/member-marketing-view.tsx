@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange, X, Maximize2, Building2, Plane } from 'lucide-react'
+import { ExternalLink, Copy, Check, Image as ImageIcon, Link2, FileText, Download, Calendar, CalendarRange, X, Maximize2, Building2, Plane, Globe } from 'lucide-react'
 import { toast } from 'sonner'
 
 type Section = { key: string; label: string; type: string }
@@ -17,6 +17,7 @@ type MarketingItem = {
   url: string
   audience?: string | null
   scope?: string | null
+  country?: string | null
   product_id?: string | null
   period_id?: string | null
   travel_period?: string | null
@@ -442,6 +443,14 @@ function OfertaCard({ item, products, periods, dayLabel, hideB2BBadge, onOpen }:
         </div>
       )}
 
+      {/* País — obrigatório pra oferta Internacional */}
+      {item.scope === 'Internacional' && item.country && (
+        <div className="flex items-center gap-2 px-3 pt-0.5 pb-0.5">
+          <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+          <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">{item.country}</span>
+        </div>
+      )}
+
       {/* Período da viagem */}
       {item.travel_period && (
         <div className="flex items-center gap-2 px-3 pt-1 pb-0.5">
@@ -618,6 +627,12 @@ function VisualGrid({ items, products, periods, hideB2BBadge, onOpen }: { items:
               {product && (
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                   {product.name}
+                </span>
+              )}
+              {item.scope === 'Internacional' && item.country && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  <Globe className="w-3 h-3" />
+                  {item.country}
                 </span>
               )}
               {period && (

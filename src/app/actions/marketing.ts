@@ -26,6 +26,15 @@ function validateItemUrl(category: MarketingCategory, url: string): { error: str
   return null
 }
 
+// Oferta Internacional precisa mostrar o país pro aluno, não só a
+// cidade/produto — pedido do usuário (ex.: "Los Angeles" sem país não diz
+// se é EUA ou outro destino homônimo). Validação no servidor, fonte de
+// verdade — o form admin só reforça antes de chegar aqui.
+function validateItemCountry(scope: string | null | undefined, country: string | undefined): { error: string } | null {
+  if (scope === 'Internacional' && !country?.trim()) return { error: 'Informe o país para uma oferta Internacional.' }
+  return null
+}
+
 export type MarketingProduct = {
   id: string
   name: string
@@ -128,6 +137,7 @@ export async function createMarketingItem(data: {
   url: string
   audience?: string
   scope?: string
+  country?: string
   product_id?: string
   period_id?: string
   travel_period?: string
@@ -143,6 +153,8 @@ export async function createMarketingItem(data: {
   if (!data.title.trim()) return { error: 'Título obrigatório' }
   const urlError = validateItemUrl(data.category, data.url.trim())
   if (urlError) return { error: urlError.error }
+  const countryError = validateItemCountry(data.scope, data.country)
+  if (countryError) return { error: countryError.error }
 
   const { data: existing } = await adminClient
     .from('marketing_items')
@@ -161,6 +173,7 @@ export async function createMarketingItem(data: {
     url: data.url.trim(),
     audience: data.audience || null,
     scope: data.scope || null,
+    country: data.scope === 'Internacional' ? (data.country?.trim() || null) : null,
     product_id: data.product_id || null,
     period_id: data.period_id || null,
     travel_period: data.travel_period?.trim() || null,
@@ -199,6 +212,7 @@ export async function updateMarketingItem(
     url: string
     audience?: string
     scope?: string
+    country?: string
     product_id?: string
     period_id?: string
     travel_period?: string
@@ -222,6 +236,8 @@ export async function updateMarketingItem(
 
   const urlError = prev ? validateItemUrl(prev.category, data.url.trim()) : null
   if (urlError) return { error: urlError.error }
+  const countryError = validateItemCountry(data.scope, data.country)
+  if (countryError) return { error: countryError.error }
 
   const after = {
     title: data.title.trim(),
@@ -230,6 +246,7 @@ export async function updateMarketingItem(
     url: data.url.trim(),
     audience: data.audience || null,
     scope: data.scope || null,
+    country: data.scope === 'Internacional' ? (data.country?.trim() || null) : null,
     product_id: data.product_id || null,
     period_id: data.period_id || null,
     travel_period: data.travel_period?.trim() || null,

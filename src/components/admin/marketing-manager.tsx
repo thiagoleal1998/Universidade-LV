@@ -52,6 +52,7 @@ type MarketingItem = {
   url: string
   audience?: string | null
   scope?: string | null
+  country?: string | null
   product_id?: string | null
   period_id?: string | null
   travel_period?: string | null
@@ -69,6 +70,7 @@ type SubmitData = {
   url: string
   audience?: string
   scope?: string
+  country?: string
   product_id?: string
   period_id?: string
   travel_period?: string
@@ -176,6 +178,7 @@ function ItemForm({
   const [scope, setScope] = useState(
     defaultValues?.scope || products.find((p) => p.id === defaultValues?.product_id)?.scope || ''
   )
+  const [country, setCountry] = useState(defaultValues?.country ?? '')
   const [productId, setProductId] = useState(defaultValues?.product_id ?? '')
   const [periodId, setPeriodId] = useState(defaultValues?.period_id ?? '')
   const [travelPeriod, setTravelPeriod] = useState(defaultValues?.travel_period ?? '')
@@ -247,6 +250,10 @@ function ItemForm({
       toast.error('Defina a data de divulgação para agendar.')
       return
     }
+    if (scope === 'Internacional' && !country.trim()) {
+      toast.error('Informe o país para uma oferta Internacional.')
+      return
+    }
     onSubmit({
       title: (fd.get('title') as string) ?? '',
       description: (fd.get('description') as string) ?? '',
@@ -254,6 +261,7 @@ function ItemForm({
       url,
       audience: audience || undefined,
       scope: scope || undefined,
+      country: country || undefined,
       product_id: productId || undefined,
       period_id: periodId || undefined,
       travel_period: travelPeriod || undefined,
@@ -379,6 +387,18 @@ function ItemForm({
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {isVisual && scope === 'Internacional' && (
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">País</Label>
+          <Input
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            placeholder="Ex.: Estados Unidos"
+            required
+          />
         </div>
       )}
 

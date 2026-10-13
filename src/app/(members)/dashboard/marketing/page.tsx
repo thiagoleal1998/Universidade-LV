@@ -20,6 +20,7 @@ type MarketingItem = {
   allowed_tag_ids?: string[] | null
   audience?: string | null
   scope?: string | null
+  country?: string | null
   product_id?: string | null
   period_id?: string | null
   travel_period?: string | null
