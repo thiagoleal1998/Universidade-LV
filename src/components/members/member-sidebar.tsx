@@ -19,7 +19,7 @@ import { MemberFeedbackWidget } from '@/components/members/member-feedback-widge
 type NavLabels = Record<string, string>
 
 const DEFAULT_NAV_LABELS: NavLabels = {
-  home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
+  home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos Agentes',
   marketing: 'Marketing', famtours: 'Famtours', eventos: 'Eventos',
   aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', grupos: 'Grupos',
   podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',

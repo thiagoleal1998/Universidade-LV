@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { LiveCountdown } from '@/components/members/live-countdown'
 
-export const metadata = { title: 'Treinamentos' }
+export const metadata = { title: 'Treinamentos Agentes' }
 
 const TWO_HOURS = 2 * 3_600_000
 
@@ -365,7 +365,7 @@ export default async function TreinamentosPage() {
           <div className="flex items-center gap-3 mb-3">
             <GraduationCap className="w-8 h-8" />
             <h1 className="text-2xl md:text-3xl font-bold">
-              {settings.training_hero_title || 'Treinamentos'}
+              {settings.training_hero_title || 'Treinamentos Agentes'}
             </h1>
           </div>
           {settings.training_hero_description && (

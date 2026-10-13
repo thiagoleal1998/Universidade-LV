@@ -137,7 +137,7 @@ function parseNavOrder(json: string): string[] {
 const ALL_MEMBER_NAV_ITEMS = [
   { key: 'home',          defaultLabel: 'Início',                conditional: false },
   { key: 'cursos',        defaultLabel: 'Meus cursos',           conditional: false },
-  { key: 'treinamentos',  defaultLabel: 'Treinamentos',          conditional: false },
+  { key: 'treinamentos',  defaultLabel: 'Treinamentos Agentes',  conditional: false },
   { key: 'marketing',     defaultLabel: 'Marketing',             conditional: false },
   { key: 'famtours',      defaultLabel: 'Famtours',              conditional: false },
   { key: 'eventos',       defaultLabel: 'Eventos',               conditional: false },
@@ -151,7 +151,7 @@ const ALL_MEMBER_NAV_ITEMS = [
 ]
 
 const DEFAULT_MEMBER_NAV_LABELS_FULL: Record<string, string> = {
-  home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos',
+  home: 'Início', cursos: 'Meus cursos', treinamentos: 'Treinamentos Agentes',
   marketing: 'Marketing', famtours: 'Famtours', eventos: 'Eventos',
   aereo: 'Bloqueios Aéreos', comercial: 'Condições Comerciais', grupos: 'Grupos',
   podviajar: 'PodViajar', comunidade: 'Comunidade', documentos: 'Documentos', configuracoes: 'Configurações',
@@ -1277,7 +1277,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               <Input
                 value={trainingHeroTitle}
                 onChange={(e) => setTrainingHeroTitle(e.target.value)}
-                placeholder="Treinamentos"
+                placeholder="Treinamentos Agentes"
                 className="mt-1.5"
               />
             </div>
