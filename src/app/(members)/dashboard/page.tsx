@@ -483,11 +483,15 @@ export default async function DashboardPage() {
   let sidebarSocials: SidebarSocials = { instagram: '', facebook: '', youtube: '', whatsapp: '', twitter: '', linkedin: '' }
   try { sidebarSocials = { ...sidebarSocials, ...JSON.parse(settings.sidebar_social_links) } } catch {}
 
-  // Corrida de Vendas
+  // Corrida de Vendas — "em andamento" sempre primeiro (é a que o aluno
+  // mais precisa ver agora), depois "próxima", "finalizada" por último.
+  // `.sort()` é estável (V8/engines modernas) — corridas do mesmo status
+  // mantêm a ordem original entre si.
+  const CORRIDA_STATUS_ORDER: Record<CorridaStatus, number> = { em_andamento: 0, proxima: 1, finalizada: 2 }
   const corridaPreviewAll = parseCorridasPreview(settings.corrida_vendas)
-  const corridaPreview = corridaPreviewAll.filter(
-    (c) => c.status === 'em_andamento' || c.status === 'proxima' || c.vencedores.length > 0,
-  )
+  const corridaPreview = corridaPreviewAll
+    .filter((c) => c.status === 'em_andamento' || c.status === 'proxima' || c.vencedores.length > 0)
+    .sort((a, b) => CORRIDA_STATUS_ORDER[a.status] - CORRIDA_STATUS_ORDER[b.status])
 
   // Famtours/Eventos com data passada continuam visíveis de propósito — o
   // admin também cadastra viagens/eventos já realizados, pra divulgar
@@ -741,7 +745,9 @@ export default async function DashboardPage() {
                     <Link
                       key={idx}
                       href={`/dashboard/comercial?tab=corrida_vendas&subtab=${statusCfg.subtab}`}
-                      className="group block rounded-2xl border overflow-hidden bg-card hover:shadow-md transition-all"
+                      className={`group block rounded-2xl border overflow-hidden bg-card hover:shadow-md transition-all ${
+                        st === 'em_andamento' ? 'border-green-500/50 ring-2 ring-green-500/20 shadow-sm shadow-green-500/10' : ''
+                      }`}
                     >
                       {/* Linha principal */}
                       <div className="flex items-center gap-4">
