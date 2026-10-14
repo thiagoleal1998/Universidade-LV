@@ -25,10 +25,10 @@ export function CommercialBanner({ banner, className }: { banner: CommercialBann
         />
         <div className="absolute inset-x-0 bottom-0 flex flex-col">
           {banner.countdown_until && (
-            <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-black/60 text-white text-xs font-semibold">
+            <div className="flex items-center justify-center gap-2 px-4 py-2 bg-black/80 text-white text-xs font-semibold">
               <Clock className="w-3.5 h-3.5 shrink-0" />
               Encerra em:
-              <CountdownTimer until={banner.countdown_until} boxClassName="bg-white/20" />
+              <CountdownTimer until={banner.countdown_until} boxClassName="bg-white text-neutral-900 font-bold" />
             </div>
           )}
           <div

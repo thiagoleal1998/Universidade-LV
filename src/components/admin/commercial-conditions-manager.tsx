@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
-import { HighlightBadge } from '@/components/ui/highlight-badge'
+import { HighlightBadge, ATTENTION_COLOR } from '@/components/ui/highlight-badge'
 import { ConditionBoxes } from '@/components/ui/condition-boxes'
 import { Textarea } from '@/components/ui/textarea'
 import { CountdownTimer } from '@/components/ui/countdown-timer'
@@ -439,7 +439,12 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                   </p>
                 )}
                 {item.show_countdown && item.expires_at && (
-                  <CountdownTimer until={`${item.expires_at}T23:59:59`} className="flex items-center gap-1 font-mono font-bold text-xs text-foreground" />
+                  <CountdownTimer
+                    until={`${item.expires_at}T23:59:59`}
+                    className="flex items-center gap-1 font-mono font-bold text-xs text-foreground mt-1"
+                    boxClassName="text-white font-bold"
+                    boxStyle={{ backgroundColor: ATTENTION_COLOR }}
+                  />
                 )}
                 {item.url && (
                   <a href={item.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">

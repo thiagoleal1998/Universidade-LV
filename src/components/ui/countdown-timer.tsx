@@ -22,7 +22,7 @@ function getTimeLeft(target: number): TimeLeft | null {
 // entorno visual (banner escuro, card claro, etc. via `boxClassName`).
 // Esconde-se sozinho (`null`) quando o prazo já passou, mesmo critério já
 // usado em "Válido até" (item expirado simplesmente não aparece mais).
-export function CountdownTimer({ until, className, boxClassName }: { until: string; className?: string; boxClassName?: string }) {
+export function CountdownTimer({ until, className, boxClassName, boxStyle }: { until: string; className?: string; boxClassName?: string; boxStyle?: React.CSSProperties }) {
   const target = new Date(until).getTime()
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(() => getTimeLeft(target))
 
@@ -41,15 +41,15 @@ export function CountdownTimer({ until, className, boxClassName }: { until: stri
     <div className={className ?? 'flex items-center gap-1 font-mono font-bold text-sm'}>
       {timeLeft.days > 0 && (
         <>
-          <span className={`${box} rounded px-1.5 py-0.5`}>{pad(timeLeft.days)}d</span>
+          <span className={`${box} rounded px-1.5 py-0.5`} style={boxStyle}>{pad(timeLeft.days)}d</span>
           <span className="opacity-40">:</span>
         </>
       )}
-      <span className={`${box} rounded px-1.5 py-0.5`}>{pad(timeLeft.hours)}h</span>
+      <span className={`${box} rounded px-1.5 py-0.5`} style={boxStyle}>{pad(timeLeft.hours)}h</span>
       <span className="opacity-40">:</span>
-      <span className={`${box} rounded px-1.5 py-0.5`}>{pad(timeLeft.minutes)}m</span>
+      <span className={`${box} rounded px-1.5 py-0.5`} style={boxStyle}>{pad(timeLeft.minutes)}m</span>
       <span className="opacity-40">:</span>
-      <span className={`${box} rounded px-1.5 py-0.5`}>{pad(timeLeft.seconds)}s</span>
+      <span className={`${box} rounded px-1.5 py-0.5`} style={boxStyle}>{pad(timeLeft.seconds)}s</span>
     </div>
   )
 }
