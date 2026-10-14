@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSettings } from '@/lib/settings'
 import {
   Briefcase, Trophy,
-  Clock, PlayCircle, CheckCircle2, Award, Calendar, ChevronRight, Users,
+  Clock, PlayCircle, CheckCircle2, Award, Calendar, Users,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -10,7 +10,8 @@ import { CommercialConditionsGrid } from '@/components/members/commercial-condit
 import { CorridasVendasGrid } from '@/components/members/corridas-vendas-grid'
 import { VencedorAccordionItem } from '@/components/members/vencedor-accordion-item'
 import type { CorridaData, PremiacaoItem, PremiacaoSection, Vencedor, Status } from '@/components/members/corrida-card'
-import { ATTENTION_COLOR } from '@/components/ui/highlight-badge'
+import { CommercialBanner } from '@/components/members/commercial-banner'
+import { parseCommercialBanner } from '@/lib/commercial-banner'
 
 export const metadata = { title: 'Condições Comerciais' }
 
@@ -234,20 +235,9 @@ export default async function ComercialPage({
   // propósito, mesma peça só configurada em Admin → Comercial → Condições
   // Comerciais → "Banner de campanha". Clicar sempre leva pra
   // /dashboard/comercial/campanha (planilha de parceiros), nunca mais um
-  // link externo configurável.
-  let commercialBanner: { active: boolean; image_url: string; image_position: number; title: string; description: string } | null = null
-  try {
-    const parsed = JSON.parse(settings.commercial_banner)
-    if (parsed?.active && parsed?.image_url) {
-      commercialBanner = {
-        active: true,
-        image_url: parsed.image_url,
-        image_position: typeof parsed?.image_position === 'number' ? parsed.image_position : 50,
-        title: typeof parsed?.title === 'string' ? parsed.title : '',
-        description: typeof parsed?.description === 'string' ? parsed.description : '',
-      }
-    }
-  } catch {}
+  // link externo configurável. Parser compartilhado com a home do aluno
+  // (`src/lib/commercial-banner.ts`) — a mesma peça também aparece lá.
+  const commercialBanner = parseCommercialBanner(settings.commercial_banner)
 
   const subtabData = SUBTABS.find((s) => s.key === activeSubtab)!
   const filteredCorridas = allCorridas.filter(subtabData.filter)
@@ -276,36 +266,11 @@ export default async function ComercialPage({
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {commercialBanner ? (
             // Banner de campanha ativo substitui a grade de Condições
-            // Comerciais nesta tela por inteiro — título opcional acima,
-            // imagem+CTA, texto opcional abaixo. As condições comerciais
+            // Comerciais nesta tela por inteiro — as condições comerciais
             // "normais" saem daqui e passam a aparecer na página que o
             // próprio banner abre (/dashboard/comercial/campanha), não mais
             // duplicadas aqui.
-            <div className="space-y-4">
-              {commercialBanner.title && (
-                <h2 className="text-xl md:text-2xl font-bold text-foreground">{commercialBanner.title}</h2>
-              )}
-              <Link href="/dashboard/comercial/campanha" className="group block relative rounded-2xl overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={commercialBanner.image_url}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                  className="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover group-hover:opacity-95 transition-opacity"
-                  style={{ objectPosition: `center ${commercialBanner.image_position}%` }}
-                />
-                <div
-                  className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 px-4 py-2 text-white text-sm font-semibold"
-                  style={{ backgroundColor: ATTENTION_COLOR }}
-                >
-                  Clique e veja as condições especiais
-                  <ChevronRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </Link>
-              {commercialBanner.description && (
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{commercialBanner.description}</p>
-              )}
-            </div>
+            <CommercialBanner banner={commercialBanner} />
           ) : commercialConditions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-3 text-muted-foreground">
               <Briefcase className="w-10 h-10 opacity-30" />

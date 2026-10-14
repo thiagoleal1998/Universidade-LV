@@ -12,6 +12,8 @@ import { TripCard } from '@/components/members/trip-card'
 import { buttonVariants } from '@/components/ui/button'
 import { LiveCountdown } from '@/components/members/live-countdown'
 import { TamojuntoWinnersSection } from '@/components/members/tamojunto-winners-section'
+import { CommercialBanner } from '@/components/members/commercial-banner'
+import { parseCommercialBanner } from '@/lib/commercial-banner'
 import {
   ChevronRight, BookOpen, PlayCircle, ArrowRight,
   Sparkles, Flame, Clock, Radio, GraduationCap, RotateCcw,
@@ -523,6 +525,11 @@ export default async function DashboardPage() {
     }
   } catch {}
 
+  // Banner de campanha (Comercial) — mesmo settings/parser de
+  // /dashboard/comercial (src/lib/commercial-banner.ts); pedido do usuário
+  // pra também aparecer no topo da home, não só na aba Comercial.
+  const commercialBanner = parseCommercialBanner(settings.commercial_banner)
+
   // PodViajar
   type PodEpisode = { title: string; description: string; url: string; date: string; cover_url: string; duration: string }
   type PodviajarSection = { active: boolean; title: string; description: string; image_url: string; spotify_url: string; youtube_url: string; episodes: PodEpisode[] }
@@ -558,6 +565,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
+      {commercialBanner && (
+        <div className="mb-6">
+          <CommercialBanner banner={commercialBanner} />
+        </div>
+      )}
       <div className="flex flex-col gap-6 items-start xl:grid xl:grid-cols-[1fr_288px] xl:gap-x-6">
 
         {/* ── Greeting ── */}
