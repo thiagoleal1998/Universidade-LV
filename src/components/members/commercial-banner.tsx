@@ -19,7 +19,7 @@ export function CommercialBanner({ banner, className }: { banner: CommercialBann
           src={banner.image_url}
           alt=""
           referrerPolicy="no-referrer"
-          className="w-full h-48 sm:h-64 md:h-72 lg:h-80 object-cover group-hover:opacity-95 transition-opacity"
+          className="w-full h-64 sm:h-80 md:h-96 lg:h-[28rem] object-cover group-hover:opacity-95 transition-opacity"
           style={{ objectPosition: `center ${banner.image_position}%` }}
         />
         <div
