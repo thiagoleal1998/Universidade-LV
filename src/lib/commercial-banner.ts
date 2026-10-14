@@ -3,6 +3,7 @@ export type CommercialBannerData = {
   image_position: number
   title: string
   description: string
+  countdown_until: string
 }
 
 // Parser único compartilhado entre /dashboard/comercial e a home do aluno —
@@ -19,6 +20,7 @@ export function parseCommercialBanner(raw: string | null | undefined): Commercia
       image_position: typeof parsed?.image_position === 'number' ? parsed.image_position : 50,
       title: typeof parsed?.title === 'string' ? parsed.title : '',
       description: typeof parsed?.description === 'string' ? parsed.description : '',
+      countdown_until: typeof parsed?.countdown_until === 'string' ? parsed.countdown_until : '',
     }
   } catch {
     return null

@@ -23,7 +23,7 @@ export default async function CampanhaComercialPage() {
       .order('order_index'),
     adminClient
       .from('commercial_conditions')
-      .select('id, title, description, logo_url, logo_bg_color, url, expires_at, conditions')
+      .select('id, title, description, logo_url, logo_bg_color, url, expires_at, show_countdown, conditions')
       .eq('is_active', true)
       .order('created_at', { ascending: false }),
     getSettings(),

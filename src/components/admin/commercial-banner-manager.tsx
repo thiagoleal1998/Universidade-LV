@@ -9,11 +9,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { toast } from 'sonner'
-import { Megaphone, Upload, ImageIcon, Lock, MoveVertical, Leaf } from 'lucide-react'
+import { Megaphone, Upload, ImageIcon, Lock, MoveVertical, Leaf, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Banner = { active: boolean; image_url: string; image_position: number; title: string; description: string; lv_conditions: string }
+type Banner = { active: boolean; image_url: string; image_position: number; title: string; description: string; lv_conditions: string; countdown_until: string }
 
 function parse(raw: string): Banner {
   try {
@@ -25,10 +26,19 @@ function parse(raw: string): Banner {
       title: typeof p?.title === 'string' ? p.title : '',
       description: typeof p?.description === 'string' ? p.description : '',
       lv_conditions: typeof p?.lv_conditions === 'string' ? p.lv_conditions : '',
+      countdown_until: typeof p?.countdown_until === 'string' ? p.countdown_until : '',
     }
   } catch {
-    return { active: false, image_url: '', image_position: 50, title: '', description: '', lv_conditions: '' }
+    return { active: false, image_url: '', image_position: 50, title: '', description: '', lv_conditions: '', countdown_until: '' }
   }
+}
+
+function toLocalDatetimeValue(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 // Banner grande acima da grade de Condições Comerciais, pra campanhas em
@@ -201,6 +211,22 @@ export function CommercialBannerManager({ raw, canEdit = true }: { raw: string; 
             </div>
           </div>
         )}
+
+        <div>
+          <Label htmlFor="cb-countdown" className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            Cronômetro regressivo (opcional)
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            Mostra "Encerra em: dd:hh:mm:ss" acima do botão do banner, contando até esta data/hora. Deixe em branco pra não mostrar. O cronômetro some sozinho quando o prazo passa.
+          </p>
+          <DateTimePicker
+            value={toLocalDatetimeValue(data.countdown_until)}
+            onChange={(v) => setData((d) => ({ ...d, countdown_until: v ? new Date(v).toISOString() : '' }))}
+            placeholder="Selecionar data e hora de encerramento"
+            className="max-w-xs"
+          />
+        </div>
 
         <div>
           <Label htmlFor="cb-description">Texto da campanha (opcional)</Label>

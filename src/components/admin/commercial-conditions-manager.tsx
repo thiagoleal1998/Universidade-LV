@@ -21,9 +21,10 @@ import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
 import { HighlightBadge } from '@/components/ui/highlight-badge'
 import { ConditionBoxes } from '@/components/ui/condition-boxes'
 import { Textarea } from '@/components/ui/textarea'
+import { CountdownTimer } from '@/components/ui/countdown-timer'
 import { toRichHtml } from '@/lib/legacy-rich-text'
 import { toast } from 'sonner'
-import { Plus, Trash2, Pencil, X, Upload, ImageIcon, TrendingUp, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Upload, ImageIcon, TrendingUp, ExternalLink, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type CommercialConditionWithEdit = CommercialCondition & { canEdit?: boolean }
@@ -222,6 +223,16 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
               <Input id="cc-expires-at" name="expires_at" type="date" defaultValue={editing?.expires_at ?? ''} className="mt-1.5" />
               <p className="text-xs text-muted-foreground mt-1">
                 Deixe em branco pra não expirar. A partir do dia seguinte, some da tela dos membros — mas continua aqui pra você renovar.
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer mt-2.5">
+                <input type="checkbox" name="show_countdown" value="true" defaultChecked={editing?.show_countdown ?? false} className="w-4 h-4 accent-primary" />
+                <span className="text-sm text-foreground flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                  Mostrar cronômetro regressivo pro aluno
+                </span>
+              </label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Só funciona com "Válido até" preenchido — conta até às 23:59 desse dia.
               </p>
             </div>
 
@@ -426,6 +437,9 @@ export function CommercialConditionsManager({ items, canCreate = true }: { items
                   <p className={cn('text-xs', item.expires_at < todayIsoDate() ? 'text-red-500' : 'text-muted-foreground')}>
                     Válido até {new Date(item.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
                   </p>
+                )}
+                {item.show_countdown && item.expires_at && (
+                  <CountdownTimer until={`${item.expires_at}T23:59:59`} className="flex items-center gap-1 font-mono font-bold text-xs text-foreground" />
                 )}
                 {item.url && (
                   <a href={item.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">

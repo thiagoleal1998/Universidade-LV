@@ -43,6 +43,7 @@ export type CommercialCondition = {
   url: string
   is_active: boolean
   expires_at: string | null
+  show_countdown: boolean
   owner_area_id: string | null
   created_at: string
   conditions: string[]
@@ -74,6 +75,7 @@ export async function createCommercialCondition(formData: FormData) {
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
+    show_countdown: formData.get('show_countdown') === 'true',
     conditions: parseConditions(formData.get('conditions') as string | null),
     owner_area_id: ctx.areaId,
   }).select('id').single()
@@ -96,7 +98,7 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
   const adminClient = createAdminClient()
   const { data: prev } = await adminClient
     .from('commercial_conditions')
-    .select('title, description, cover_url, logo_url, logo_bg_color, highlight_text, url, is_active, expires_at, conditions')
+    .select('title, description, cover_url, logo_url, logo_bg_color, highlight_text, url, is_active, expires_at, show_countdown, conditions')
     .eq('id', id)
     .single()
 
@@ -110,13 +112,14 @@ export async function updateCommercialCondition(id: string, formData: FormData) 
     url: ((formData.get('url') as string) ?? '').trim(),
     is_active: formData.get('is_active') === 'true',
     expires_at: (formData.get('expires_at') as string) || null,
+    show_countdown: formData.get('show_countdown') === 'true',
     conditions: parseConditions(formData.get('conditions') as string | null),
   }
   const { error } = await adminClient.from('commercial_conditions').update(after).eq('id', id)
   if (error) return { error: error.message }
 
   const changed = diffFields(prev ?? {}, after, {
-    title: 'título', description: 'descrição', cover_url: 'capa', logo_url: 'logo', logo_bg_color: 'cor de fundo da logo', highlight_text: 'destaque', url: 'link', is_active: 'ativação', expires_at: 'validade', conditions: 'condições separadas',
+    title: 'título', description: 'descrição', cover_url: 'capa', logo_url: 'logo', logo_bg_color: 'cor de fundo da logo', highlight_text: 'destaque', url: 'link', is_active: 'ativação', expires_at: 'validade', show_countdown: 'cronômetro', conditions: 'condições separadas',
   })
   if (changed.length > 0) {
     logActivity(ctx, { action: 'update', entityType: 'condicao_comercial', entityId: id, entityLabel: title, detail: `alterou: ${changed.join(', ')}` })

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { LogoChip, DEFAULT_LOGO_BG } from '@/components/ui/logo-chip'
 import { ConditionBoxes } from '@/components/ui/condition-boxes'
+import { CountdownTimer } from '@/components/ui/countdown-timer'
 import { CommercialConditionFlatCard } from '@/components/members/commercial-condition-flat-card'
 import { toRichHtml } from '@/lib/legacy-rich-text'
 import { Briefcase, Calendar, ExternalLink } from 'lucide-react'
@@ -16,6 +17,7 @@ type Condition = {
   logo_bg_color: string | null
   url: string | null
   expires_at: string | null
+  show_countdown?: boolean | null
   conditions: string[] | null
 }
 
@@ -80,10 +82,13 @@ function FlatCardPreview({ c, onOpen }: { c: Condition; onOpen: () => void }) {
           )}
         </div>
         {c.expires_at && (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            Válido até {new Date(c.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
-          </p>
+          <div className="space-y-1.5 mt-2">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
+              Válido até {new Date(c.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
+            </p>
+            {c.show_countdown && <CountdownTimer until={`${c.expires_at}T23:59:59`} />}
+          </div>
         )}
         {truncated && (
           <button type="button" onClick={onOpen} className="mt-2 text-sm font-medium text-primary hover:underline">

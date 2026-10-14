@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { LogoChip } from '@/components/ui/logo-chip'
 import { HighlightBadge } from '@/components/ui/highlight-badge'
 import { ConditionBoxes } from '@/components/ui/condition-boxes'
+import { CountdownTimer } from '@/components/ui/countdown-timer'
 import { toRichHtml } from '@/lib/legacy-rich-text'
 import { Briefcase, ExternalLink, Calendar } from 'lucide-react'
 
@@ -18,6 +19,7 @@ type Condition = {
   highlight_text: string | null
   url: string | null
   expires_at: string | null
+  show_countdown?: boolean | null
   conditions?: string[] | null
 }
 
@@ -114,10 +116,13 @@ export function CommercialConditionsGrid({ items }: { items: Condition[] }) {
                 )}
                 <ConditionBoxes items={open.conditions} />
                 {open.expires_at && (
-                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="w-3.5 h-3.5 shrink-0" />
-                    Válido até {new Date(open.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </p>
+                  <div className="space-y-1.5">
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      Válido até {new Date(open.expires_at + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    </p>
+                    {open.show_countdown && <CountdownTimer until={`${open.expires_at}T23:59:59`} />}
+                  </div>
                 )}
                 {open.url && (
                   <a
