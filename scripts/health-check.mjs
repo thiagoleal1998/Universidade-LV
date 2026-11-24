@@ -189,14 +189,36 @@ async function fetchWithRetry(url, attempts = 2, delayMs = 1500) {
   throw lastErr
 }
 
+// Componentes que esta integração de fato usa — `sendConversion` (OAuth2 +
+// disparo de evento de conversão) depende só de "API", e o e-mail em si sai
+// pelo componente "Email Marketing". A plataforma inteira tem ~25
+// componentes (chat do RD Atendimento, WhatsApp, landing pages, pop-ups,
+// etc.) que não têm nada a ver com o que a gente usa.
+const RD_RELEVANT_COMPONENTS = ['API', 'Email Marketing']
+
 async function checkRdStationStatusPage() {
   try {
-    const res = await fetchWithRetry('https://status.rdstation.com/api/v2/status.json')
+    // Bug real (v1.165.2): checar só `status.indicator` (o pior componente
+    // da plataforma INTEIRA) gerou 3 falsos positivos num mês — a última vez
+    // (23-24/11/2026) foi um incidente isolado no chat do RD Atendimento
+    // ("Falha no envio e recebimento de mensagens"), que deixou o indicador
+    // global em "minor" por ~20h seguidas enquanto "API" e "Email Marketing"
+    // (os únicos componentes que esta integração usa) continuavam
+    // 100% operacionais o tempo todo — confirmado direto na API deles.
+    // Corrigido pra checar só os componentes relevantes via /summary.json.
+    const res = await fetchWithRetry('https://status.rdstation.com/api/v2/summary.json')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = await res.json()
+    const components = Array.isArray(json?.components) ? json.components : []
+    if (components.length > 0) {
+      const degraded = components.filter((c) => RD_RELEVANT_COMPONENTS.includes(c.name) && c.status !== 'operational')
+      const ok = degraded.length === 0
+      return { name: 'Status RD Station', ok, detail: ok ? '' : degraded.map((c) => `${c.name}: ${c.status}`).join(', ') }
+    }
+    // Fallback defensivo — se o shape da API mudar e `components` vier
+    // vazio, volta pro indicador global em vez de dar "OK" sem checar nada
+    // de verdade. "maintenance" é janela programada/anunciada, não falha.
     const indicator = json?.status?.indicator ?? 'unknown'
-    // "maintenance" é janela programada e anunciada, não uma falha — só
-    // minor/major/critical (algo realmente degradado/fora do ar) alerta.
     const ok = indicator === 'none' || indicator === 'maintenance'
     return { name: 'Status RD Station', ok, detail: ok ? '' : `${indicator}: ${json?.status?.description ?? ''}` }
   } catch (err) {
